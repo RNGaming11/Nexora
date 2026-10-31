@@ -456,3 +456,117 @@ pub fn encode_update_recipes(
     packet.write_with(&mut w, serializers)?;
     Ok(w.data)
 }
+
+
+/// Login-state codecs for protocol 767. The packet IDs happen to match the
+/// current shared login IDs, but the successful-login payload does not:
+/// 1.21.1 sends GameProfilePacket (including strictErrorHandling), not the
+/// newer LoginFinished structure with a session UUID.
+pub mod login {
+    use super::{GameProfilePacket, PROTOCOL_VERSION};
+    use crate::{
+        Result,
+        buf::{Codec, Reader, Writer},
+        packets::{Empty, login as shared},
+    };
+
+    pub const DISCONNECT: i32 = 0;
+    pub const HELLO: i32 = 1;
+    pub const GAME_PROFILE: i32 = 2;
+    pub const COMPRESSION: i32 = 3;
+    pub const CUSTOM_QUERY: i32 = 4;
+    pub const COOKIE_REQUEST: i32 = 5;
+
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum Clientbound {
+        Disconnect(shared::Disconnect),
+        Hello(shared::Hello),
+        GameProfile(GameProfilePacket),
+        Compression(shared::Compression),
+        CustomQuery(shared::CustomQuery),
+        CookieRequest(shared::CookieRequest),
+        Unknown(i32, Vec<u8>),
+    }
+
+    impl Clientbound {
+        pub fn decode(id: i32, payload: &[u8]) -> Result<Self> {
+            let mut r = Reader::new(payload);
+            let packet = match id {
+                DISCONNECT => Self::Disconnect(shared::Disconnect::read(&mut r)?),
+                HELLO => Self::Hello(shared::Hello::read(&mut r)?),
+                GAME_PROFILE => Self::GameProfile(GameProfilePacket::read(&mut r)?),
+                COMPRESSION => Self::Compression(shared::Compression::read(&mut r)?),
+                CUSTOM_QUERY => Self::CustomQuery(shared::CustomQuery::read(&mut r)?),
+                COOKIE_REQUEST => Self::CookieRequest(shared::CookieRequest::read(&mut r)?),
+                _ => return Ok(Self::Unknown(id, payload.to_vec())),
+            };
+            if r.remaining() != 0 {
+                return Err(crate::Error::new(format!(
+                    "protocol {PROTOCOL_VERSION} login packet {id} has {} trailing bytes",
+                    r.remaining()
+                )));
+            }
+            Ok(packet)
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum Serverbound {
+        Hello(shared::ServerHello),
+        Key(shared::Key),
+        CustomQueryAnswer(shared::CustomQueryAnswer),
+        LoginAcknowledged(Empty),
+        CookieResponse(shared::CookieResponse),
+    }
+
+    impl Serverbound {
+        pub fn encode(&self) -> Vec<u8> {
+            let mut w = Writer::new();
+            let id = match self {
+                Self::Hello(p) => { shared::ServerHello::write(p, &mut w); 0 }
+                Self::Key(p) => { shared::Key::write(p, &mut w); 1 }
+                Self::CustomQueryAnswer(p) => { shared::CustomQueryAnswer::write(p, &mut w); 2 }
+                Self::LoginAcknowledged(p) => { Empty::write(p, &mut w); 3 }
+                Self::CookieResponse(p) => { shared::CookieResponse::write(p, &mut w); 4 }
+            };
+            let mut body = Writer::new();
+            body.varint(id);
+            body.bytes(&w.data);
+            body.data
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn profile_packet_uses_the_1211_payload_and_login_ids() {
+            let profile = GameProfilePacket {
+                profile: shared::GameProfile {
+                    uuid: 7,
+                    name: "Nexora".into(),
+                    properties: vec![],
+                },
+                strict_error_handling: true,
+            };
+            let mut payload = Writer::new();
+            GameProfilePacket::write(&profile, &mut payload);
+            assert_eq!(
+                Clientbound::decode(GAME_PROFILE, &payload.data).unwrap(),
+                Clientbound::GameProfile(profile)
+            );
+            assert!(Clientbound::decode(GAME_PROFILE, &[0]).is_err());
+        }
+
+        #[test]
+        fn serverbound_login_ids_and_payloads_are_version_scoped() {
+            let packets = [
+                Serverbound::LoginAcknowledged(Empty),
+                Serverbound::Hello(shared::ServerHello { name: "Nexora".into(), uuid: 7 }),
+            ];
+            assert_eq!(packets[0].encode(), vec![3]);
+            assert_eq!(packets[1].encode()[0], 0);
+        }
+    }
+}
