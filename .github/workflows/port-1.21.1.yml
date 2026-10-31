@@ -1,0 +1,48 @@
+name: 1.21.1 port baseline
+
+on:
+  push:
+    branches:
+      - nexora/1.21.1-port-baseline
+    paths:
+      - "crates/**"
+      - "ports/1.21.1/**"
+      - "tools/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/port-1.21.1.yml"
+  pull_request:
+    branches:
+      - nexora/1.21.1-port-baseline
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python tests
+        run: python -m unittest tools.test_proguard
+      - name: Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Protocol tests
+        run: cargo test -p horizon-protocol
+      - name: Workspace compile check
+        run: cargo check --workspace
+      - name: Packet codec coverage audit
+        shell: pwsh
+        run: |
+          if (Test-Path "ports/1.21.1/packet_ids.rs") {
+            python tools/audit_packet_codec_coverage.py
+          } else {
+            Write-Host "Target packet_ids.rs is not committed yet; coverage audit is skipped."
+          }
