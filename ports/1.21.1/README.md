@@ -1,12 +1,10 @@
 # Minecraft 1.21.1 port
 
-This directory is the version-specific source of truth for the Nexora 1.21.1 port. It is deliberately separate from the root `research-lock.json`: the existing branch baseline still describes 26.3, and changing that lock in place would invalidate the current generated constants and local preparation.
+This directory is the version-specific source of truth for the Nexora 1.21.1 port. It stays separate from the root `research-lock.json` and generated constants because the active workspace still targets Minecraft 26.3.
 
-## Verified target facts
+## Target facts
 
-The target is Java Edition 1.21.1:
-
-| Fact | Value |
+| Fact | Minecraft 1.21.1 |
 | --- | ---: |
 | Release date | 2024-08-08 |
 | Java runtime | 21 |
@@ -16,23 +14,25 @@ The target is Java Edition 1.21.1:
 | Data pack format | 48 |
 | Asset index | 17 |
 
-The version-specific artifact URLs and SHA-1 values are recorded in [target.json](target.json). They include both client and server jars and Mojang's official client/server mappings. The jar hashes and mapping hashes must be checked against the downloaded bytes before use.
+Official client/server artifacts and Mojang mapping hashes are pinned in [target.json](target.json).
 
-## Important compatibility difference
+## Completed preparation work
 
-Minecraft 1.21.1 is an obfuscated release. Its metadata contains `client_mappings` and `server_mappings`; the existing `tools/version_port.py prepare` deliberately rejects versions containing those entries. Do not remove that guard as a workaround: the current class index and source-diff pipeline would compare obfuscated symbols against the deobfuscated 26.3 baseline and produce misleading results.
+Minecraft 1.21.1 is obfuscated. The normal `tools/version_port.py prepare` path deliberately rejects releases with Mojang mapping files; do not remove that guard. The dedicated `tools/prepare_1_21_1.py` path handles this target and applies official ProGuard mappings to both class inventories. The mapping parser resolves member descriptors after reading the complete class map, and the class index emits semantic class/member names while retaining raw obfuscated names as provenance.
 
-The dedicated `tools/prepare_1_21_1.py` path now applies official ProGuard mappings to both class inventories. `tools/proguard.py` parses class, field and method mappings, resolves member descriptors after reading the complete class map (so forward type references work), and `tools/class_index.py` emits semantic class/member names while normalizing descriptors and bytecode references. The raw obfuscated inventory is retained separately. The importer indexes only classes present in the corresponding Mojang mapping file, avoiding unrelated bundled libraries.
+The preparation work already present on this branch includes:
+- Verified client and server jars, extracted server game jar, and vanilla data-generator reports.
+- Version facts and official artifact/mapping hash pins.
+- Separate raw and mapped class inventories.
+- Version-isolated protocol-767 packet IDs and codecs for the previously missing packet types.
+- Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
 
-The remaining import and port steps are:
+Large downloaded and generated artifacts intentionally stay outside Git. By default, the preparation cache is under `~/code/horizon-parity/versions/1.21.1/`; set `HORIZON_VERSIONS` to select another location.
 
-1. Resolve the version entry from Mojang's current `version_manifest_v2.json`; Mojang can republish version JSONs, so the metadata SHA-1 in `target.json` is an observed pin, not an eternal manifest identity.
-2. Download and verify the client jar, server bundler, and both official mapping files against the hashes in the version JSON.
-3. Unpack the server bundler and verify the extracted game jar.
-4. Apply the correct side's Mojang mappings when producing class inventories and decompiled sources. Keep raw obfuscated names available as provenance; never overwrite the downloaded jars.
-5. Run the 1.21.1 data generator using Java 21 and capture reports.
-6. Generate version constants from the actual embedded client `version.json`; do not hand-edit `crates/horizon-core/src/version.rs`.
-7. Compare the mapped 1.21.1 class inventory and generated reports against the pinned game. The 1.21.1 preparation path writes its mapped union to both `classes-mapped.json` and the standard `classes.json` input expected by the version-port diff tool. With the pinned 26.3 files prepared in `.local`, run:
+## Next port stages
+
+1. Generate and validate 1.21.1 version constants and registries from the verified vanilla artifacts. Do not hand-edit `crates/horizon-core/src/version.rs`; it describes the active 26.3 workspace.
+2. Generate and review the mapped 26.3-to-1.21.1 class/source diff and ranked worklist. With both version caches prepared, run:
 
    ```powershell
    python tools/version_port.py prepare 26.3
@@ -40,66 +40,51 @@ The remaining import and port steps are:
    python tools/version_port.py report 26.3 1.21.1
    ```
 
-   This writes `diff-26.3-1.21.1/diff.json` and a ranked `report.md` worklist in the external version store. It is the next step after `prepare_1_21_1.py`; it does not port game code by itself.
-8. Run the parity harnesses against the candidate before treating any port as complete.
+3. Complete protocol-767 play-state dispatch and connect version selection to the live network state machine. The current client still sends protocol 777 and uses 26.3 packet enums; the 1.21.1 codecs are not yet live.
+4. Implement the registry-aware built-in recipe serializers and validate registry loading against 1.21.1 wire fixtures.
+5. Port gameplay systems in dependency order, using the mapped source diff and parity tests.
+6. Demonstrate the playable milestone by launching the Rust client and joining a local vanilla 1.21.1 server. A successful compile or packet-codec test alone is not proof of gameplay compatibility.
 
-## Packet ID comparison
+Do not change the active protocol constant to 767 as a shortcut: that would make the existing 26.3 client send a 1.21.1 handshake while still decoding 26.3 packets.
 
-After generating `packet_ids.rs` from the 1.21.1 data-generator report, compare it with the current protocol inventory:
+## Packet inventory and codec audit
+
+When the 1.21.1 data-generator packet report is available, the tools below generate a target packet inventory and compare it to the active protocol:
 
 ```powershell
+python tools/generate_packet_ids.py --report <path-to-packets.json> --out ports/1.21.1/packet_ids.rs --protocol-version 767 --version-name 1.21.1
 python tools/compare_packet_ids.py
-```
-
-The tool writes `packet-id-diff.json` and prints counts for packets added, removed, and renumbered relative to the current 26.3 inventory. This is an inventory comparison only: matching names and IDs do not prove packet payload codecs or connection behavior are compatible.
-
-## Typed packet codec coverage audit
-
-After generating the target packet IDs, run:
-
-```powershell
 python tools/audit_packet_codec_coverage.py
 ```
 
-This is a **candidate audit, not a compatibility proof**. It compares packet IDs as well as names and separates:
-- codecs with the same packet ID in the current 26.3 inventory (possible reuse candidates);
-- same-name codecs whose packet IDs changed (they cannot be dispatched directly);
-- codecs implemented in the version-specific 1.21.1 module;
-- packets with no codec candidate.
+The audit distinguishes ID-aligned reuse candidates, version-specific codecs, and missing codec candidates. Matching packet names or IDs do not prove matching payload layouts; `payload_compatibility_verified_count` remains zero until codecs have been checked against target source and wire fixtures.
 
-Even a matching name and ID does not prove that the payload layout is unchanged. The report therefore keeps `payload_compatibility_verified_count` at zero until a codec has been checked against 1.21.1 source and wire fixtures. It writes `packet-codec-coverage.json`.
-
-## Version-isolated packet codecs
-
-The crate now exposes `horizon_protocol::packets::v1_21_1`. It contains version-scoped protocol-767 packet IDs, login-state dispatch, configuration-state dispatch/encoders, and payload codecs for packets absent from the 26.3 enums. The active 26.3 enums and generated IDs remain unchanged.
-
-Eighteen of the nineteen previously missing packet payloads have concrete codecs and round-trip coverage. The 1.21.1 `update_recipes` packet is represented by a registry-aware `RecipeSerializer` interface: its entries are serializer-specific and must be decoded using the target registry. A generic byte-slice guess would corrupt packet boundaries. The coverage report records this packet separately as registry-dependent rather than treating it as a normal ready-to-use codec.
-
-These codecs are not yet wired into the client connection state machine. Protocol selection, 1.21.1 registry loading, and the built-in recipe serializer implementations remain required before the client can join a 1.21.1 server.
+Eighteen of the nineteen previously missing packet payloads have concrete codecs and round-trip tests. The remaining `update_recipes` payload is registry-dependent and uses an explicit `RecipeSerializer` interface. Do not guess its serializer body format: doing so can desynchronize the connection.
 
 ## Current status
 
-- [x] Working branch: `nexora/master`.
-- [x] Version facts and official artifact/mapping hashes recorded.
-- [x] Mapping-aware prepare and class-index pipeline (raw and mapped inventories are emitted separately).
-- [x] Verified 1.21.1 jars, extracted server game jar, and data-generator reports.
-- [ ] 1.21.1 generated constants and registries.
-- [ ] Mapped source/class diff and port worklist.
-- [x] Isolated 1.21.1 packet payload codecs for the 19 previously missing packet types (18 concrete; update_recipes registry-dependent), with round-trip tests for the concrete types.
-- [x] Protocol-767 login and configuration packet dispatch adapters (not yet selected by the live connection).\n- [ ] Protocol-767 play-state connection integration and built-in recipe serializer registry.
-- [ ] Gameplay parity implementation and tests.
+- [x] Target facts and official artifact/mapping hash pins.
+- [x] Mapping-aware preparation and class indexing.
+- [x] Verified client/server artifacts and vanilla data-generator reports.
+- [x] Version-isolated codecs for the previously missing packet payloads (18 concrete; `update_recipes` registry-dependent).
+- [x] Protocol-767 login and configuration dispatch adapters.
+- [ ] Generated 1.21.1 constants and registries.
+- [ ] Mapped source/class diff and ranked port worklist.
+- [ ] Protocol-767 play-state integration in the live client.
+- [ ] Built-in registry-aware recipe serializer implementations.
+- [ ] Gameplay parity.
 - [ ] Playable client/server milestone.
 
-No game code is claimed to be ported by this baseline commit. The first playable milestone must be demonstrated by launching the Rust client and joining a local 1.21.1 server, not by a successful Rust compile alone.
+Microsoft sign-in is not required for artifact preparation, protocol development, or automated tests. It remains required for the launcher's normal online-mode account flow. Keep the real authentication implementation intact; do not add a fake client ID or reuse another launcher's credentials.
 
-## One-command local verification
+## Verification
 
-From the Nexora repository root, run:
+From the repository root on Windows PowerShell:
 
 ```powershell
 .\tools\verify_1_21_1.ps1
 ```
 
-The script fast-forwards the current branch, runs the Python mapping tests, protocol tests, and workspace compile check, then regenerates and audits the 1.21.1 packet IDs when it finds the prepared report at `%USERPROFILE%\\code\\horizon-parity\\versions\\1.21.1\\datagen\\reports\\packets.json`. Set `NEXORA_1_21_1_REPORT` if the report is stored elsewhere. When a packet report is found, the script commits and pushes the generated packet inventory and coverage report on this branch. Full output is saved to `target/1.21.1-verification.log`, so command output does not need to be copied into chat.
+The script fast-forwards the current branch, runs the Python mapping and packet-audit tests, checks Rust formatting, runs protocol tests, and checks the workspace build. If the prepared packet report is found at the default cache path or through `NEXORA_1_21_1_REPORT`, it also regenerates and audits the target packet inventory. Full output is saved to `target/1.21.1-verification.log`.
 
-The branch also has a GitHub Actions workflow that runs formatting, tests, and the workspace compile check on pushes and pull requests. It runs the packet coverage audit when `ports/1.21.1/packet_ids.rs` is committed.
+GitHub Actions runs the same core Python tests, formatting check, protocol tests, and workspace compile check on pushes and pull requests to `nexora/master`. The verification script's local results and GitHub Actions results must be checked before calling a build verified.
