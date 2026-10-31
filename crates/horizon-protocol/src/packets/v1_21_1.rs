@@ -719,3 +719,126 @@ pub mod login {
         }
     }
 }
+
+
+/// Configuration-state packet dispatch for protocol 767. The payload codecs
+/// are shared where their 1.21.1 wire layouts match; IDs are never taken from
+/// the active 26.3 inventory.
+pub mod configuration {
+    use super::{CustomReportDetails, ids};
+    use crate::{
+        Error, Result,
+        buf::{Codec, Reader, Writer},
+        packets::{Empty, configuration as shared},
+    };
+
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum Clientbound {
+        CookieRequest(shared::CookieRequest),
+        CustomPayload(shared::CustomPayload),
+        Disconnect(shared::Disconnect),
+        FinishConfiguration(Empty),
+        KeepAlive(shared::KeepAlive),
+        Ping(shared::Ping),
+        ResetChat(Empty),
+        RegistryData(shared::RegistryData),
+        ResourcePackPop(shared::ResourcePackPop),
+        ResourcePackPush(shared::ResourcePackPush),
+        StoreCookie(shared::StoreCookie),
+        Transfer(shared::Transfer),
+        UpdateEnabledFeatures(shared::UpdateEnabledFeatures),
+        UpdateTags(shared::UpdateTags),
+        SelectKnownPacks(shared::SelectKnownPacks),
+        CustomReportDetails(CustomReportDetails),
+        ServerLinks(shared::ServerLinks),
+        Unknown(i32, Vec<u8>),
+    }
+
+    impl Clientbound {
+        pub fn decode(id: i32, payload: &[u8]) -> Result<Self> {
+            let mut r = Reader::new(payload);
+            let packet = match id {
+                ids::configuration_clientbound::COOKIE_REQUEST => Self::CookieRequest(shared::CookieRequest::read(&mut r)?),
+                ids::configuration_clientbound::CUSTOM_PAYLOAD => Self::CustomPayload(shared::CustomPayload::read(&mut r)?),
+                ids::configuration_clientbound::DISCONNECT => Self::Disconnect(shared::Disconnect::read(&mut r)?),
+                ids::configuration_clientbound::FINISH_CONFIGURATION => Self::FinishConfiguration(Empty::read(&mut r)?),
+                ids::configuration_clientbound::KEEP_ALIVE => Self::KeepAlive(shared::KeepAlive::read(&mut r)?),
+                ids::configuration_clientbound::PING => Self::Ping(shared::Ping::read(&mut r)?),
+                ids::configuration_clientbound::RESET_CHAT => Self::ResetChat(Empty::read(&mut r)?),
+                ids::configuration_clientbound::REGISTRY_DATA => Self::RegistryData(shared::RegistryData::read(&mut r)?),
+                ids::configuration_clientbound::RESOURCE_PACK_POP => Self::ResourcePackPop(shared::ResourcePackPop::read(&mut r)?),
+                ids::configuration_clientbound::RESOURCE_PACK_PUSH => Self::ResourcePackPush(shared::ResourcePackPush::read(&mut r)?),
+                ids::configuration_clientbound::STORE_COOKIE => Self::StoreCookie(shared::StoreCookie::read(&mut r)?),
+                ids::configuration_clientbound::TRANSFER => Self::Transfer(shared::Transfer::read(&mut r)?),
+                ids::configuration_clientbound::UPDATE_ENABLED_FEATURES => Self::UpdateEnabledFeatures(shared::UpdateEnabledFeatures::read(&mut r)?),
+                ids::configuration_clientbound::UPDATE_TAGS => Self::UpdateTags(shared::UpdateTags::read(&mut r)?),
+                ids::configuration_clientbound::SELECT_KNOWN_PACKS => Self::SelectKnownPacks(shared::SelectKnownPacks::read(&mut r)?),
+                ids::configuration_clientbound::CUSTOM_REPORT_DETAILS => Self::CustomReportDetails(CustomReportDetails::read(&mut r)?),
+                ids::configuration_clientbound::SERVER_LINKS => Self::ServerLinks(shared::ServerLinks::read(&mut r)?),
+                _ => return Ok(Self::Unknown(id, payload.to_vec())),
+            };
+            if r.remaining() != 0 {
+                return Err(Error::new(format!("1.21.1 configuration packet {id} has {} trailing bytes", r.remaining())));
+            }
+            Ok(packet)
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum Serverbound {
+        ClientInformation(shared::ClientInformation),
+        CookieResponse(shared::CookieResponse),
+        CustomPayload(shared::CustomPayload),
+        FinishConfiguration(Empty),
+        KeepAlive(shared::KeepAlive),
+        Pong(shared::Ping),
+        ResourcePack(shared::ResourcePackResponse),
+        SelectKnownPacks(shared::SelectKnownPacks),
+    }
+
+    impl Serverbound {
+        pub fn encode(&self) -> Vec<u8> {
+            let mut payload = Writer::new();
+            let id = match self {
+                Self::ClientInformation(v) => { shared::ClientInformation::write(v, &mut payload); ids::configuration_serverbound::CLIENT_INFORMATION }
+                Self::CookieResponse(v) => { shared::CookieResponse::write(v, &mut payload); ids::configuration_serverbound::COOKIE_RESPONSE }
+                Self::CustomPayload(v) => { shared::CustomPayload::write(v, &mut payload); ids::configuration_serverbound::CUSTOM_PAYLOAD }
+                Self::FinishConfiguration(v) => { Empty::write(v, &mut payload); ids::configuration_serverbound::FINISH_CONFIGURATION }
+                Self::KeepAlive(v) => { shared::KeepAlive::write(v, &mut payload); ids::configuration_serverbound::KEEP_ALIVE }
+                Self::Pong(v) => { shared::Ping::write(v, &mut payload); ids::configuration_serverbound::PONG }
+                Self::ResourcePack(v) => { shared::ResourcePackResponse::write(v, &mut payload); ids::configuration_serverbound::RESOURCE_PACK }
+                Self::SelectKnownPacks(v) => { shared::SelectKnownPacks::write(v, &mut payload); ids::configuration_serverbound::SELECT_KNOWN_PACKS }
+            };
+            let mut body = Writer::new();
+            body.varint(id);
+            body.bytes(&payload.data);
+            body.data
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn configuration_dispatch_uses_protocol_767_ids() {
+            let keep_alive = Clientbound::decode(
+                ids::configuration_clientbound::KEEP_ALIVE,
+                &[42],
+            ).unwrap();
+            assert_eq!(keep_alive, Clientbound::KeepAlive(shared::KeepAlive { id: 42 }));
+            let store_cookie = Serverbound::SelectKnownPacks(shared::SelectKnownPacks { packs: vec![] }).encode();
+            assert_eq!(store_cookie, vec![7, 0]);
+            let finish = Serverbound::FinishConfiguration(Empty).encode();
+            assert_eq!(finish, vec![3]);
+        }
+
+        #[test]
+        fn configuration_dispatch_rejects_trailing_payload_bytes() {
+            assert!(Clientbound::decode(
+                ids::configuration_clientbound::FINISH_CONFIGURATION,
+                &[0],
+            ).is_err());
+        }
+    }
+}
