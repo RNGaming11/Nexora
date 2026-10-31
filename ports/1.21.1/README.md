@@ -61,7 +61,13 @@ After generating the target packet IDs, run:
 python tools/audit_packet_codec_coverage.py
 ```
 
-This scans the existing Rust packet enums and reports which target packet constants already have typed packet codecs, grouped by state and direction. It writes `packet-codec-coverage.json`. A matching constant is only an initial reuse candidate: payload field layouts and semantics still need verification against 1.21.1 sources.
+This is a **candidate audit, not a compatibility proof**. It compares packet IDs as well as names and separates:
+- codecs with the same packet ID in the current 26.3 inventory (possible reuse candidates);
+- same-name codecs whose packet IDs changed (they cannot be dispatched directly);
+- codecs implemented in the version-specific 1.21.1 module;
+- packets with no codec candidate.
+
+Even a matching name and ID does not prove that the payload layout is unchanged. The report therefore keeps `payload_compatibility_verified_count` at zero until a codec has been checked against 1.21.1 source and wire fixtures. It writes `packet-codec-coverage.json`.
 
 ## Version-isolated packet codecs
 
