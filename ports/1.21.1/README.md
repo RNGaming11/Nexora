@@ -24,15 +24,17 @@ The preparation work already present on this branch includes:
 - Verified client and server jars, extracted server game jar, and vanilla data-generator reports.
 - Version facts and official artifact/mapping hash pins.
 - Separate raw and mapped class inventories.
+- Isolated 1.21.1 version constants exposed as `horizon_core::version_1_21_1`; tests verify they match `target.json` while the active 26.3 constants remain unchanged.
 - Version-isolated protocol-767 packet IDs and codecs for the previously missing packet types.
 - The generated `packet_ids.rs` inventory is imported by `horizon-protocol`; Rust tests compare every version-specific codec ID against the generated Mojang packet names so the hand-written dispatch table cannot silently drift.
 - Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
+- Built-in registry report parsing rejects duplicate IDs, gaps, negative/missing IDs, and IDs outside the contiguous range instead of silently constructing invalid lookup tables.
 
 Large downloaded and generated artifacts intentionally stay outside Git. By default, the preparation cache is under `~/code/horizon-parity/versions/1.21.1/`; set `HORIZON_VERSIONS` to select another location.
 
 ## Next port stages
 
-1. Generate and validate 1.21.1 version constants and registries from the verified vanilla artifacts. Do not hand-edit `crates/horizon-core/src/version.rs`; it describes the active 26.3 workspace.
+1. Generate and validate 1.21.1 registries from the verified vanilla artifacts. The version constants are isolated in `ports/1.21.1/version.rs` and exposed as `horizon_core::version_1_21_1`; do not hand-edit `crates/horizon-core/src/version.rs`, which describes the active 26.3 workspace.
 2. Generate and review the mapped 26.3-to-1.21.1 class/source diff and ranked worklist. With both version caches prepared, run:
 
    ```powershell
@@ -69,7 +71,8 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [x] Verified client/server artifacts and vanilla data-generator reports.
 - [x] Version-isolated codecs for the previously missing packet payloads (18 concrete; `update_recipes` registry-dependent).
 - [x] Protocol-767 login and configuration dispatch adapters.
-- [ ] Generated 1.21.1 constants and registries.
+- [x] Isolated 1.21.1 version constants, checked against the pinned target metadata.
+- [ ] Generated 1.21.1 registries.
 - [ ] Mapped source/class diff and ranked port worklist.
 - [ ] Protocol-767 play-state integration in the live client.
 - [ ] Built-in registry-aware recipe serializer implementations.
@@ -77,6 +80,10 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [ ] Playable client/server milestone.
 
 Microsoft sign-in is not required for artifact preparation, protocol development, or automated tests. It remains required for the launcher's normal online-mode account flow. Keep the real authentication implementation intact; do not add a fake client ID or reuse another launcher's credentials.
+
+## Preparing the full 1.21.1 data set
+
+The repository includes a one-click GitHub Actions workflow named **Prepare Minecraft 1.21.1 port data**. Run it from the Actions tab using **Run workflow**. It installs Python and Java 21, downloads and verifies Mojang's official artifacts, runs the vanilla server data generator, applies official mappings, builds the mapped class inventories, and uploads the registry/packet/item/block/command reports and class diff as the `nexora-minecraft-1.21.1-port-data` artifact. The workflow does not commit downloaded Minecraft jars or generated bulk data into the repository.
 
 ## Verification
 
