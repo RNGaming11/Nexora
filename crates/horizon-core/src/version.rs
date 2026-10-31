@@ -29,6 +29,8 @@ mod port_tests {
     fn minecraft_1_21_1_facts_are_isolated_from_the_active_version() {
         assert_eq!(target::VERSION_ID, "1.21.1");
         assert_eq!(target::VANILLA_VERSION, "1.21.1");
+        assert_eq!(target::RELEASE_TIME, "2024-08-08T12:24:45+00:00");
+        assert_eq!(target::ASSET_INDEX, "17");
         assert_eq!(target::PROTOCOL_VERSION, 767);
         assert_eq!(target::DATA_VERSION, 3955);
         assert_eq!(target::RESOURCE_PACK_FORMAT, (34, 0));
