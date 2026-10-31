@@ -1,0 +1,51 @@
+name: Prepare Minecraft 1.21.1 port data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Prepare official 1.21.1 artifacts and mapped inventories
+        run: python tools/prepare_1_21_1.py --jobs 4
+      - name: Generate an independent packet inventory
+        shell: pwsh
+        run: |
+          $store = if ($env:HORIZON_VERSIONS) { $env:HORIZON_VERSIONS } else { Join-Path $HOME "code\horizon-parity\versions" }
+          $report = Join-Path $store "1.21.1\datagen\out\reports\packets.json"
+          if (-not (Test-Path $report)) { throw "The official data generator did not produce packets.json." }
+          New-Item -ItemType Directory -Force -Path "target\1.21.1" | Out-Null
+          python tools/generate_packet_ids.py --report $report --out "target\1.21.1\packet_ids.rs" --protocol-version 767 --version-name 1.21.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload prepared port data
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-minecraft-1.21.1-port-data
+          if-no-files-found: error
+          compression-level: 6
+          path: |
+            ~/code/horizon-parity/versions/1.21.1/facts.json
+            ~/code/horizon-parity/versions/1.21.1/prepared.json
+            ~/code/horizon-parity/versions/1.21.1/classes-client-server-diff.json
+            ~/code/horizon-parity/versions/1.21.1/classes-mapped.json
+            ~/code/horizon-parity/versions/1.21.1/classes-client-mapped.json
+            ~/code/horizon-parity/versions/1.21.1/classes-server-mapped.json
+            ~/code/horizon-parity/versions/1.21.1/datagen/out/reports/registries.json
+            ~/code/horizon-parity/versions/1.21.1/datagen/out/reports/packets.json
+            ~/code/horizon-parity/versions/1.21.1/datagen/out/reports/items.json
+            ~/code/horizon-parity/versions/1.21.1/datagen/out/reports/blocks.json
+            ~/code/horizon-parity/versions/1.21.1/datagen/out/reports/commands.json
+            target/1.21.1/packet_ids.rs
