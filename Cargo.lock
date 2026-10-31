@@ -1422,17 +1422,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "horizon-telemetry"
-version = "0.1.0"
-dependencies = [
- "getrandom 0.3.4",
- "ruzstd",
- "serde",
- "serde_json",
- "ureq",
-]
-
-[[package]]
 name = "horizon-theme"
 version = "0.1.0"
 
