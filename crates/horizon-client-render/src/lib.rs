@@ -85,7 +85,6 @@ pub mod sprites;
 pub mod streaming;
 pub mod structure_block;
 pub mod tab_list;
-pub mod telemetry;
 pub mod test_block;
 pub mod test_instance_block;
 pub mod testgen;
