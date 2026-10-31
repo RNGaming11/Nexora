@@ -66,3 +66,15 @@ This scans the existing Rust packet enums and reports which target packet consta
 - [ ] Playable client/server milestone.
 
 No game code is claimed to be ported by this baseline commit. The first playable milestone must be demonstrated by launching the Rust client and joining a local 1.21.1 server, not by a successful Rust compile alone.
+
+## One-command local verification
+
+From the Nexora repository root, run:
+
+```powershell
+.\tools\verify_1_21_1.ps1
+```
+
+The script fast-forwards the current branch, runs the Python mapping tests, protocol tests, and workspace compile check, then regenerates and audits the 1.21.1 packet IDs when it finds the prepared report at `%USERPROFILE%\\code\\horizon-parity\\versions\\1.21.1\\datagen\\reports\\packets.json`. Set `NEXORA_1_21_1_REPORT` if the report is stored elsewhere. Full output is saved to `target/1.21.1-verification.log`, so command output does not need to be copied into chat.
+
+The branch also has a GitHub Actions workflow that runs formatting, tests, and the workspace compile check on pushes and pull requests. It runs the packet coverage audit when `ports/1.21.1/packet_ids.rs` is committed.
