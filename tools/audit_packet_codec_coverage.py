@@ -13,7 +13,11 @@ ENUM = re.compile(
     r"crate::ids::([a-z_]+)::(clientbound|serverbound)\s*\{(.*?)\}\s*\);",
     re.S,
 )
-VARIANT = re.compile(\n    r"\\b([A-Za-z][A-Za-z0-9_]*)\\s*\\(\\s*"\n    r"((?:(?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*))"\n    r"\\s*\\)\\s*=\\s*([A-Z0-9_]+)"\n)
+VARIANT = re.compile(
+    r"\b([A-Za-z][A-Za-z0-9_]*)\s*\(\s*"
+    r"((?:(?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*))"
+    r"\s*\)\s*=\s*([A-Z0-9_]+)"
+)
 
 
 def read_ids(path):
