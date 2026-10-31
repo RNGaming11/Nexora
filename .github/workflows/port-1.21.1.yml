@@ -38,6 +38,8 @@ jobs:
         run: cargo test -p horizon-core
       - name: Protocol tests
         run: cargo test -p horizon-protocol
+      - name: World registry tests
+        run: cargo test -p horizon-world
       - name: Workspace compile check
         run: cargo check --workspace
       - name: Packet codec coverage audit
