@@ -63,7 +63,7 @@ jobs:
           python tools/version_port.py report 26.3 1.21.1 --lines 100
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload 26.3 comparison and ranked worklist
-        if: steps.baseline.outcome == 'success' && steps.comparison.outcome == 'success'
+        if: ${{ steps.baseline.outcome == 'success' && steps.comparison.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: nexora-26.3-to-1.21.1-port-diff
