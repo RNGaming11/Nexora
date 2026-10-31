@@ -11,6 +11,10 @@ use crate::{
 };
 use horizon_world::nbt::Tag;
 
+#[path = "v1_21_1/recipes.rs"]
+mod recipe_codecs;
+pub use recipe_codecs::VanillaRecipeSerializers;
+
 pub const PROTOCOL_VERSION: i32 = 767;
 
 fn read_string_list(r: &mut Reader, max_count: usize, max_chars: usize) -> Result<Vec<String>> {
@@ -189,7 +193,8 @@ impl UpdateRecipes {
         let mut recipes = Vec::with_capacity(count.min(4096));
         for _ in 0..count {
             let id = r.string(32767)?;
-            let serializer = r.string(32767)?;
+            let serializer_id = r.varint()?;
+            let serializer = recipe_codecs::serializer_name(serializer_id)?.to_owned();
             let body = serializers.read_recipe(&serializer, &id, r)?;
             recipes.push(RecipeDefinition { id, serializer, body });
         }
@@ -199,7 +204,7 @@ impl UpdateRecipes {
         w.varint(self.recipes.len() as i32);
         for recipe in &self.recipes {
             w.string(&recipe.id);
-            w.string(&recipe.serializer);
+            w.varint(recipe_codecs::serializer_id(&recipe.serializer)?);
             serializers.write_recipe(&recipe.serializer, &recipe.id, &recipe.body, w)?;
         }
         Ok(())
@@ -470,6 +475,27 @@ mod tests {
         );
         assert_eq!(cb::NAMES.len(), 17);
         assert_eq!(sb::NAMES.len(), 8);
+    }
+
+    #[test]
+    fn update_recipes_uses_the_registry_serializer_id_and_vanilla_codecs() {
+        let serializers = VanillaRecipeSerializers;
+        let packet = UpdateRecipes {
+            recipes: vec![RecipeDefinition {
+                id: "minecraft:test".into(),
+                serializer: "minecraft:crafting_special_armordye".into(),
+                body: vec![2],
+            }],
+        };
+        let encoded = encode_update_recipes(&packet, &serializers).unwrap();
+        let mut expected = Writer::new();
+        expected.varint(ids::play_clientbound::UPDATE_RECIPES);
+        expected.varint(1);
+        expected.string("minecraft:test");
+        expected.varint(2);
+        expected.varint(2);
+        assert_eq!(encoded, expected.data);
+        assert_eq!(decode_update_recipes(&encoded[1..], &serializers).unwrap(), packet);
     }
 
     #[test]
