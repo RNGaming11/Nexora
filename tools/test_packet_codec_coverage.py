@@ -53,6 +53,26 @@ class PacketCodecCoverageTests(unittest.TestCase):
             (facts["data_pack_format"], 0),
         )
 
+    def test_recipe_serializer_ids_match_the_official_1211_registry(self):
+        import json
+        import re
+
+        root = Path(__file__).resolve().parents[1]
+        inventory = json.loads(
+            (root / "ports/1.21.1/recipe-serializers.json").read_text(encoding="utf-8")
+        )
+        source = (
+            root / "crates/horizon-protocol/src/packets/v1_21_1/recipes.rs"
+        ).read_text(encoding="utf-8")
+        match = re.search(r"pub const SERIALIZERS: &\[&str\] = &\[(.*?)\];", source, re.S)
+        self.assertIsNotNone(match)
+        rust_names = re.findall(r'"([^"]+)"', match.group(1))
+        self.assertEqual(inventory["registry"], "minecraft:recipe_serializer")
+        self.assertEqual(inventory["minecraft_version"], "1.21.1")
+        self.assertEqual(inventory["data_version"], 3955)
+        self.assertEqual(rust_names, inventory["serializers"])
+        self.assertEqual(len(rust_names), 23)
+
     def test_same_name_does_not_hide_packet_id_mismatch(self):
         target = {("play", "clientbound"): {"COMMANDS": 17, "KEEP_ALIVE": 38}}
         codecs = {
