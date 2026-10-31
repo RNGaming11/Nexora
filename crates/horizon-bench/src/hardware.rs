@@ -1,7 +1,6 @@
 //! The machine a report was measured on. CPU, RAM and OS are detected here; the GPU and the display
 //! come from the program that rendered (the game knows its adapter, the launcher its window).
 
-use horizon_telemetry::system::command_output as output;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -63,31 +62,24 @@ pub struct Display {
 
 impl Hardware {
     pub fn detect() -> Hardware {
-        let probes = probes();
         Hardware {
             os: std::env::consts::OS.to_owned(),
             os_version: os_version(),
             arch: std::env::consts::ARCH.to_owned(),
             cpu: cpu(),
             cpu_threads: std::thread::available_parallelism().ok().map(|n| n.get()),
-            cpu_cores: probes.cores,
-            cpu_base_mhz: probes.base,
-            cpu_boost_mhz: probes.boost,
+            cpu_cores: None,
+            cpu_base_mhz: None,
+            cpu_boost_mhz: None,
             ram_mb: ram_bytes().map(|b| b >> 20),
             storage: None,
-            form: probes.form,
+            form: None,
             gpu: None,
             display: None,
         }
     }
 
     /// [`Hardware::detect`] with the kind of drive `game_dir` is on.
-    pub fn detect_in(game_dir: &std::path::Path) -> Hardware {
-        Hardware {
-            storage: horizon_telemetry::system::storage(game_dir).map(str::to_owned),
-            ..Hardware::detect()
-        }
-    }
 }
 
 /// What the telemetry probes read (`horizon_telemetry::system`).
@@ -131,7 +123,7 @@ pub fn load_average() -> Option<f64> {
 
 /// `ac` or `battery`; `None` where it can't be read (and on machines without a battery on Linux).
 pub fn power_source() -> Option<&'static str> {
-    horizon_telemetry::system::power()
+    None
 }
 
 /// Resident memory of a process, in bytes (macOS, Linux).
