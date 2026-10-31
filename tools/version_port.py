@@ -132,7 +132,7 @@ def jar_facts(client_jar):
     # "data"). Newer releases use major/minor pairs. Normalize both schemas.
     def pack_format(name):
         if name in pack:
-            return str(pack[name])
+            return f"{pack[name]}.0"
         return f"{pack.get(name + '_major')}.{pack.get(name + '_minor')}"
 
     return {
