@@ -29,6 +29,7 @@ The preparation work already present on this branch includes:
 - The generated `packet_ids.rs` inventory is imported by `horizon-protocol`; Rust tests compare every version-specific codec ID against the generated Mojang packet names so the hand-written dispatch table cannot silently drift.
 - Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
 - The 23 recipe serializer IDs are pinned in [`recipe-serializers.json`](recipe-serializers.json) from the official 1.21.1 `minecraft:recipe_serializer` registry, not a later-version packet enum. The preparation workflow regenerates this inventory from Mojang's report and checks it byte-for-byte. Vanilla serializer bodies are decoded and round-tripped for shaped, shapeless, special, cooking, stonecutting, and smithing recipes.
+- The 57 item data-component IDs are pinned in [`data-component-ids.json`](data-component-ids.json) and exposed through a protocol-767 lookup table. Recipe slots report the exact unsupported component rather than interpreting it with the incompatible 26.3 table.
 - Recipe slot data-component patches are explicitly rejected until their 1.21.1-specific codecs are implemented; the 26.3 component ID table is never reused.
 - Built-in registry report parsing rejects duplicate IDs, gaps, negative/missing IDs, and IDs outside the contiguous range instead of silently constructing invalid lookup tables.
 
@@ -78,7 +79,7 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [ ] Mapped source/class diff and ranked port worklist.
 - [ ] Protocol-767 play-state integration in the live client.
 - [x] Protocol-767 recipe serializer registry and vanilla serializer body codecs (component-bearing slots still fail closed).
-- [ ] Complete 1.21.1 item data-component codecs for recipe slots.
+- [ ] Complete 1.21.1 item data-component payload codecs for recipe slots and inventory packets.
 - [ ] Gameplay parity.
 - [ ] Playable client/server milestone.
 
