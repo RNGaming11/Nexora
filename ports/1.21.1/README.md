@@ -28,6 +28,8 @@ The preparation work already present on this branch includes:
 - Version-isolated protocol-767 packet IDs and codecs for the previously missing packet types.
 - The generated `packet_ids.rs` inventory is imported by `horizon-protocol`; Rust tests compare every version-specific codec ID against the generated Mojang packet names so the hand-written dispatch table cannot silently drift.
 - Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
+- The 23 recipe serializer IDs follow the official 1.21.1 `minecraft:recipe_serializer` registry, not a later-version packet enum. Vanilla serializer bodies are decoded and round-tripped for shaped, shapeless, special, cooking, stonecutting, and smithing recipes.
+- Recipe slot data-component patches are explicitly rejected until their 1.21.1-specific codecs are implemented; the 26.3 component ID table is never reused.
 - Built-in registry report parsing rejects duplicate IDs, gaps, negative/missing IDs, and IDs outside the contiguous range instead of silently constructing invalid lookup tables.
 
 Large downloaded and generated artifacts intentionally stay outside Git. By default, the preparation cache is under `~/code/horizon-parity/versions/1.21.1/`; set `HORIZON_VERSIONS` to select another location.
@@ -75,7 +77,8 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [ ] Generated 1.21.1 registries.
 - [ ] Mapped source/class diff and ranked port worklist.
 - [ ] Protocol-767 play-state integration in the live client.
-- [ ] Built-in registry-aware recipe serializer implementations.
+- [x] Protocol-767 recipe serializer registry and vanilla serializer body codecs (component-bearing slots still fail closed).
+- [ ] Complete 1.21.1 item data-component codecs for recipe slots.
 - [ ] Gameplay parity.
 - [ ] Playable client/server milestone.
 
