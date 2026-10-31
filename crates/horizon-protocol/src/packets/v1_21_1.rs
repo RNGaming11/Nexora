@@ -411,7 +411,7 @@ mod profile_tests {
 
 
 pub fn encode_play_clientbound(packet: &MissingPacket) -> Result<Vec<u8>> {
-    let (id, write): (i32, Box<dyn FnOnce(&mut Writer)>) = match packet {
+    let (id, write): (i32, Box<dyn FnOnce(&mut Writer) + '_>) = match packet {
         MissingPacket::AddExperienceOrb(v) => (ids::play_clientbound::ADD_EXPERIENCE_ORB, Box::new(|w| AddExperienceOrb::write(v, w))),
         MissingPacket::CommandSuggestions(v) => (ids::play_clientbound::COMMAND_SUGGESTIONS, Box::new(|w| CommandSuggestions::write(v, w))),
         MissingPacket::CustomReportDetails(v) => (ids::play_clientbound::CUSTOM_REPORT_DETAILS, Box::new(|w| CustomReportDetails::write(v, w))),
@@ -431,7 +431,7 @@ pub fn encode_play_clientbound(packet: &MissingPacket) -> Result<Vec<u8>> {
 }
 
 pub fn encode_play_serverbound(packet: &MissingPacket) -> Result<Vec<u8>> {
-    let (id, write): (i32, Box<dyn FnOnce(&mut Writer)>) = match packet {
+    let (id, write): (i32, Box<dyn FnOnce(&mut Writer) + '_>) = match packet {
         MissingPacket::CommandSuggestionRequest(v) => (ids::play_serverbound::COMMAND_SUGGESTION, Box::new(|w| CommandSuggestionRequest::write(v, w))),
         MissingPacket::DebugSampleSubscription(v) => (ids::play_serverbound::DEBUG_SAMPLE_SUBSCRIPTION, Box::new(|w| DebugSampleSubscription::write(v, w))),
         MissingPacket::PickItem(v) => (ids::play_serverbound::PICK_ITEM, Box::new(|w| PickItem::write(v, w))),
