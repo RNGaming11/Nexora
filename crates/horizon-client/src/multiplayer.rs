@@ -118,7 +118,7 @@ pub enum Screen {
         name: String,
         lines: std::cell::Cell<usize>,
     },
-    /// Join a friend's world with its invite code (Horizon's own, behind the
+    /// Join a friend's world with its invite code (Nexora's own, behind the
     /// title screen's Friends button).
     Friend {
         code: String,
