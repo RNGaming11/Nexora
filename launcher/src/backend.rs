@@ -47,11 +47,11 @@ pub struct Release {
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-pub const ASSET: Option<&str> = Some("horizon-linux-x86_64.tar.gz");
+pub const ASSET: Option<&str> = Some("nexora-linux-x86_64.tar.gz");
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-pub const ASSET: Option<&str> = Some("horizon-macos-arm64.zip");
+pub const ASSET: Option<&str> = Some("nexora-macos-arm64.zip");
 #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-pub const ASSET: Option<&str> = Some("horizon-windows-x64.zip");
+pub const ASSET: Option<&str> = Some("nexora-windows-x64.zip");
 #[cfg(not(any(
     all(target_os = "linux", target_arch = "x86_64"),
     all(target_os = "macos", target_arch = "aarch64"),
@@ -60,11 +60,11 @@ pub const ASSET: Option<&str> = Some("horizon-windows-x64.zip");
 pub const ASSET: Option<&str> = None;
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-pub const LAUNCHER_ASSET: Option<&str> = Some("horizon-launcher-linux-x86_64.tar.gz");
+pub const LAUNCHER_ASSET: Option<&str> = Some("nexora-launcher-linux-x86_64.tar.gz");
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-pub const LAUNCHER_ASSET: Option<&str> = Some("horizon-launcher-macos-arm64.zip");
+pub const LAUNCHER_ASSET: Option<&str> = Some("nexora-launcher-macos-arm64.zip");
 #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-pub const LAUNCHER_ASSET: Option<&str> = Some("horizon-launcher-windows-x64.zip");
+pub const LAUNCHER_ASSET: Option<&str> = Some("nexora-launcher-windows-x64.zip");
 #[cfg(not(any(
     all(target_os = "linux", target_arch = "x86_64"),
     all(target_os = "macos", target_arch = "aarch64"),
@@ -636,7 +636,7 @@ pub(crate) fn install_as(
     let unpacked = partial.join("unpacked");
     unpack(&archive, &url, &unpacked)?;
     progress(0.97);
-    // The archives hold one top folder (horizon-linux-x86_64/...); the version folder is its contents.
+    // The archives hold one top folder (nexora-linux-x86_64/...); the version folder is its contents.
     let entries: Vec<_> = fs::read_dir(&unpacked)
         .map_err(|e| e.to_string())?
         .flatten()
@@ -3488,8 +3488,8 @@ pub fn {f}("
         assert_eq!(launcher_version("v2026.10.13"), None);
         assert_eq!(launcher_version("launcher-vx"), None);
         let list = serde_json::json!([
-            {"tag_name": "v2026.10.12", "assets": [{"name": "horizon-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
-            {"tag_name": "launcher-v9.0.0", "assets": [{"name": "horizon-launcher-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
+            {"tag_name": "v2026.10.12", "assets": [{"name": "nexora-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
+            {"tag_name": "launcher-v9.0.0", "assets": [{"name": "nexora-launcher-linux-x86_64.tar.gz", "browser_download_url": "u", "size": 1}]},
             {"tag_name": "v2026.10.13", "assets": []},
             {"tag_name": "launcher-v0.0.1", "draft": true, "assets": []},
         ]);
@@ -3509,7 +3509,7 @@ pub fn {f}("
     /// previous one the newest again: it is what `install latest` and the update check offer.
     #[test]
     fn withdrawn_release_is_never_offered() {
-        let asset = ASSET.unwrap_or("horizon-linux-x86_64.tar.gz");
+        let asset = ASSET.unwrap_or("nexora-linux-x86_64.tar.gz");
         let list = serde_json::json!([
             {"tag_name": "v2026.10.15.1", "draft": true, "assets": [{"name": asset, "browser_download_url": "bad", "size": 1}]},
             {"tag_name": "v2026.10.15", "assets": [{"name": asset, "browser_download_url": "good", "size": 1}]},
@@ -3536,7 +3536,7 @@ pub fn {f}("
     /// had one installed waits for the next release instead of going back.
     #[test]
     fn updates_follow_every_release_and_leave_the_old_alpha_ones_out() {
-        let asset = ASSET.unwrap_or("horizon-linux-x86_64.tar.gz");
+        let asset = ASSET.unwrap_or("nexora-linux-x86_64.tar.gz");
         let list = serde_json::json!([
             {"tag_name": "v0.2.13", "assets": [{"name": asset, "browser_download_url": "n", "size": 1}]},
             {"tag_name": "v0.2.12", "prerelease": true, "assets": [{"name": asset, "browser_download_url": "a", "size": 1}]},
@@ -3771,7 +3771,7 @@ pub fn {f}("
         );
         assert_eq!(compare_versions("launcher@0.2.0", "v0.2.0"), Equal);
 
-        let asset = ASSET.unwrap_or("horizon-linux-x86_64.tar.gz");
+        let asset = ASSET.unwrap_or("nexora-linux-x86_64.tar.gz");
         let list = serde_json::json!([
             {"tag_name": "v0.2.0", "prerelease": true, "assets": [{"name": asset, "browser_download_url": "b", "size": 1}]},
             {"tag_name": "v2026.10.21", "prerelease": true, "assets": [{"name": asset, "browser_download_url": "d", "size": 1}]},
@@ -3898,7 +3898,7 @@ pub fn {f}("
     /// current one as its update, over every release; the last week's are listed, never offered.
     #[test]
     fn every_launcher_updates_to_the_current_nightly() {
-        let asset = ASSET.unwrap_or("horizon-linux-x86_64.tar.gz");
+        let asset = ASSET.unwrap_or("nexora-linux-x86_64.tar.gz");
         let build = |url: &str| serde_json::json!([{"name": asset, "browser_download_url": url, "size": 1}]);
         let list = serde_json::json!([
             {"tag_name": "nightly", "name": "Nightly 2026-10-28 · 9b772b2", "prerelease": true,
