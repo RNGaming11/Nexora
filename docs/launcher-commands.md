@@ -6,7 +6,7 @@ Every command of `nexora-launcher`, and the tool `nexora-launcher mcp` offers fo
 
 ## `nexora-launcher versions`
 
-List Horizon releases, or the installed versions.
+List Nexora releases, or the installed versions.
 
     nexora-launcher versions
 
@@ -73,14 +73,14 @@ MCP: `server`, `server_command`, `server_log`, `server_stop`.
 
 ## `nexora-launcher native-build`
 
-Native mods (experimental, docs/native-mods.md): compile mixin bundles on the Horizon revision they pin, with the launcher's own Rust, as the version the "Native mods" instance plays. Not sandboxed: the mods' code runs with your rights.
+Native mods (experimental, docs/native-mods.md): compile mixin bundles on the Nexora revision they pin, with the launcher's own Rust, as the version the "Native mods" instance plays. Not sandboxed: the mods' code runs with your rights.
 
     nexora-launcher native-build [FOLDER]
 
 - `FOLDER`: A mod folder (horizon-mixin.toml, or an unpacked .hnmod), or a folder of them (default: the native mods installed and turned on in the instance)
 - `--instance`: The instance whose installed native mods to build, and which then plays the build (default: the selected one; the game's own home builds into the Native mods instance)
 - `--trust-native-code`: You read the mods' source and trust it with full access to this computer
-- `--allow-version-mismatch`: Build mods made for different Horizon versions together anyway, on the newest of them
+- `--allow-version-mismatch`: Build mods made for different Nexora versions together anyway, on the newest of them
 
 MCP: none: the player's switch.
 
@@ -175,7 +175,7 @@ MCP: `account_skin`.
 
 ## `nexora-launcher settings`
 
-Show the launcher's settings, or set one (the Settings page): selected-version TAG, minecraft-dir PATH, server-dir PATH ("default" resets a folder), install-new-versions on|off, prune-old-versions on|off (delete old versions after an install, keeping the selected one, the ones instances use and the newest few), keep-versions N (how many of the newest to keep; "default" is 2), opening-animation on|off, proxy http://host:port ("default" removes it), while-playing stay|minimize|hide (what the window does while the game runs), language system|en|fr|ru|de|zh|es|uk|pl (the window's language; system follows the computer's), accent violet|blue|teal|green|amber|red|pink, background PATH (a picture behind Home; "default" shows Horizon's landscape).
+Show the launcher's settings, or set one (the Settings page): selected-version TAG, minecraft-dir PATH, server-dir PATH ("default" resets a folder), install-new-versions on|off, prune-old-versions on|off (delete old versions after an install, keeping the selected one, the ones instances use and the newest few), keep-versions N (how many of the newest to keep; "default" is 2), opening-animation on|off, proxy http://host:port ("default" removes it), while-playing stay|minimize|hide (what the window does while the game runs), language system|en|fr|ru|de|zh|es|uk|pl (the window's language; system follows the computer's), accent violet|blue|teal|green|amber|red|pink, background PATH (a picture behind Home; "default" shows Nexora's landscape).
 
     nexora-launcher settings [KEY] [VALUE]
 
@@ -227,7 +227,7 @@ MCP: `logs`.
 
 ## `nexora-launcher update`
 
-Look for a newer Horizon release and launcher, and install them.
+Look for a newer Nexora release and launcher, and install them.
 
     nexora-launcher update
 
@@ -237,7 +237,7 @@ MCP: `update`.
 
 ## `nexora-launcher desktop-entry`
 
-Linux: put Horizon in the applications menu (an entry and the icon, under $XDG_DATA_HOME), or take it out with --remove.
+Linux: put Nexora in the applications menu (an entry and the icon, under $XDG_DATA_HOME), or take it out with --remove.
 
     nexora-launcher desktop-entry
 
@@ -336,7 +336,7 @@ Make an instance: empty but for your options and name, or a copy of another one'
 
 - `NAME`
 - `--copy`: The instance to copy (its name or id)
-- `--minecraft`: Make a Minecraft: Java Edition instance of this version (1.21.4, latest or latest-snapshot) instead of a Horizon one
+- `--minecraft`: Make a Minecraft: Java Edition instance of this version (1.21.4, latest or latest-snapshot) instead of a Nexora one
 - `--loader`: With this mod loader: fabric or quilt
 - `--loader-version`: The loader's version (default: its newest stable one)
 
@@ -393,7 +393,7 @@ MCP: `instance_rename`.
 
 ## `nexora-launcher instance delete`
 
-Delete an instance: its folder (worlds, options, packs) goes to the Trash, where you can get it back. Horizon's own instance stays.
+Delete an instance: its folder (worlds, options, packs) goes to the Trash, where you can get it back. Nexora's own instance stays.
 
     nexora-launcher instance delete <INSTANCE>
 
@@ -435,7 +435,7 @@ MCP: `instance_select`.
 
 ## `nexora-launcher instance version`
 
-Keep an instance on one installed Horizon version, or "latest" to follow updates again.
+Keep an instance on one installed Nexora version, or "latest" to follow updates again.
 
     nexora-launcher instance version <INSTANCE> <VERSION>
 
@@ -445,7 +445,7 @@ MCP: `instance_version`.
 
 ## `nexora-launcher instance export`
 
-Export an instance (or a port) to share: its settings, packs, Horizon mods and the worlds named, as a .mrpack (resource packs from Modrinth listed by download) or a zip. Never logs, screenshots or account data; worlds go without their per-player files.
+Export an instance (or a port) to share: its settings, packs, Nexora mods and the worlds named, as a .mrpack (resource packs from Modrinth listed by download) or a zip. Never logs, screenshots or account data; worlds go without their per-player files.
 
     nexora-launcher instance export [INSTANCE]
 
@@ -656,7 +656,7 @@ MCP: `packs_remove`, needs `confirm: true`.
 
 ## `nexora-launcher java list`
 
-The Java runtimes Horizon downloaded from Mojang and the ones installed on this computer.
+The Java runtimes Nexora downloaded from Mojang and the ones installed on this computer.
 
     nexora-launcher java list
 
@@ -787,7 +787,7 @@ MCP: `mods_list`.
 
 ## `nexora-launcher mods search`
 
-Search for packs Horizon loads, or for what a Java instance runs (made for its Minecraft version and loader).
+Search for packs Nexora loads, or for what a Java instance runs (made for its Minecraft version and loader).
 
     nexora-launcher mods search [TEXT]...
 
@@ -801,7 +801,7 @@ MCP: `mods_search`.
 
 ## `nexora-launcher mods check`
 
-Say how well a Java mod runs in Horizon: its jar is downloaded (checksum checked), carried over and read; the answer is kept.
+Say how well a Java mod runs in Nexora: its jar is downloaded (checksum checked), carried over and read; the answer is kept.
 
     nexora-launcher mods check <PROJECT>
 
@@ -839,7 +839,7 @@ MCP: `mods_update`.
 
 ## `nexora-launcher mods add-github`
 
-Install a native mod from a GitHub link (docs/native-mods.md, "Install from GitHub"): https://github.com/OWNER/REPO (its latest release, else its default branch), .../releases/tag/TAG, .../tree/REF or .../commit/SHA. Resolved to an exact release file or commit, checked like a registry mod. NOT reviewed by the Horizon registry.
+Install a native mod from a GitHub link (docs/native-mods.md, "Install from GitHub"): https://github.com/OWNER/REPO (its latest release, else its default branch), .../releases/tag/TAG, .../tree/REF or .../commit/SHA. Resolved to an exact release file or commit, checked like a registry mod. NOT reviewed by the Nexora registry.
 
     nexora-launcher mods add-github <URL>
 
