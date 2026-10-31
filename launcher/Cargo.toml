@@ -43,6 +43,8 @@ horizon-mods = { path = "../crates/horizon-mods", features = ["index"] }
 horizon-release-sign = { path = "../crates/horizon-release-sign" }
 # Opt-in data collection: the consent, the outbox and its upload (docs/telemetry.md).
 horizon-telemetry = { path = "../crates/horizon-telemetry" }
+# Opt-in collection module is being removed; keep its crate until all references are gone.
+horizon-telemetry = { path = "../crates/horizon-telemetry" }
 # level.dat and servers.dat (the worlds and server lists of instances)
 horizon-world = { path = "../crates/horizon-world" }
 # Deleting a world moves it to the system's trash
