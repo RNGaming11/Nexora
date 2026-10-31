@@ -628,8 +628,8 @@ enum SourceArg {
     Modrinth,
     /// CurseForge support is coming soon
     Curseforge,
-    /// Nexora's own registry: mods, modpacks and resource packs made for Nexora, reviewed
-    Nexora,
+    /// The legacy Horizon registry: mods, modpacks and resource packs from its reviewed index
+    Horizon,
 }
 
 impl SourceArg {
@@ -638,7 +638,7 @@ impl SourceArg {
         let id = match self {
             SourceArg::Modrinth => SourceId::Modrinth,
             SourceArg::Curseforge => SourceId::CurseForge,
-            SourceArg::Nexora => SourceId::Nexora,
+            SourceArg::Horizon => SourceId::Horizon,
         };
         browser::source(id).ok_or_else(|| browser::CURSEFORGE_SOON.into())
     }
