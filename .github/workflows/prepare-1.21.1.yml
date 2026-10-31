@@ -8,7 +8,9 @@ on:
       - "tools/prepare_1_21_1.py"
       - "tools/version_port.py"
       - "tools/generate_recipe_serializer_inventory.py"
+      - "tools/generate_data_component_inventory.py"
       - "ports/1.21.1/recipe-serializers.json"
+      - "ports/1.21.1/data-component-ids.json"
 
 permissions:
   contents: read
@@ -44,6 +46,11 @@ jobs:
           $generatedHash = (Get-FileHash "target\1.21.1\recipe-serializers.json" -Algorithm SHA256).Hash
           $pinnedHash = (Get-FileHash "ports\1.21.1\recipe-serializers.json" -Algorithm SHA256).Hash
           if ($generatedHash -ne $pinnedHash) { throw "Generated recipe serializer IDs differ from the pinned 1.21.1 registry inventory." }
+          python tools/generate_data_component_inventory.py --report $registries --out "target\1.21.1\data-component-ids.json" --version 1.21.1 --data-version 3955
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $generatedHash = (Get-FileHash "target\1.21.1\data-component-ids.json" -Algorithm SHA256).Hash
+          $pinnedHash = (Get-FileHash "ports\1.21.1\data-component-ids.json" -Algorithm SHA256).Hash
+          if ($generatedHash -ne $pinnedHash) { throw "Generated data component IDs differ from the pinned 1.21.1 registry inventory." }
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -97,3 +104,4 @@ jobs:
             .port-cache/versions/1.21.1/datagen/reports/commands.json
             target/1.21.1/packet_ids.rs
             target/1.21.1/recipe-serializers.json
+            target/1.21.1/data-component-ids.json
