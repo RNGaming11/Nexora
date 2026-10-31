@@ -6,7 +6,7 @@ Zed's UI framework; it has its own Cargo workspace and is not part of the game's
 
 ### Private GitHub releases
 
-The launcher reads its release list from this repository's GitHub API. If the repository is private, GitHub returns 404 to requests without repository access. Set `NEXORA_GITHUB_TOKEN` to a fine-grained GitHub token with read access to this repository before starting the launcher. On Windows, run `setx NEXORA_GITHUB_TOKEN "YOUR_TOKEN"` in PowerShell, then fully restart the launcher. The launcher also accepts `GH_TOKEN` and `GITHUB_TOKEN`; `HORIZON_GITHUB_TOKEN` remains as a compatibility alias. Do not commit or share the token. Making the repository public removes this requirement.
+The launcher reads its release list and signed assets from this repository's GitHub API. If the repository is private, GitHub returns 404 to requests without repository access. The launcher first checks `NEXORA_GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_TOKEN` and the legacy `HORIZON_GITHUB_TOKEN`; if none is set, it uses the GitHub CLI login (`gh auth token`). Either configure a fine-grained token with **Contents: read** access to this repository, or install GitHub CLI and run `gh auth login` with an account that can read the repository. On Windows, `setx NEXORA_GITHUB_TOKEN "YOUR_TOKEN"` stores the token for future processes; fully restart the launcher afterward. Do not commit, paste into issues, or share the token. Making the repository public removes this requirement.
 
 ![Play](docs/play.png)
 
