@@ -46,7 +46,8 @@ def lambda_owner(name):
 
 
 class ClassFile:
-    def __init__(self, data):
+    def __init__(self, data, mappings=None):
+        self.mappings = mappings
         self.data = data
         self.offset = 0
         self.parse()
@@ -87,13 +88,17 @@ class ClassFile:
             self.pool[index] = entry
             index += 2 if tag in (5, 6) else 1
         self.access = self.u(2)
-        self.name = self.class_name(self.u(2))
+        self.raw_name = self.utf8(self.pool[self.u(2)][1])
+        self.name = self.map_class(self.raw_name)
         super_index = self.u(2)
         self.super = self.class_name(super_index) if super_index else None
         self.interfaces = [self.class_name(self.u(2)) for _ in range(self.u(2))]
         self.fields = {}
         for _ in range(self.u(2)):
             access, name, descriptor = self.u(2), self.utf8(self.u(2)), self.utf8(self.u(2))
+            if self.mappings:
+                name = self.mappings.field_name(self.raw_name, name, descriptor)
+                descriptor = self.mappings.descriptor(descriptor)
             constant = None
             for attribute, data in self.attributes():
                 if attribute == "ConstantValue":
@@ -102,6 +107,9 @@ class ClassFile:
         self.methods = []
         for _ in range(self.u(2)):
             access, name, descriptor = self.u(2), self.utf8(self.u(2)), self.utf8(self.u(2))
+            if self.mappings:
+                name = self.mappings.method_name(self.raw_name, name, descriptor)
+                descriptor = self.mappings.descriptor(descriptor)
             code = next((data for attribute, data in self.attributes() if attribute == "Code"), None)
             self.methods.append((access, name, descriptor, code))
         self.bootstrap = []
@@ -119,13 +127,27 @@ class ClassFile:
     def utf8(self, index):
         return self.pool[index][1]
 
+    def map_class(self, name):
+        if not self.mappings:
+            return name
+        return self.mappings.descriptor(name) if name.startswith('[') else self.mappings.class_name(name)
+
     def class_name(self, index):
-        return self.utf8(self.pool[index][1])
+        return self.map_class(self.utf8(self.pool[index][1]))
 
     def member(self, index):
         _, owner, name_and_type = self.pool[index]
         _, name, descriptor = self.pool[name_and_type]
-        return f"{self.class_name(owner)}.{lambda_owner(self.utf8(name))}{self.utf8(descriptor)}"
+        raw_owner = self.utf8(self.pool[owner][1])
+        raw_name, raw_descriptor = self.utf8(name), self.utf8(descriptor)
+        if self.mappings:
+            tag = self.pool[index][0]
+            mapped_name = (self.mappings.field_name(raw_owner, raw_name, raw_descriptor) if tag == 9
+                           else self.mappings.method_name(raw_owner, raw_name, raw_descriptor))
+            mapped_descriptor = self.mappings.descriptor(raw_descriptor)
+        else:
+            mapped_name, mapped_descriptor = raw_name, raw_descriptor
+        return f"{self.map_class(raw_owner)}.{lambda_owner(mapped_name)}{mapped_descriptor}"
 
     def constant(self, index):
         """What a constant-pool entry names, independent of where it sits in the pool."""
@@ -142,13 +164,14 @@ class ClassFile:
         if tag == 6:
             return f"d:{entry[1].hex()}"
         if tag == 7:
-            return f"c:{self.utf8(entry[1])}"
+            return f"c:{self.map_class(self.utf8(entry[1]))}"
         if tag == 8:
             return f"s:{self.utf8(entry[1])}"
         if tag in (9, 10, 11):
             return f"m:{self.member(index)}"
         if tag == 12:
-            return f"nt:{lambda_owner(self.utf8(entry[1]))}{self.utf8(entry[2])}"
+            descriptor = self.mappings.descriptor(self.utf8(entry[2])) if self.mappings else self.utf8(entry[2])
+            return f"nt:{lambda_owner(self.utf8(entry[1]))}{descriptor}"
         if tag == 15:
             return f"h{entry[1]}:{self.member(entry[2])}"
         if tag == 16:
@@ -233,28 +256,43 @@ class ClassFile:
                 "fields": self.fields, "methods": methods}
 
 
-def index_entries(jar, names):
+def index_entries(jar, names, mappings=None):
     with zipfile.ZipFile(jar) as archive:
-        return {name[:-6]: ClassFile(archive.read(name)).index() for name in names}
+        result = {}
+        for name in names:
+            parsed = ClassFile(archive.read(name), mappings)
+            result[parsed.name] = parsed.index()
+        return result
 
 
-def index_jar(jar, jobs=None, prefixes=("net/minecraft/", "com/mojang/")):
-    """{internal class name: index} for every game class in a jar."""
+def index_jar(jar, jobs=None, prefixes=("net/minecraft/", "com/mojang/"), mappings=None):
+    """Index selected packages, or all classes after applying official mappings."""
     with zipfile.ZipFile(jar) as archive:
-        names = sorted(n for n in archive.namelist() if n.endswith(".class") and n.startswith(prefixes))
+        names = sorted(n for n in archive.namelist() if n.endswith(".class") and
+                       (mappings is not None or n.startswith(prefixes)))
     batches = [names[i::32] for i in range(32)]
     result = {}
     with ProcessPoolExecutor(max_workers=jobs) as pool:
-        for part in pool.map(index_entries, [jar] * len(batches), batches):
+        for part in pool.map(index_entries, [jar] * len(batches), batches, [mappings] * len(batches)):
             result.update(part)
     return dict(sorted(result.items()))
 
 
-def index_jars(jars, jobs=None):
-    """Several jars into one index; a class in more than one keeps the first jar's (client before server)."""
+def index_jars(jars, jobs=None, mappings=None):
+    """Index several jars with their respective optional mapping files."""
     classes = {}
-    for jar in jars:
-        for name, data in index_jar(jar, jobs).items():
+    mappings = mappings or [None] * len(jars)
+    if len(mappings) != len(jars):
+        raise ValueError("Provide exactly one mapping file per jar")
+    for jar, mapping_path in zip(jars, mappings):
+        mapping = None
+        if mapping_path:
+            try:
+                from .proguard import ProguardMappings
+            except ImportError:
+                from proguard import ProguardMappings
+            mapping = ProguardMappings.read(mapping_path)
+        for name, data in index_jar(jar, jobs, mappings=mapping).items():
             classes.setdefault(name, data)
     return classes
 
@@ -315,8 +353,9 @@ def main():
     parser.add_argument("jars", nargs="+")
     parser.add_argument("-o", "--output", required=True)
     parser.add_argument("-j", "--jobs", type=int)
+    parser.add_argument("--mappings", nargs="*", help="one ProGuard mapping file per jar")
     args = parser.parse_args()
-    classes = index_jars(args.jars, args.jobs)
+    classes = index_jars(args.jars, args.jobs, args.mappings)
     with open(args.output, "w") as stream:
         json.dump(classes, stream, separators=(",", ":"))
     print(f"{len(classes)} classes, {sum(len(c['methods']) for c in classes.values())} methods")
