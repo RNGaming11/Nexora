@@ -1312,7 +1312,6 @@ fn execute(command: Cmd, as_json: bool) -> Result<(), String> {
             } else {
                 for (name, url) in [
                     ("Discord", &links.discord),
-                    ("Sponsor", &links.sponsor),
                     ("Website", &links.website),
                 ] {
                     println!("{name:<8} {}", if url.is_empty() { "(none)" } else { url });
