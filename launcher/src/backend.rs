@@ -13,9 +13,9 @@ pub const REPO: &str = "RNGaming11/Nexora";
 pub const README_URL: &str = "https://github.com/RNGaming11/Nexora/blob/main/launcher/README.md";
 /// The players' page on connecting an AI agent (the website's docs/agents.md).
 pub const AGENT_DOCS_URL: &str = "https://playhorizon.dev/docs/agents";
-/// This launcher's version: the release workflow sets `HORIZON_LAUNCHER_VERSION` from the
+/// This launcher's version: the release workflow sets `NEXORA_LAUNCHER_VERSION` from the
 /// tag it builds (no version-bump commits); other builds say Cargo.toml's.
-pub const VERSION: &str = version_or(option_env!("HORIZON_LAUNCHER_VERSION"));
+pub const VERSION: &str = version_or(option_env!("NEXORA_LAUNCHER_VERSION"));
 /// Launcher releases are tagged `launcher@X.Y.Z` from 0.2 on (docs/versioning.md), and Nexora's
 /// own `vX.Y.Z`. Before 0.2 they were `launcher-vX.Y.Z` and `vYYYY.MM.DD[.N]`: every 0.2 tag is
 /// newer than every one of those ([`release_order`]).
@@ -141,13 +141,13 @@ pub fn launcher_version(tag: &str) -> Option<&str> {
         .filter(|v| v.starts_with(|c: char| c.is_ascii_digit()))
 }
 
-/// The tag this launcher was released as. launcher.yml gives it (`HORIZON_LAUNCHER_TAG`); a release
+/// The tag this launcher was released as. launcher.yml gives it (`NEXORA_LAUNCHER_TAG`); a release
 /// built before it did gave only the version, of a `launcher-v` tag; a build from source is
 /// Cargo.toml's version on the 0.2 line.
 pub fn own_tag() -> String {
     own_tag_of(
-        option_env!("HORIZON_LAUNCHER_TAG"),
-        option_env!("HORIZON_LAUNCHER_VERSION"),
+        option_env!("NEXORA_LAUNCHER_TAG"),
+        option_env!("NEXORA_LAUNCHER_VERSION"),
     )
 }
 
@@ -449,7 +449,7 @@ pub fn links() -> Links {
 
 /// The launcher's data folder; `HORIZON_LAUNCHER_HOME` overrides it (for tests and scripts).
 pub fn data_dir() -> PathBuf {
-    if let Some(home) = std::env::var_os("HORIZON_LAUNCHER_HOME").filter(|h| !h.is_empty()) {
+    if let Some(home) = std::env::var_os("NEXORA_LAUNCHER_HOME").or_else(|_| std::env::var_os("HORIZON_LAUNCHER_HOME")).filter(|h| !h.is_empty()) {
         return PathBuf::from(home);
     }
     dirs::data_dir()
@@ -2503,9 +2503,9 @@ pub fn exe_path() -> &'static Path {
     EXE.get_or_init(|| std::env::current_exe().unwrap_or_else(|_| PathBuf::from(LAUNCHER_BINARY)))
 }
 
-/// Development builds and `HORIZON_LAUNCHER_NO_SELF_UPDATE` never replace themselves.
+/// Development builds and `NEXORA_LAUNCHER_NO_SELF_UPDATE` never replace themselves.
 pub fn self_update_allowed() -> bool {
-    !cfg!(debug_assertions) && std::env::var_os("HORIZON_LAUNCHER_NO_SELF_UPDATE").is_none()
+    !cfg!(debug_assertions) && std::env::var_os("NEXORA_LAUNCHER_NO_SELF_UPDATE").is_none()
 }
 
 /// The version in `nexora-launcher --version`'s output (`nexora-launcher 0.1.5`).
@@ -3640,7 +3640,7 @@ pub fn {f}("
         assert_eq!(version_or(None), env!("CARGO_PKG_VERSION"));
         assert_eq!(
             VERSION,
-            option_env!("HORIZON_LAUNCHER_VERSION")
+            option_env!("NEXORA_LAUNCHER_VERSION")
                 .filter(|v| !v.is_empty())
                 .unwrap_or(env!("CARGO_PKG_VERSION"))
         );
