@@ -227,6 +227,7 @@ def prepare_download(version, directory):
         found[side] = lab.download(download["url"], jars / f"{side}.jar", download["sha1"])
     found["server_game"] = unpack_game(found["server"], jars / "server-game.jar", version)
     found["reports"] = directory / "datagen" / "reports"
+    found["reports"].parent.mkdir(parents=True, exist_ok=True)
     if not found["reports"].exists():
         print(f"Running the {version} data generator", flush=True)
         run_datagen(found["server"], found["reports"], meta["javaVersion"]["majorVersion"])
