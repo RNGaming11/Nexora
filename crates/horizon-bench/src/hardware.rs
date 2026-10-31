@@ -2,6 +2,12 @@
 //! come from the program that rendered (the game knows its adapter, the launcher its window).
 
 use serde::{Deserialize, Serialize};
+use std::process::Command;
+
+fn output(program: &str, args: &[&str]) -> Option<String> {
+    let result = Command::new(program).args(args).output().ok()?;
+    result.status.success().then(|| String::from_utf8_lossy(&result.stdout).trim().to_owned())
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Hardware {
@@ -79,27 +85,8 @@ impl Hardware {
         }
     }
 
-    /// [`Hardware::detect`] with the kind of drive `game_dir` is on.
 }
 
-/// What the telemetry probes read (`horizon_telemetry::system`).
-struct Probes {
-    cores: Option<u16>,
-    base: Option<u32>,
-    boost: Option<u32>,
-    form: Option<String>,
-}
-
-fn probes() -> Probes {
-    let s = horizon_telemetry::payload::System::detect();
-    let some = |n: u32| (n > 0).then_some(n);
-    Probes {
-        cores: (s.cores > 0).then_some(s.cores),
-        base: some(s.cpu_base_mhz),
-        boost: some(s.cpu_boost_mhz),
-        form: (!s.form.is_empty()).then_some(s.form),
-    }
-}
 
 /// The one-minute load average: above about the number of threads the machine was busy.
 pub fn load_average() -> Option<f64> {
@@ -121,7 +108,7 @@ pub fn load_average() -> Option<f64> {
     }
 }
 
-/// `ac` or `battery`; `None` where it can't be read (and on machines without a battery on Linux).
+/// Power source is intentionally not probed by the local benchmark.
 pub fn power_source() -> Option<&'static str> {
     None
 }
