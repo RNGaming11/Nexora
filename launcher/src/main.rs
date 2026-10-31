@@ -37,7 +37,6 @@ mod multiplayer_page;
 mod new_instance;
 mod owner_page;
 mod packs_page;
-mod partner;
 mod perf;
 mod plate;
 mod screenshots_page;
@@ -567,9 +566,6 @@ impl Launcher {
         if std::env::var("HORIZON_LAUNCHER_PAGE").as_deref() == Ok("edit-instance") {
             this.open_instance_dialog(this.selected_instance().cloned());
         }
-        // What the game and the launcher kept, if the player allows it and there is a server.
-        telemetry::send_in_background();
-        telemetry::watch_playing(this.tx.clone());
         this
     }
 
@@ -2201,51 +2197,6 @@ impl Launcher {
             _ => {}
         }
         // Sculk's card above the links: seen without scrolling, on every page but Servers, which shows
-        // its wide banner. Tall where the sidebar has the height for it besides the wordmark, its rows
-        // (52 high each, under headings of 40) and the links, compact otherwise. After a while on
-        // screen a "Hide" beside its label puts it away for good.
-        if self.page != Page::Servers && !self.settings.partner_hidden {
-            let free = f32::from(window.viewport_size().height)
-                - theme::TOPBAR
-                - 40. * headings as f32
-                - 52. * rows as f32
-                - 110.;
-            let mut side = div().relative().mb(px(8.)).child(partner::card(
-                "partner-side",
-                theme::SIDEBAR - 20.,
-                free < partner::TALL_HEIGHT,
-                &t,
-            ));
-            if self.settings.partner_seen_secs >= partner::SEEN_BEFORE_HIDE {
-                let hide = div()
-                    .id("partner-hide")
-                    .absolute()
-                    .top(px(0.))
-                    .right(px(0.))
-                    .cursor_pointer()
-                    .child(
-                        text(theme::MICRO)
-                            .text_color(t.muted)
-                            .hover(move |s| s.text_color(t.ink))
-                            .child(tr("HIDE")),
-                    )
-                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
-                        this.settings.partner_hidden = true;
-                        this.settings.save();
-                        cx.notify();
-                    }));
-                side = side.child(keyboard(hide, &t));
-            }
-            foot = foot.child(side);
-        }
-        if !self.links.sponsor.is_empty() {
-            foot = foot.child(link(
-                "sponsor",
-                tr("Sponsor"),
-                "heart",
-                self.links.sponsor.clone(),
-            ));
-        }
         if !self.links.discord.is_empty() {
             foot = foot.child(link(
                 "discord",
@@ -4282,7 +4233,6 @@ actions!(horizon_launcher, [Quit, CloseWindow]);
 /// exit. A game that is running keeps running. Cmd+Q goes through here too.
 fn shut_down(cx: &mut App) {
     servers_page::stop_on_quit();
-    telemetry::send_before_exit();
     cx.quit()
 }
 
