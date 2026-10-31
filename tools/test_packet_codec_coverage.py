@@ -19,6 +19,38 @@ class PacketCodecCoverageTests(unittest.TestCase):
             )
             self.assertEqual(read_ids(path), {("login", "clientbound"): {"HELLO": 1}})
 
+    def test_isolated_1211_rust_profile_matches_pinned_target(self):
+        import json
+        import re
+
+        root = Path(__file__).resolve().parents[1]
+        target = json.loads((root / "ports/1.21.1/target.json").read_text(encoding="utf-8"))
+        source = (root / "ports/1.21.1/version.rs").read_text(encoding="utf-8")
+        facts = target["minecraft"]
+        expected = {
+            "VERSION_ID": facts["id"],
+            "VANILLA_VERSION": facts["name"],
+            "PROTOCOL_VERSION": facts["protocol_version"],
+            "DATA_VERSION": facts["data_version"],
+            "JAVA_VERSION": facts["java_major"],
+        }
+        for constant, value in expected.items():
+            match = re.search(rf"pub const {constant}: [^=]+ = ([^;]+);", source)
+            self.assertIsNotNone(match, constant)
+            literal = match.group(1).strip()
+            if isinstance(value, str):
+                self.assertEqual(json.loads(literal), value, constant)
+            else:
+                self.assertEqual(int(literal), value, constant)
+        self.assertEqual(
+            tuple(map(int, re.search(r"RESOURCE_PACK_FORMAT: \(i64, i64\) = \((\d+), (\d+)\)", source).groups())),
+            (facts["resource_pack_format"], 0),
+        )
+        self.assertEqual(
+            tuple(map(int, re.search(r"DATA_PACK_FORMAT: \(i64, i64\) = \((\d+), (\d+)\)", source).groups())),
+            (facts["data_pack_format"], 0),
+        )
+
     def test_same_name_does_not_hide_packet_id_mismatch(self):
         target = {("play", "clientbound"): {"COMMANDS": 17, "KEEP_ALIVE": 38}}
         codecs = {
