@@ -458,6 +458,94 @@ pub fn encode_update_recipes(
 }
 
 
+/// Configuration-state packet IDs and codecs for protocol 767.
+pub mod configuration {
+    use super::{CustomReportDetails, decode_exact, ids};
+    use crate::{
+        Error, Result,
+        buf::{Codec, Reader, Writer},
+        packets::{Empty, configuration as shared},
+    };
+
+    /// Decode a protocol 767 clientbound configuration packet.
+    /// Custom report details are decoded and discarded; they are not collected.
+    pub fn decode_clientbound(id: i32, payload: &[u8]) -> Result<Option<shared::Clientbound>> {
+        let mut r = Reader::new(payload);
+        let packet = match id {
+            0 => Some(shared::Clientbound::CookieRequest(shared::CookieRequest::read(&mut r)?)),
+            1 => Some(shared::Clientbound::CustomPayload(shared::CustomPayload::read(&mut r)?)),
+            2 => Some(shared::Clientbound::Disconnect(shared::Disconnect::read(&mut r)?)),
+            3 => Some(shared::Clientbound::FinishConfiguration(Empty::read(&mut r)?)),
+            4 => Some(shared::Clientbound::KeepAlive(shared::KeepAlive::read(&mut r)?)),
+            5 => Some(shared::Clientbound::Ping(shared::Ping::read(&mut r)?)),
+            6 => Some(shared::Clientbound::ResetChat(Empty::read(&mut r)?)),
+            7 => Some(shared::Clientbound::RegistryData(shared::RegistryData::read(&mut r)?)),
+            8 => Some(shared::Clientbound::ResourcePackPop(shared::ResourcePackPop::read(&mut r)?)),
+            9 => Some(shared::Clientbound::ResourcePackPush(shared::ResourcePackPush::read(&mut r)?)),
+            10 => Some(shared::Clientbound::StoreCookie(shared::StoreCookie::read(&mut r)?)),
+            11 => Some(shared::Clientbound::Transfer(shared::Transfer::read(&mut r)?)),
+            12 => Some(shared::Clientbound::UpdateEnabledFeatures(shared::UpdateEnabledFeatures::read(&mut r)?)),
+            13 => Some(shared::Clientbound::UpdateTags(shared::UpdateTags::read(&mut r)?)),
+            14 => Some(shared::Clientbound::SelectKnownPacks(shared::SelectKnownPacks::read(&mut r)?)),
+            15 => {
+                decode_exact(payload, CustomReportDetails::read)?;
+                return Ok(None);
+            }
+            16 => Some(shared::Clientbound::ServerLinks(shared::ServerLinks::read(&mut r)?)),
+            other => return Err(Error::new(format!("unsupported protocol 767 configuration clientbound packet {other}"))),
+        };
+        if r.remaining() != 0 {
+            return Err(Error::new(format!("protocol 767 configuration packet {id} has {} trailing bytes", r.remaining())));
+        }
+        Ok(packet)
+    }
+
+    /// Encode a shared configuration packet with protocol 767's packet ID.
+    pub fn encode_serverbound(packet: &shared::Serverbound) -> Vec<u8> {
+        let mut payload = Writer::new();
+        let id = match packet {
+            shared::Serverbound::ClientInformation(p) => { shared::ClientInformation::write(p, &mut payload); 0 }
+            shared::Serverbound::CookieResponse(p) => { shared::CookieResponse::write(p, &mut payload); 1 }
+            shared::Serverbound::CustomPayload(p) => { shared::CustomPayload::write(p, &mut payload); 2 }
+            shared::Serverbound::FinishConfiguration(p) => { Empty::write(p, &mut payload); 3 }
+            shared::Serverbound::KeepAlive(p) => { shared::KeepAlive::write(p, &mut payload); 4 }
+            shared::Serverbound::Pong(p) => { shared::Ping::write(p, &mut payload); 5 }
+            shared::Serverbound::ResourcePack(p) => { shared::ResourcePackResponse::write(p, &mut payload); 6 }
+            shared::Serverbound::SelectKnownPacks(p) => { shared::SelectKnownPacks::write(p, &mut payload); 7 }
+            _ => unreachable!("packet does not exist in protocol 767 configuration state"),
+        };
+        let mut out = Writer::new();
+        out.varint(id);
+        out.bytes(&payload.data);
+        out.data
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn configuration_packet_ids_are_protocol_767_scoped() {
+            let finish = encode_serverbound(&shared::Serverbound::FinishConfiguration(Empty));
+            assert_eq!(finish, vec![3]);
+            let ping = encode_serverbound(&shared::Serverbound::Pong(shared::Ping { id: 42 }));
+            assert_eq!(ping[0], 5);
+            assert_eq!(decode_clientbound(3, &[]).unwrap(), Some(shared::Clientbound::FinishConfiguration(Empty)));
+            assert!(decode_clientbound(17, &[]).is_err());
+        }
+
+        #[test]
+        fn custom_report_details_are_consumed_without_being_retained() {
+            let mut writer = Writer::new();
+            CustomReportDetails::write(
+                &CustomReportDetails { details: vec![("key".into(), "value".into())] },
+                &mut writer,
+            );
+            assert_eq!(decode_clientbound(15, &writer.data).unwrap(), None);
+        }
+    }
+}
+
 /// Login-state codecs for protocol 767. The packet IDs happen to match the
 /// current shared login IDs, but the successful-login payload does not:
 /// 1.21.1 sends GameProfilePacket (including strictErrorHandling), not the
