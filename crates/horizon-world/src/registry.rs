@@ -37,7 +37,14 @@ fn state_key(state: &BlockState) -> u64 {
 }
 impl BlockRegistry {
     pub fn from_nbt(tag: &Tag) -> io::Result<Self> {
-        if tag.get("DataVersion") != Some(&Tag::Int(DATA_VERSION)) {
+        Self::from_nbt_with_data_version(tag, DATA_VERSION)
+    }
+
+    /// Import a block registry using the world's version-specific data version.
+    /// Versioned ports must pass their own pinned data version instead of
+    /// mutating the active workspace constant.
+    pub fn from_nbt_with_data_version(tag: &Tag, data_version: i32) -> io::Result<Self> {
+        if tag.get("DataVersion") != Some(&Tag::Int(data_version)) {
             return Err(invalid("block registry DataVersion mismatch"));
         }
         let Some(Tag::List(entries)) = tag.get("states") else {
@@ -130,6 +137,36 @@ impl BlockRegistry {
         }
         Ok(result)
     }
+    #[cfg(test)]
+    mod version_tests {
+        use super::*;
+        use crate::chunk::BlockState;
+
+        fn registry_tag(data_version: i32) -> Tag {
+            let state = BlockState {
+                name: "minecraft:air".into(),
+                properties: BTreeMap::new(),
+            };
+            Tag::compound([
+                ("DataVersion", Tag::Int(data_version)),
+                ("states", Tag::List(vec![state.to_nbt()])),
+                (
+                    "defaults",
+                    Tag::compound([("minecraft:air", Tag::Int(0))]),
+                ),
+            ])
+        }
+
+        #[test]
+        fn block_registry_can_load_an_isolated_target_data_version() {
+            assert!(BlockRegistry::from_nbt(&registry_tag(DATA_VERSION)).is_ok());
+            assert!(
+                BlockRegistry::from_nbt_with_data_version(&registry_tag(3955), 3955).is_ok()
+            );
+            assert!(BlockRegistry::from_nbt(&registry_tag(3955)).is_err());
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.states.len()
     }
