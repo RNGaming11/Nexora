@@ -91,14 +91,14 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [x] Target facts and official artifact/mapping hash pins.
 - [x] Mapping-aware preparation and class indexing.
 - [x] Verified client/server artifacts and vanilla data-generator reports.
-- [x] Version-isolated codecs for the previously missing packet payloads (18 concrete; `update_recipes` registry-dependent).
-- [x] Protocol-767 login and configuration dispatch adapters.
+- [x] Version-isolated codecs for the previously missing packet payloads, including protocol-767 login/configuration and recipe dispatch (23 vanilla recipe serializer IDs; component-free recipe slots).
 - [x] Isolated 1.21.1 version constants, checked against the pinned target metadata.
-- [ ] Generated 1.21.1 registries.
-- [ ] Mapped source/class diff and ranked port worklist.
-- [ ] Protocol-767 play-state integration in the live client.
-- [x] Protocol-767 recipe serializer registry and vanilla serializer body codecs (component-bearing slots still fail closed).
+- [x] Pinned all 57 target data-component IDs and verified them against Mojang's data-generator report.
+- [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
+- [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
+- [ ] Generate and integrate all 1.21.1 runtime registries and resource data.
 - [ ] Complete 1.21.1 item data-component payload codecs for recipe slots and inventory packets.
+- [ ] Protocol-767 play-state integration in the live client.
 - [ ] Gameplay parity.
 - [ ] Playable client/server milestone.
 
