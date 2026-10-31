@@ -316,7 +316,6 @@ impl<'r> BlockTableFile<'r> {
 #[cfg(test)]
 mod version_tests {
     use super::*;
-    use crate::chunk::BlockState;
 
     fn registry_tag(data_version: i32) -> Tag {
         let state = BlockState {
