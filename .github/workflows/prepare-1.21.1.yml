@@ -6,6 +6,9 @@ on:
     paths:
       - ".github/workflows/prepare-1.21.1.yml"
       - "tools/prepare_1_21_1.py"
+      - "tools/version_port.py"
+      - "tools/generate_recipe_serializer_inventory.py"
+      - "ports/1.21.1/recipe-serializers.json"
 
 permissions:
   contents: read
