@@ -172,6 +172,26 @@ def main():
         json.dumps(server_classes, separators=(",", ":")), encoding="utf-8"
     )
 
+    print("Comparing mapped server classes against mapped client classes", flush=True)
+    client_server_diff = class_index.diff(server_classes, client_classes)
+    client_server_diff_path = directory / "classes-client-server-diff.json"
+    client_server_diff_path.write_text(
+        json.dumps(client_server_diff, separators=(",", ":")), encoding="utf-8"
+    )
+    client_server_summary = {
+        "server_to_client_added_classes": len(client_server_diff["added"]),
+        "server_to_client_removed_classes": len(client_server_diff["removed"]),
+        "moved_classes": len(client_server_diff["moved"]),
+        "changed_common_classes": len(client_server_diff["changed"]),
+        "changed_methods": sum(
+            class_index.changed_methods(change)
+            for change in client_server_diff["changed"].values()
+        ),
+        "diff_file": str(client_server_diff_path.resolve()),
+    }
+    print("Client/server implementation differences: " +
+          json.dumps(client_server_summary, sort_keys=True), flush=True)
+
     mapped_classes = dict(client_classes)
     for name, server_data in server_classes.items():
         client_data = mapped_classes.get(name)
@@ -201,6 +221,7 @@ def main():
         "class_count": len(classes),
         "method_count": sum(len(item["methods"]) for item in classes.values()),
         "mapped_class_index": str(mapped_classes_path.resolve()),
+        "client_server_diff": client_server_summary,
         "client_class_index": str(client_classes_path.resolve()),
         "server_class_index": str(server_classes_path.resolve()),
         "client_mapped_class_count": len(client_classes),
@@ -226,6 +247,7 @@ def main():
         "prepared_directory": str(directory.resolve()),
         "reports": str(reports.resolve()),
         "mapped_class_index": str(mapped_classes_path.resolve()),
+        "client_server_diff": client_server_summary,
         "client_class_index": str(client_classes_path.resolve()),
         "server_class_index": str(server_classes_path.resolve()),
         "client_mapped_class_count": record["client_mapped_class_count"],
