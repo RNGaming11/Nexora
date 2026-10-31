@@ -34,6 +34,16 @@ The remaining import and port steps are:
 6. Generate version constants from the actual embedded client `version.json`; do not hand-edit `crates/horizon-core/src/version.rs`.
 7. Diff mapped symbols and generated data against a 1.21.1-specific candidate baseline, then run the parity harnesses before treating any port as complete.
 
+## Packet ID comparison
+
+After generating `packet_ids.rs` from the 1.21.1 data-generator report, compare it with the current protocol inventory:
+
+```powershell
+python tools/compare_packet_ids.py
+```
+
+The tool writes `packet-id-diff.json` and prints counts for packets added, removed, and renumbered relative to the current 26.3 inventory. This is an inventory comparison only: matching names and IDs do not prove packet payload codecs or connection behavior are compatible.
+
 ## Current status
 
 - [x] Isolated working branch: `nexora/1.21.1-port-baseline`.
