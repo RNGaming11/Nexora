@@ -3,7 +3,7 @@ name: 1.21.1 port baseline
 on:
   push:
     branches:
-      - nexora/1.21.1-port-baseline
+      - nexora/master
     paths:
       - "crates/**"
       - "ports/1.21.1/**"
@@ -13,7 +13,7 @@ on:
       - ".github/workflows/port-1.21.1.yml"
   pull_request:
     branches:
-      - nexora/1.21.1-port-baseline
+      - nexora/master
   workflow_dispatch:
 
 permissions:
