@@ -20,5 +20,7 @@ pub mod ticks;
 
 pub mod release;
 pub mod version;
+#[path = "../../../ports/1.21.1/version.rs"]
+pub mod version_1_21_1;
 
 pub use version::VANILLA_VERSION;
