@@ -2161,7 +2161,6 @@ impl Launcher {
             }
             _ => {}
         }
-        // Sculk's card above the links: seen without scrolling, on every page but Servers, which shows
         if !self.links.discord.is_empty() {
             foot = foot.child(link(
                 "discord",
@@ -4028,9 +4027,6 @@ impl Render for Launcher {
             if let Some(viewer) = self.screenshot_viewer(cx) {
                 root = root.child(viewer);
             }
-        }
-        if self.asking_consent() {
-            root = root.child(self.consent_screen(cx));
         }
         if self.asking_owner() {
             root = root.child(self.owner_screen(cx));
