@@ -4,6 +4,10 @@ A small desktop app that installs Nexora builds, prepares them from your own cop
 Minecraft, and starts the client or a dedicated server. Built with [GPUI](https://www.gpui.rs),
 Zed's UI framework; it has its own Cargo workspace and is not part of the game's builds.
 
+### Private GitHub releases
+
+The launcher reads its release list from this repository's GitHub API. If the repository is private, GitHub returns 404 to requests without repository access. Set `NEXORA_GITHUB_TOKEN` to a fine-grained GitHub token with read access to this repository before starting the launcher. On Windows, run `setx NEXORA_GITHUB_TOKEN "YOUR_TOKEN"` in PowerShell, then fully restart the launcher. The launcher also accepts `GH_TOKEN` and `GITHUB_TOKEN`; `HORIZON_GITHUB_TOKEN` remains as a compatibility alias. Do not commit or share the token. Making the repository public removes this requirement.
+
 ![Play](docs/play.png)
 
 The opening, then Play ([clip](docs/opening.webm)):
