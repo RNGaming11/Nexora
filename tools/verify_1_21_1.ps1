@@ -6,7 +6,7 @@ if (-not $repoRoot) {
 }
 Set-Location $repoRoot
 
-$expectedBranch = "nexora/1.21.1-port-baseline"
+$expectedBranch = "nexora/master"
 $activeBranch = git branch --show-current
 if ($activeBranch -ne $expectedBranch) {
     throw "This verifier must run on '$expectedBranch'. Current branch: '$activeBranch'. Switch branches first; no files were changed."
