@@ -2,7 +2,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.proguard import ProguardMappings
+try:
+    from .proguard import ProguardMappings
+except ImportError:
+    from proguard import ProguardMappings
 
 
 class ProguardMappingTests(unittest.TestCase):
