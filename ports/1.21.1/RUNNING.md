@@ -1,6 +1,6 @@
 # Nexora — Minecraft 1.21.1 port workspace
 
-The 1.21.1 port is isolated on branch `nexora/1.21.1-port-baseline`. Do not run the existing 26.3 preparation command for this target: it intentionally rejects obfuscated releases.
+The 1.21.1 port work is maintained on branch `nexora/master`. Do not run the existing 26.3 preparation command for this target: it intentionally rejects obfuscated releases.
 
 ## Requirements
 
@@ -52,6 +52,6 @@ The preparation report is `prepared.json`; version facts are `facts.json`; the r
 
 ## Current limitations — read before treating this as playable
 
-This command prepares and verifies the official game inputs. It does **not** yet remap the obfuscated class inventory to Mojang's named symbols, regenerate Nexora's version constants, port missing gameplay systems, or produce a runnable 1.21.1 client. The current root workspace still targets its existing 26.3 baseline. Do not change `crates/horizon-core/src/version.rs` by hand or try to launch this branch as a finished 1.21.1 game.
+This command prepares and verifies the official game inputs. It does **not** yet remap the obfuscated class inventory to Mojang's named symbols, regenerate Nexora's version constants, port missing gameplay systems, or produce a runnable 1.21.1 client. The current root workspace still targets its existing 26.3 baseline. Do not change `crates/horizon-core/src/version.rs` by hand or try to launch this branch as a finished 1.21.1 game. The version-specific packet codecs are not yet connected to the live client network state machine.
 
 The next engineering stages are mapping-aware symbol remapping, 1.21.1 protocol/data generation, parity harness adaptation, and implementation/testing of the missing client and server behavior. A playable milestone is only reached when the Rust client launches and successfully joins a local vanilla 1.21.1 server.
