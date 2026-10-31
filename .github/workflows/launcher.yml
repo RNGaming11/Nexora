@@ -16,7 +16,7 @@ name: launcher
 
 on:
   push:
-    branches: [main, launcher, 'launcher-*']
+    branches: [main, launcher, 'launcher-*', 'nexora/1.21.1-port-baseline']
     paths:
       # Every crate the launcher builds in, as tools/release_train.py's LAUNCHER_PATHS.
       - 'launcher/**'
