@@ -41,6 +41,37 @@ jobs:
           $generatedHash = (Get-FileHash "target\1.21.1\recipe-serializers.json" -Algorithm SHA256).Hash
           $pinnedHash = (Get-FileHash "ports\1.21.1\recipe-serializers.json" -Algorithm SHA256).Hash
           if ($generatedHash -ne $pinnedHash) { throw "Generated recipe serializer IDs differ from the pinned 1.21.1 registry inventory." }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: Prepare the active 26.3 baseline
+        id: baseline
+        continue-on-error: true
+        run: python tools/version_port.py prepare 26.3 --download --jobs 4
+      - name: Generate the 26.3 to 1.21.1 class diff and ranked worklist
+        if: steps.baseline.outcome == 'success'
+        shell: pwsh
+        run: |
+          python tools/version_port.py diff 26.3 1.21.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/version_port.py report 26.3 1.21.1 --lines 100
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload 26.3 comparison and ranked worklist
+        if: steps.baseline.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-26.3-to-1.21.1-port-diff
+          if-no-files-found: error
+          compression-level: 6
+          path: |
+            .port-cache/versions/26.3/facts.json
+            .port-cache/versions/26.3/prepared.json
+            .port-cache/versions/26.3/classes.json
+            .port-cache/versions/diff-26.3-1.21.1/diff.json
+            .port-cache/versions/diff-26.3-1.21.1/vanilla_map.json
+            .port-cache/versions/diff-26.3-1.21.1/report.json
+            .port-cache/versions/diff-26.3-1.21.1/report.md
       - name: Upload prepared port data
         uses: actions/upload-artifact@v4
         with:
