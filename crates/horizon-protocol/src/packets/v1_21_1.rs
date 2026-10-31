@@ -532,26 +532,26 @@ pub mod configuration {
     pub fn decode_clientbound(id: i32, payload: &[u8]) -> Result<Option<shared::Clientbound>> {
         let mut r = Reader::new(payload);
         let packet = match id {
-            0 => Some(shared::Clientbound::CookieRequest(shared::CookieRequest::read(&mut r)?)),
-            1 => Some(shared::Clientbound::CustomPayload(shared::CustomPayload::read(&mut r)?)),
-            2 => Some(shared::Clientbound::Disconnect(shared::Disconnect::read(&mut r)?)),
-            3 => Some(shared::Clientbound::FinishConfiguration(Empty::read(&mut r)?)),
-            4 => Some(shared::Clientbound::KeepAlive(shared::KeepAlive::read(&mut r)?)),
-            5 => Some(shared::Clientbound::Ping(shared::Ping::read(&mut r)?)),
-            6 => Some(shared::Clientbound::ResetChat(Empty::read(&mut r)?)),
-            7 => Some(shared::Clientbound::RegistryData(shared::RegistryData::read(&mut r)?)),
-            8 => Some(shared::Clientbound::ResourcePackPop(shared::ResourcePackPop::read(&mut r)?)),
-            9 => Some(shared::Clientbound::ResourcePackPush(shared::ResourcePackPush::read(&mut r)?)),
-            10 => Some(shared::Clientbound::StoreCookie(shared::StoreCookie::read(&mut r)?)),
-            11 => Some(shared::Clientbound::Transfer(shared::Transfer::read(&mut r)?)),
-            12 => Some(shared::Clientbound::UpdateEnabledFeatures(shared::UpdateEnabledFeatures::read(&mut r)?)),
-            13 => Some(shared::Clientbound::UpdateTags(shared::UpdateTags::read(&mut r)?)),
-            14 => Some(shared::Clientbound::SelectKnownPacks(shared::SelectKnownPacks::read(&mut r)?)),
-            15 => {
+            ids::configuration_clientbound::COOKIE_REQUEST => Some(shared::Clientbound::CookieRequest(shared::CookieRequest::read(&mut r)?)),
+            ids::configuration_clientbound::CUSTOM_PAYLOAD => Some(shared::Clientbound::CustomPayload(shared::CustomPayload::read(&mut r)?)),
+            ids::configuration_clientbound::DISCONNECT => Some(shared::Clientbound::Disconnect(shared::Disconnect::read(&mut r)?)),
+            ids::configuration_clientbound::FINISH_CONFIGURATION => Some(shared::Clientbound::FinishConfiguration(Empty::read(&mut r)?)),
+            ids::configuration_clientbound::KEEP_ALIVE => Some(shared::Clientbound::KeepAlive(shared::KeepAlive::read(&mut r)?)),
+            ids::configuration_clientbound::PING => Some(shared::Clientbound::Ping(shared::Ping::read(&mut r)?)),
+            ids::configuration_clientbound::RESET_CHAT => Some(shared::Clientbound::ResetChat(Empty::read(&mut r)?)),
+            ids::configuration_clientbound::REGISTRY_DATA => Some(shared::Clientbound::RegistryData(shared::RegistryData::read(&mut r)?)),
+            ids::configuration_clientbound::RESOURCE_PACK_POP => Some(shared::Clientbound::ResourcePackPop(shared::ResourcePackPop::read(&mut r)?)),
+            ids::configuration_clientbound::RESOURCE_PACK_PUSH => Some(shared::Clientbound::ResourcePackPush(shared::ResourcePackPush::read(&mut r)?)),
+            ids::configuration_clientbound::STORE_COOKIE => Some(shared::Clientbound::StoreCookie(shared::StoreCookie::read(&mut r)?)),
+            ids::configuration_clientbound::TRANSFER => Some(shared::Clientbound::Transfer(shared::Transfer::read(&mut r)?)),
+            ids::configuration_clientbound::UPDATE_ENABLED_FEATURES => Some(shared::Clientbound::UpdateEnabledFeatures(shared::UpdateEnabledFeatures::read(&mut r)?)),
+            ids::configuration_clientbound::UPDATE_TAGS => Some(shared::Clientbound::UpdateTags(shared::UpdateTags::read(&mut r)?)),
+            ids::configuration_clientbound::SELECT_KNOWN_PACKS => Some(shared::Clientbound::SelectKnownPacks(shared::SelectKnownPacks::read(&mut r)?)),
+            ids::configuration_clientbound::CUSTOM_REPORT_DETAILS => {
                 decode_exact(payload, CustomReportDetails::read)?;
                 return Ok(None);
             }
-            16 => Some(shared::Clientbound::ServerLinks(shared::ServerLinks::read(&mut r)?)),
+            ids::configuration_clientbound::SERVER_LINKS => Some(shared::Clientbound::ServerLinks(shared::ServerLinks::read(&mut r)?)),
             other => return Err(Error::new(format!("unsupported protocol 767 configuration clientbound packet {other}"))),
         };
         if r.remaining() != 0 {
@@ -564,14 +564,14 @@ pub mod configuration {
     pub fn encode_serverbound(packet: &shared::Serverbound) -> Vec<u8> {
         let mut payload = Writer::new();
         let id = match packet {
-            shared::Serverbound::ClientInformation(p) => { shared::ClientInformation::write(p, &mut payload); 0 }
-            shared::Serverbound::CookieResponse(p) => { shared::CookieResponse::write(p, &mut payload); 1 }
-            shared::Serverbound::CustomPayload(p) => { shared::CustomPayload::write(p, &mut payload); 2 }
-            shared::Serverbound::FinishConfiguration(p) => { Empty::write(p, &mut payload); 3 }
-            shared::Serverbound::KeepAlive(p) => { shared::KeepAlive::write(p, &mut payload); 4 }
-            shared::Serverbound::Pong(p) => { shared::Ping::write(p, &mut payload); 5 }
-            shared::Serverbound::ResourcePack(p) => { shared::ResourcePackResponse::write(p, &mut payload); 6 }
-            shared::Serverbound::SelectKnownPacks(p) => { shared::SelectKnownPacks::write(p, &mut payload); 7 }
+            shared::Serverbound::ClientInformation(p) => { shared::ClientInformation::write(p, &mut payload); ids::configuration_serverbound::CLIENT_INFORMATION }
+            shared::Serverbound::CookieResponse(p) => { shared::CookieResponse::write(p, &mut payload); ids::configuration_serverbound::COOKIE_RESPONSE }
+            shared::Serverbound::CustomPayload(p) => { shared::CustomPayload::write(p, &mut payload); ids::configuration_serverbound::CUSTOM_PAYLOAD }
+            shared::Serverbound::FinishConfiguration(p) => { Empty::write(p, &mut payload); ids::configuration_serverbound::FINISH_CONFIGURATION }
+            shared::Serverbound::KeepAlive(p) => { shared::KeepAlive::write(p, &mut payload); ids::configuration_serverbound::KEEP_ALIVE }
+            shared::Serverbound::Pong(p) => { shared::Ping::write(p, &mut payload); ids::configuration_serverbound::PONG }
+            shared::Serverbound::ResourcePack(p) => { shared::ResourcePackResponse::write(p, &mut payload); ids::configuration_serverbound::RESOURCE_PACK }
+            shared::Serverbound::SelectKnownPacks(p) => { shared::SelectKnownPacks::write(p, &mut payload); ids::configuration_serverbound::SELECT_KNOWN_PACKS }
             _ => unreachable!("packet does not exist in protocol 767 configuration state"),
         };
         let mut out = Writer::new();
