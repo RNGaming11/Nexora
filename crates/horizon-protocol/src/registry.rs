@@ -94,8 +94,10 @@ impl Builtin {
             let names = names
                 .into_iter()
                 .enumerate()
-                .map(|(id, name)| {
-                    name.ok_or_else(|| Error::new(format!("{name}: missing protocol_id {id}")))
+                .map(|(id, entry_name)| {
+                    entry_name.ok_or_else(|| {
+                        Error::new(format!("{name}: missing protocol_id {id}"))
+                    })
                 })
                 .collect::<Result<Vec<_>>>()?;
             registries.insert(name.clone(), Ids::from_names(names));
