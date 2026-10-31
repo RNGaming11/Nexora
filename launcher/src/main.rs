@@ -85,13 +85,13 @@ enum Page {
 }
 
 impl Page {
-    /// `HORIZON_LAUNCHER_PAGE=mods` (or `modpacks`, `resourcepacks`, `shaders`, `servers`, `versions`, `notes`,
+    /// `NEXORA_LAUNCHER_PAGE=mods` (or `modpacks`, `resourcepacks`, `shaders`, `servers`, `versions`, `notes`,
     /// `settings`) opens on that page, for screenshots; Home otherwise (`getting-ready`: Home
     /// preparing, `home::getting_ready_preview`; `sign-in`: the owner gate's sheet with a
     /// made-up code, `owner_page::sign_in_preview`; `new-instance`: Home with the New instance
     /// dialog open on Modded; `edit-instance`: the selected one's Edit dialog; `worlds`, `packs`...: Home on that tab, `HomeTab::from_env`).
     fn from_env() -> Page {
-        match std::env::var("HORIZON_LAUNCHER_PAGE").as_deref() {
+        match std::env::var("NEXORA_LAUNCHER_PAGE").as_deref() {
             Ok("mods" | "modpacks" | "resourcepacks" | "shaders" | "datapacks") => Page::Mods,
             Ok("servers") => Page::Servers,
             Ok("versions") => Page::Versions,
@@ -356,11 +356,11 @@ impl Launcher {
         }
         // Release builds on Linux put their entry back in the applications menu when there is
         // none or it starts a program that is gone (a moved or deleted binary), never over one
-        // that works; `HORIZON_LAUNCHER_DESKTOP_ENTRY=1` does it in a development build.
+        // that works; `NEXORA_LAUNCHER_DESKTOP_ENTRY=1` does it in a development build.
         if cfg!(target_os = "linux")
             && settings.desktop_entry()
             && (!cfg!(debug_assertions)
-                || std::env::var_os("HORIZON_LAUNCHER_DESKTOP_ENTRY").is_some())
+                || std::env::var_os("NEXORA_LAUNCHER_DESKTOP_ENTRY").is_some())
         {
             std::thread::spawn(|| {
                 let _ = horizon_launcher::desktop::repair(backend::exe_path());
@@ -524,12 +524,12 @@ impl Launcher {
             this.preparing = true;
             this.play_when_prepared = this.selected().cloned();
         }
-        // `HORIZON_LAUNCHER_PAGE=new-instance`: the dialog open on Modded, for screenshots.
-        if std::env::var("HORIZON_LAUNCHER_PAGE").as_deref() == Ok("new-instance") {
+        // `NEXORA_LAUNCHER_PAGE=new-instance`: the dialog open on Modded, for screenshots.
+        if std::env::var("NEXORA_LAUNCHER_PAGE").as_deref() == Ok("new-instance") {
             this.open_instance_dialog(None);
             this.pick_kind(new_instance::NewKind::Modded, cx);
         }
-        if std::env::var("HORIZON_LAUNCHER_PAGE").as_deref() == Ok("edit-instance") {
+        if std::env::var("NEXORA_LAUNCHER_PAGE").as_deref() == Ok("edit-instance") {
             this.open_instance_dialog(this.selected_instance().cloned());
         }
         this
@@ -1544,7 +1544,7 @@ fn button(
     keyboard(track_hover(base, id), &t).active(|s| s.opacity(theme::PRESSED).top(px(1.)))
 }
 
-/// Copies to the clipboard, or into `HORIZON_LAUNCHER_CLIPBOARD` when a test run sets it
+/// Copies to the clipboard, or into `NEXORA_LAUNCHER_CLIPBOARD` when a test run sets it
 /// (`horizon_launcher::desktop_seams`).
 fn copy_to_clipboard(cx: &mut App, item: gpui::ClipboardItem) {
     if let Some(file) = horizon_launcher::desktop_seams::clipboard_file() {
