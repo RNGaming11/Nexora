@@ -6,17 +6,17 @@ import json
 import re
 from pathlib import Path
 
-MODULE = re.compile(r"^\\s*pub mod ([a-z_]+) \\{$")
-CONST = re.compile(r"^\\s*pub const ([A-Z0-9_]+): i32 = (-?\\d+);$")
+MODULE = re.compile(r"^\s*pub mod ([a-z_]+) \{$")
+CONST = re.compile(r"^\s*pub const ([A-Z0-9_]+): i32 = (-?\d+);$")
 ENUM = re.compile(
-    r"packet_enum!\\(\\s*(Clientbound|Serverbound)\\s*,\\s*"
-    r"crate::ids::([a-z_]+)::(clientbound|serverbound)\\s*\\{(.*?)\\}\\s*\\);",
+    r"packet_enum!\(\s*(Clientbound|Serverbound)\s*,\s*"
+    r"crate::ids::([a-z_]+)::(clientbound|serverbound)\s*\{(.*?)\}\s*\);",
     re.S,
 )
 VARIANT = re.compile(
-    r"\\b([A-Za-z][A-Za-z0-9_]*)\\s*\\(\\s*"
+    r"\b([A-Za-z][A-Za-z0-9_]*)\s*\(\s*"
     r"((?:(?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*))"
-    r"\\s*\\)\\s*=\\s*([A-Z0-9_]+)"
+    r"\s*\)\s*=\s*([A-Z0-9_]+)"
 )
 
 
@@ -168,7 +168,7 @@ def main():
     codecs = read_codecs(args.root)
     report = audit(target, codecs, current)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=2) + "\\n", encoding="utf-8")
+    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Target packets: {report['target_packet_count']}")
     print(f"Codec candidates: {report['candidate_codec_count']}")
     print(f"Same-ID reuse candidates: {report['id_aligned_reuse_candidate_count']}")
