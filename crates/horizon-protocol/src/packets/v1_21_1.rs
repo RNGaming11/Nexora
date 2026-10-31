@@ -11,6 +11,8 @@ use crate::{
 };
 use horizon_world::nbt::Tag;
 
+#[path = "../../../../ports/1.21.1/data_component_ids.rs"]
+pub mod component_ids;
 #[path = "v1_21_1/recipes.rs"]
 mod recipe_codecs;
 pub use recipe_codecs::VanillaRecipeSerializers;
