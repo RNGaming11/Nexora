@@ -73,7 +73,7 @@ These codecs are not yet wired into the client connection state machine. Protoco
 
 ## Current status
 
-- [x] Isolated working branch: `nexora/1.21.1-port-baseline`.
+- [x] Working branch: `nexora/master`.
 - [x] Version facts and official artifact/mapping hashes recorded.
 - [x] Mapping-aware prepare and class-index pipeline (raw and mapped inventories are emitted separately).
 - [x] Verified 1.21.1 jars, extracted server game jar, and data-generator reports.
