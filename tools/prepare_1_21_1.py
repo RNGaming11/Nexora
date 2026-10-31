@@ -5,7 +5,6 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import re
 import sys
 
 try:
@@ -95,7 +94,7 @@ def main():
         "world_version": facts.get("world_version") == EXPECTED["world_version"],
         "resource_pack": facts.get("resource_pack") == EXPECTED["resource_pack"],
         "data_pack": facts.get("data_pack") == EXPECTED["data_pack"],
-        "java_version": int(facts.get("java_version", 0)) == EXPECTED["java_version"],
+        "java_version": (facts.get("java_version", {}).get("major") if isinstance(facts.get("java_version"), dict) else facts.get("java_version")) == EXPECTED["java_version"],
     }
     if not all(checks.values()):
         raise ValueError(f"Embedded client version.json did not match expected 1.21.1 facts: {checks}")
