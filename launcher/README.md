@@ -360,7 +360,7 @@ file, so a test never touches the real trash or clipboard.
 agent-config` prints the config for Claude Code, Codex, Cursor and any MCP client, and the
 command that adds it; for Claude Code:
 
-    claude mcp add --scope user horizon -- nexora-launcher mcp
+    claude mcp add --scope user nexora -- nexora-launcher mcp
 
 (with the full path to the binary if it is not on your `PATH`). Every CLI command is a tool of the
 same name and arguments, generated from the CLI's definition (`src/cli_tools.rs`): `versions`,
