@@ -111,10 +111,15 @@ pub fn get_bytes(url: &str) -> Result<Vec<u8>, String> {
 pub(crate) fn get(url: &str) -> Result<ureq::Response, String> {
     let mut request = agent(url).get(url);
     // CI runners share addresses and hit GitHub's anonymous rate limit; they pass their own token.
-    if let Some(token) = std::env::var("HORIZON_GITHUB_TOKEN")
-        .ok()
-        .filter(|t| !t.is_empty())
-    {
+    let token = [
+        "NEXORA_GITHUB_TOKEN",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "HORIZON_GITHUB_TOKEN",
+    ]
+    .into_iter()
+    .find_map(|name| std::env::var(name).ok().filter(|value| !value.is_empty()));
+    if let Some(token) = token.as_deref() {
         if url.starts_with("https://api.github.com/") {
             request = request.set("Authorization", &format!("Bearer {token}"));
         }
@@ -122,6 +127,13 @@ pub(crate) fn get(url: &str) -> Result<ureq::Response, String> {
     request.call().map_err(|e| match e {
         ureq::Error::Status(403, _) => {
             "GitHub's rate limit was reached. Try again in a few minutes.".into()
+        }
+        ureq::Error::Status(404, _)
+            if token.is_none()
+                && url.starts_with("https://api.github.com/repos/")
+                && url.contains("/releases") =>
+        {
+            "GitHub returned 404 for Nexora's releases. GitHub hides private repositories from unauthenticated requests. Set NEXORA_GITHUB_TOKEN to a read-only token with access to this repository, or make the repository public.".into()
         }
         ureq::Error::Status(code, _) => format!("{url} answered {code}"),
         ureq::Error::Transport(t) => format!("No connection: {t}"),
