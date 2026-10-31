@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     env:
-      HORIZON_VERSIONS: ${{ runner.temp }}/nexora-versions
+      HORIZON_VERSIONS: .port-cache/versions
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,15 +41,15 @@ jobs:
           if-no-files-found: error
           compression-level: 6
           path: |
-            ${{ runner.temp }}/nexora-versions/1.21.1/facts.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/prepared.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/classes-client-server-diff.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/classes-mapped.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/classes-client-mapped.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/classes-server-mapped.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/datagen/out/reports/registries.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/datagen/out/reports/packets.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/datagen/out/reports/items.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/datagen/out/reports/blocks.json
-            ${{ runner.temp }}/nexora-versions/1.21.1/datagen/out/reports/commands.json
+            .port-cache/versions/1.21.1/facts.json
+            .port-cache/versions/1.21.1/prepared.json
+            .port-cache/versions/1.21.1/classes-client-server-diff.json
+            .port-cache/versions/1.21.1/classes-mapped.json
+            .port-cache/versions/1.21.1/classes-client-mapped.json
+            .port-cache/versions/1.21.1/classes-server-mapped.json
+            .port-cache/versions/1.21.1/datagen/out/reports/registries.json
+            .port-cache/versions/1.21.1/datagen/out/reports/packets.json
+            .port-cache/versions/1.21.1/datagen/out/reports/items.json
+            .port-cache/versions/1.21.1/datagen/out/reports/blocks.json
+            .port-cache/versions/1.21.1/datagen/out/reports/commands.json
             target/1.21.1/packet_ids.rs
