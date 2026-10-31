@@ -54,6 +54,14 @@ python tools/audit_packet_codec_coverage.py
 
 This scans the existing Rust packet enums and reports which target packet constants already have typed packet codecs, grouped by state and direction. It writes `packet-codec-coverage.json`. A matching constant is only an initial reuse candidate: payload field layouts and semantics still need verification against 1.21.1 sources.
 
+## Version-isolated packet codecs
+
+The crate now exposes `horizon_protocol::packets::v1_21_1`. It contains separate protocol-767 packet payload types and ID dispatch/encoders for the packets that were absent from the 26.3 codec enums. The active 26.3 enums and generated IDs remain unchanged.
+
+Eighteen of the nineteen previously missing packet payloads have concrete codecs and round-trip coverage. The 1.21.1 `update_recipes` packet is represented by a registry-aware `RecipeSerializer` interface: its entries are serializer-specific and must be decoded using the target registry. A generic byte-slice guess would corrupt packet boundaries. The coverage report records this packet separately as registry-dependent rather than treating it as a normal ready-to-use codec.
+
+These codecs are not yet wired into the client connection state machine. Protocol selection, 1.21.1 registry loading, and the built-in recipe serializer implementations remain required before the client can join a 1.21.1 server.
+
 ## Current status
 
 - [x] Isolated working branch: `nexora/1.21.1-port-baseline`.
@@ -62,6 +70,8 @@ This scans the existing Rust packet enums and reports which target packet consta
 - [x] Verified 1.21.1 jars, extracted server game jar, and data-generator reports.
 - [ ] 1.21.1 generated constants and registries.
 - [ ] Mapped source/class diff and port worklist.
+- [x] Isolated 1.21.1 packet payload codecs for the 19 previously missing packet types (18 concrete; update_recipes registry-dependent), with round-trip tests for the concrete types.
+- [ ] Protocol-767 connection integration and built-in recipe serializer registry.
 - [ ] Gameplay parity implementation and tests.
 - [ ] Playable client/server milestone.
 
