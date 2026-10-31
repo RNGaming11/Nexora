@@ -256,8 +256,8 @@ impl Instance {
         match &self.java {
             None => Ok(()),
             Some(java) => Err(format!(
-                "{} plays Minecraft {} (Java Edition), not Horizon: Play starts it, without a \
-                 Horizon version.",
+                "{} plays Minecraft {} (Java Edition), not Nexora: Play starts it, without a \
+                 Nexora version.",
                 self.name, java.minecraft
             )),
         }
@@ -280,7 +280,7 @@ impl Instance {
     }
 }
 
-/// The instances, by the default game home and the launcher's data folder: Horizon first, then
+/// The instances, by the default game home and the launcher's data folder: Nexora first, then
 /// by group and name.
 pub fn list() -> Vec<Instance> {
     list_in(&backend::game_home(), &backend::data_dir())
@@ -290,7 +290,7 @@ fn list_in(game_home: &Path, data: &Path) -> Vec<Instance> {
     let mut store = Store::load(data);
     let mut found = vec![(
         DEFAULT.to_string(),
-        "Horizon".to_string(),
+        "Nexora".to_string(),
         Kind::Default,
         game_home.to_path_buf(),
         game_home.to_path_buf(),
@@ -375,7 +375,7 @@ fn find_in(all: &[Instance], query: &str) -> Result<Instance, String> {
 }
 
 /// Moves an instance's folder to the Trash (where the player can get it back, worlds and all)
-/// and forgets it: its choices, and the selection when Play started it. Horizon's own instance,
+/// and forgets it: its choices, and the selection when Play started it. Nexora's own instance,
 /// the game's home, stays.
 pub fn delete(query: &str) -> Result<Instance, String> {
     let gone = delete_in(
@@ -414,7 +414,7 @@ fn delete_in(
     Ok(instance)
 }
 
-/// The instance Play starts: the one picked in the launcher, else Horizon.
+/// The instance Play starts: the one picked in the launcher, else Nexora.
 pub fn selected() -> Instance {
     let all = list();
     backend::Settings::load()
