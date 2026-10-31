@@ -408,3 +408,40 @@ mod profile_tests {
         );
     }
 }
+
+
+pub fn encode_play_clientbound(packet: &MissingPacket) -> Result<Vec<u8>> {
+    let (id, write): (i32, Box<dyn FnOnce(&mut Writer)>) = match packet {
+        MissingPacket::AddExperienceOrb(v) => (ids::play_clientbound::ADD_EXPERIENCE_ORB, Box::new(|w| AddExperienceOrb::write(v, w))),
+        MissingPacket::CommandSuggestions(v) => (ids::play_clientbound::COMMAND_SUGGESTIONS, Box::new(|w| CommandSuggestions::write(v, w))),
+        MissingPacket::CustomReportDetails(v) => (ids::play_clientbound::CUSTOM_REPORT_DETAILS, Box::new(|w| CustomReportDetails::write(v, w))),
+        MissingPacket::DebugSample(v) => (ids::play_clientbound::DEBUG_SAMPLE, Box::new(|w| DebugSample::write(v, w))),
+        MissingPacket::HorseScreenOpen(v) => (ids::play_clientbound::HORSE_SCREEN_OPEN, Box::new(|w| HorseScreenOpen::write(v, w))),
+        MissingPacket::PlayerCombatEnd(v) => (ids::play_clientbound::PLAYER_COMBAT_END, Box::new(|w| PlayerCombatEnd::write(v, w))),
+        MissingPacket::PlayerCombatEnter(v) => (ids::play_clientbound::PLAYER_COMBAT_ENTER, Box::new(|w| Empty::write(v, w))),
+        MissingPacket::Recipe(v) => (ids::play_clientbound::RECIPE, Box::new(|w| RecipePacket::write(v, w))),
+        MissingPacket::SelectAdvancementsTab(v) => (ids::play_clientbound::SELECT_ADVANCEMENTS_TAB, Box::new(|w| SelectAdvancementsTab::write(v, w))),
+        MissingPacket::SetCarriedItem(v) => (ids::play_clientbound::SET_CARRIED_ITEM, Box::new(|w| SetCarriedItem::write(v, w))),
+        _ => return Err(Error::new("packet is not a 1.21.1 clientbound play packet")),
+    };
+    let mut w = Writer::new();
+    w.varint(id);
+    write(&mut w);
+    Ok(w.data)
+}
+
+pub fn encode_play_serverbound(packet: &MissingPacket) -> Result<Vec<u8>> {
+    let (id, write): (i32, Box<dyn FnOnce(&mut Writer)>) = match packet {
+        MissingPacket::CommandSuggestionRequest(v) => (ids::play_serverbound::COMMAND_SUGGESTION, Box::new(|w| CommandSuggestionRequest::write(v, w))),
+        MissingPacket::DebugSampleSubscription(v) => (ids::play_serverbound::DEBUG_SAMPLE_SUBSCRIPTION, Box::new(|w| DebugSampleSubscription::write(v, w))),
+        MissingPacket::PickItem(v) => (ids::play_serverbound::PICK_ITEM, Box::new(|w| PickItem::write(v, w))),
+        MissingPacket::RecipeBookSeenRecipe(v) => (ids::play_serverbound::RECIPE_BOOK_SEEN_RECIPE, Box::new(|w| RecipeBookSeenRecipe::write(v, w))),
+        MissingPacket::SeenAdvancements(v) => (ids::play_serverbound::SEEN_ADVANCEMENTS, Box::new(|w| SeenAdvancements::write(v, w))),
+        MissingPacket::Swing(v) => (ids::play_serverbound::SWING, Box::new(|w| Swing::write(v, w))),
+        _ => return Err(Error::new("packet is not a 1.21.1 serverbound play packet")),
+    };
+    let mut w = Writer::new();
+    w.varint(id);
+    write(&mut w);
+    Ok(w.data)
+}
