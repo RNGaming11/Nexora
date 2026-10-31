@@ -61,7 +61,10 @@ fn read_slot(r: &mut Reader) -> Result<()> {
     if count == 0 {
         return Ok(());
     }
-    let _item_id = r.varint()?;
+    let item_id = r.varint()?;
+    if item_id < 0 {
+        return Err(Error::new("negative item registry id in 1.21.1 recipe slot"));
+    }
     let added = r.count(256)?;
     let removed = r.count(256)?;
     if added != 0 || removed != 0 {
