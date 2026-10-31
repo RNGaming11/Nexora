@@ -15,7 +15,6 @@ static MOD_API_LEVEL: [u8; 27] = horizon_mods::api_level::MARK;
 fn main() {
     horizon_threads::configure_allocator();
     std::hint::black_box(&MOD_API_LEVEL);
-    horizon_client::telemetry::mark_start();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let game_args = args.iter().take_while(|a| *a != "--dedicated");
     let help = game_args
