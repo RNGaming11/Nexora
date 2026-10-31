@@ -67,10 +67,19 @@ fn read_slot(r: &mut Reader) -> Result<()> {
     }
     let added = r.count(256)?;
     let removed = r.count(256)?;
-    if added != 0 || removed != 0 {
-        return Err(Error::new(
-            "component-bearing 1.21.1 recipe slots are not supported yet",
-        ));
+    if added != 0 {
+        let component_id = r.varint()?;
+        let component = super::component_ids::name(component_id).unwrap_or("unknown");
+        return Err(Error::new(format!(
+            "1.21.1 recipe slot component {component} (id {component_id}) is not supported yet"
+        )));
+    }
+    if removed != 0 {
+        let component_id = r.varint()?;
+        let component = super::component_ids::name(component_id).unwrap_or("unknown");
+        return Err(Error::new(format!(
+            "1.21.1 recipe slot removal for {component} (id {component_id}) is not supported yet"
+        )));
     }
     Ok(())
 }
