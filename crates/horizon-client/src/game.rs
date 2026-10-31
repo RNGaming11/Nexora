@@ -15364,7 +15364,6 @@ impl ApplicationHandler for Game<'_> {
                     let updated = Instant::now();
                     self.track_toggle_screens();
                     // For the "I'm playing" ping: an atomic, sent on when it changes.
-                    horizon_client::heartbeat::set_lan(self.is_published());
                     self.update_discord_presence();
                     let steps = self.clock.advance(elapsed);
                     // The world ticking in the frame: once its ticks took a
@@ -17831,7 +17830,6 @@ pub fn run() -> Result<()> {
     // for a server, a benchmark, a run that quits by itself, a harness's fixture or a run that
     // horizon-ctl drives: those start in a source checkout and wrote the list there.
     if !options.offscreen && !synchronous_startup(&options) {
-        horizon_client::heartbeat::start();
         if let Err(e) = horizon_client::multiplayer::add_official_server(&std::env::current_dir()?)
         {
             log::warn!("could not add the official server to servers.dat: {e}");
