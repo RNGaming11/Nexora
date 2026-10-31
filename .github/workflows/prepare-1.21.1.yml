@@ -47,9 +47,9 @@ jobs:
             .port-cache/versions/1.21.1/classes-mapped.json
             .port-cache/versions/1.21.1/classes-client-mapped.json
             .port-cache/versions/1.21.1/classes-server-mapped.json
-            .port-cache/versions/1.21.1/datagen/out/reports/registries.json
-            .port-cache/versions/1.21.1/datagen/out/reports/packets.json
-            .port-cache/versions/1.21.1/datagen/out/reports/items.json
-            .port-cache/versions/1.21.1/datagen/out/reports/blocks.json
-            .port-cache/versions/1.21.1/datagen/out/reports/commands.json
+            .port-cache/versions/1.21.1/datagen/reports/registries.json
+            .port-cache/versions/1.21.1/datagen/reports/packets.json
+            .port-cache/versions/1.21.1/datagen/reports/items.json
+            .port-cache/versions/1.21.1/datagen/reports/blocks.json
+            .port-cache/versions/1.21.1/datagen/reports/commands.json
             target/1.21.1/packet_ids.rs
