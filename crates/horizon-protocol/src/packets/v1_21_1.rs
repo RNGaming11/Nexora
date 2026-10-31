@@ -370,6 +370,28 @@ mod tests {
     }
 
     #[test]
+    fn configuration_packet_ids_match_protocol_767_inventory() {
+        use ids::{configuration_clientbound as cb, configuration_serverbound as sb};
+        assert_eq!(
+            [cb::COOKIE_REQUEST, cb::CUSTOM_PAYLOAD, cb::DISCONNECT,
+             cb::FINISH_CONFIGURATION, cb::KEEP_ALIVE, cb::PING, cb::RESET_CHAT,
+             cb::REGISTRY_DATA, cb::RESOURCE_PACK_POP, cb::RESOURCE_PACK_PUSH,
+             cb::STORE_COOKIE, cb::TRANSFER, cb::UPDATE_ENABLED_FEATURES,
+             cb::UPDATE_TAGS, cb::SELECT_KNOWN_PACKS, cb::CUSTOM_REPORT_DETAILS,
+             cb::SERVER_LINKS],
+            std::array::from_fn(|i| i as i32),
+        );
+        assert_eq!(
+            [sb::CLIENT_INFORMATION, sb::COOKIE_RESPONSE, sb::CUSTOM_PAYLOAD,
+             sb::FINISH_CONFIGURATION, sb::KEEP_ALIVE, sb::PONG, sb::RESOURCE_PACK,
+             sb::SELECT_KNOWN_PACKS],
+            std::array::from_fn(|i| i as i32),
+        );
+        assert_eq!(cb::NAMES.len(), 17);
+        assert_eq!(sb::NAMES.len(), 8);
+    }
+
+    #[test]
     fn simple_missing_packets_round_trip() {
         round_trip(AddExperienceOrb { entity_id: 9, x: 1.25, y: 64.0, z: -3.5, value: 7 });
         round_trip(DebugSample { samples: vec![1, -2, i64::MAX], sample_type: 2 });
