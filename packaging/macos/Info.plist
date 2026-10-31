@@ -10,7 +10,7 @@
 	<key>CFBundleExecutable</key>
 	<string>nexora-launcher</string>
 	<key>CFBundleIconFile</key>
-	<string>horizon</string>
+	<string>nexora</string>
 	<key>CFBundleIdentifier</key>
 	<string>app.nexora.launcher</string>
 	<key>CFBundleInfoDictionaryVersion</key>
