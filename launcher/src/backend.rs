@@ -340,11 +340,12 @@ pub(crate) fn parse_releases(
             continue;
         }
         let found = r["assets"].as_array().into_iter().flatten().find_map(|a| {
-            (Some(a["name"].as_str()?) == asset).then(|| {
+            let name = a["name"].as_str()?;
+            (Some(name) == asset).then(|| {
                 Some((
                     a["url"]
                         .as_str()
-                        .map(|url| format!("{url}?filename={asset}"))
+                        .map(|url| format!("{url}?filename={name}"))
                         .or_else(|| a["browser_download_url"].as_str().map(str::to_owned))?,
                     a["size"].as_u64()?,
                 ))
