@@ -1,5 +1,5 @@
 //! The launcher's night look ("Night" in `docs/design-system.md`): a pixel night sky that turns to
-//! a sunset at the bottom, plates over it only where text needs them, one violet for the main
+//! a sunset at the bottom, plates over it only where text needs them, one blue for the main
 //! action, focus and progress, and Bricolage Grotesque (SIL OFL 1.1, `fonts/OFL-BricolageGrotesque.txt`).
 //! Light players get the same look at dawn ([`DAWN`]). The game's menus don't use it.
 use crate::{step, Blocks, Step, Web};
@@ -74,21 +74,21 @@ pub struct Night {
 }
 
 pub const NIGHT: Night = Night {
-    sky: [0x07061a, 0x140f38, 0x2a1656, 0x5b2a78, 0xb0477d, 0xf08a5d],
-    page: 0x0e0b26,
-    side: 0x0a0820,
-    card: 0x15112e,
+    sky: [0x070d18, 0x0c1b30, 0x103454, 0x145078, 0x1685a5, 0x42c5d9],
+    page: 0x091321,
+    side: 0x07101c,
+    card: 0x101e2d,
     card_alpha: 0.84,
-    card_hi: 0x231c4a,
+    card_hi: 0x172b3e,
     card_hi_alpha: 0.90,
-    stroke: 0xb9acff,
+    stroke: 0x8bc9e8,
     stroke_alpha: 0.12,
     rule_alpha: 0.10,
-    ink: 0xf4f2ff,
-    ink_soft: 0xcfc9ea,
-    muted: 0xa59fc6,
-    accent: 0x7656fa,
-    accent_hi: 0xa08cff,
+    ink: 0xf0f7fb,
+    ink_soft: 0xc4d8e5,
+    muted: 0x8fa9ba,
+    accent: 0x168fbd,
+    accent_hi: 0x49c2e5,
     on_accent: 0xffffff,
     success: 0x5fd39a,
     warn: 0xf5b45a,
@@ -98,21 +98,21 @@ pub const NIGHT: Night = Night {
 
 /// The light appearance: the same sky at dawn, pale blue to peach, with the night's violet.
 pub const DAWN: Night = Night {
-    sky: [0xc9d3f2, 0xdcd8f3, 0xead5ec, 0xf5d3d8, 0xf9d6bd, 0xfbe4c6],
-    page: 0xe9e6f6,
-    side: 0xe1ddf1,
+    sky: [0xc8e2f2, 0xd1e8f1, 0xd9edf0, 0xe3eff0, 0xeaf1ed, 0xf1f4eb],
+    page: 0xe5eff4,
+    side: 0xdce9f0,
     card: 0xfdfcff,
     card_alpha: 0.86,
     card_hi: 0xffffff,
     card_hi_alpha: 0.94,
-    stroke: 0x3b2f78,
+    stroke: 0x24556d,
     stroke_alpha: 0.12,
     rule_alpha: 0.10,
-    ink: 0x1b1530,
-    ink_soft: 0x3b3354,
-    muted: 0x585071,
-    accent: 0x5b3fd6,
-    accent_hi: 0x5333c9,
+    ink: 0x102634,
+    ink_soft: 0x294653,
+    muted: 0x526b78,
+    accent: 0x087da8,
+    accent_hi: 0x066b91,
     on_accent: 0xffffff,
     success: 0x136336,
     warn: 0x7a4f00,
