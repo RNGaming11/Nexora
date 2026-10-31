@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     env:
-      HORIZON_VERSIONS: .port-cache/versions
+      HORIZON_VERSIONS: ${{ github.workspace }}/.port-cache/versions
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
