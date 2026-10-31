@@ -27,8 +27,8 @@ EXPECTED = {
 
 def mapping_stats(path):
     classes = members = 0
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line:
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        if not line or line.lstrip().startswith("#"):
             continue
         if line[0].isspace():
             members += 1
