@@ -371,6 +371,79 @@ mod tests {
     }
 
     #[test]
+    fn generated_packet_inventory_matches_protocol_767_codec_ids() {
+        use crate::{Direction, State, packet_ids_1_21_1 as generated};
+
+        assert_eq!(generated::handshake::serverbound::INTENTION, 0);
+        assert_eq!(generated::name(State::Login, Direction::Clientbound, ids::login_clientbound::GAME_PROFILE), Some("game_profile"));
+
+        for (id, name) in [
+            (ids::configuration_clientbound::COOKIE_REQUEST, "cookie_request"),
+            (ids::configuration_clientbound::CUSTOM_PAYLOAD, "custom_payload"),
+            (ids::configuration_clientbound::DISCONNECT, "disconnect"),
+            (ids::configuration_clientbound::FINISH_CONFIGURATION, "finish_configuration"),
+            (ids::configuration_clientbound::KEEP_ALIVE, "keep_alive"),
+            (ids::configuration_clientbound::PING, "ping"),
+            (ids::configuration_clientbound::RESET_CHAT, "reset_chat"),
+            (ids::configuration_clientbound::REGISTRY_DATA, "registry_data"),
+            (ids::configuration_clientbound::RESOURCE_PACK_POP, "resource_pack_pop"),
+            (ids::configuration_clientbound::RESOURCE_PACK_PUSH, "resource_pack_push"),
+            (ids::configuration_clientbound::STORE_COOKIE, "store_cookie"),
+            (ids::configuration_clientbound::TRANSFER, "transfer"),
+            (ids::configuration_clientbound::UPDATE_ENABLED_FEATURES, "update_enabled_features"),
+            (ids::configuration_clientbound::UPDATE_TAGS, "update_tags"),
+            (ids::configuration_clientbound::SELECT_KNOWN_PACKS, "select_known_packs"),
+            (ids::configuration_clientbound::CUSTOM_REPORT_DETAILS, "custom_report_details"),
+            (ids::configuration_clientbound::SERVER_LINKS, "server_links"),
+        ] {
+            assert_eq!(generated::name(State::Configuration, Direction::Clientbound, id), Some(name));
+        }
+
+        for (id, name) in [
+            (ids::configuration_serverbound::CLIENT_INFORMATION, "client_information"),
+            (ids::configuration_serverbound::COOKIE_RESPONSE, "cookie_response"),
+            (ids::configuration_serverbound::CUSTOM_PAYLOAD, "custom_payload"),
+            (ids::configuration_serverbound::FINISH_CONFIGURATION, "finish_configuration"),
+            (ids::configuration_serverbound::KEEP_ALIVE, "keep_alive"),
+            (ids::configuration_serverbound::PONG, "pong"),
+            (ids::configuration_serverbound::RESOURCE_PACK, "resource_pack"),
+            (ids::configuration_serverbound::SELECT_KNOWN_PACKS, "select_known_packs"),
+        ] {
+            assert_eq!(generated::name(State::Configuration, Direction::Serverbound, id), Some(name));
+        }
+
+        for (id, name) in [
+            (ids::play_clientbound::ADD_EXPERIENCE_ORB, "add_experience_orb"),
+            (ids::play_clientbound::COMMAND_SUGGESTIONS, "command_suggestions"),
+            (ids::play_clientbound::CUSTOM_REPORT_DETAILS, "custom_report_details"),
+            (ids::play_clientbound::DEBUG_SAMPLE, "debug_sample"),
+            (ids::play_clientbound::HORSE_SCREEN_OPEN, "horse_screen_open"),
+            (ids::play_clientbound::PLAYER_COMBAT_END, "player_combat_end"),
+            (ids::play_clientbound::PLAYER_COMBAT_ENTER, "player_combat_enter"),
+            (ids::play_clientbound::RECIPE, "recipe"),
+            (ids::play_clientbound::SELECT_ADVANCEMENTS_TAB, "select_advancements_tab"),
+            (ids::play_clientbound::SET_CARRIED_ITEM, "set_carried_item"),
+            (ids::play_clientbound::UPDATE_RECIPES, "update_recipes"),
+        ] {
+            assert_eq!(generated::name(State::Play, Direction::Clientbound, id), Some(name));
+        }
+
+        for (id, name) in [
+            (ids::play_serverbound::COMMAND_SUGGESTION, "command_suggestion"),
+            (ids::play_serverbound::DEBUG_SAMPLE_SUBSCRIPTION, "debug_sample_subscription"),
+            (ids::play_serverbound::PICK_ITEM, "pick_item"),
+            (ids::play_serverbound::RECIPE_BOOK_SEEN_RECIPE, "recipe_book_seen_recipe"),
+            (ids::play_serverbound::SEEN_ADVANCEMENTS, "seen_advancements"),
+            (ids::play_serverbound::SWING, "swing"),
+        ] {
+            assert_eq!(generated::name(State::Play, Direction::Serverbound, id), Some(name));
+        }
+
+        assert_eq!(generated::play::clientbound::NAMES.len(), 124);
+        assert_eq!(generated::play::serverbound::NAMES.len(), 58);
+    }
+
+    #[test]
     fn configuration_packet_ids_match_protocol_767_inventory() {
         use ids::{configuration_clientbound as cb, configuration_serverbound as sb};
         assert_eq!(
