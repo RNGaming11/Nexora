@@ -30,6 +30,7 @@ The preparation work already present on this branch includes:
 - Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
 - The 23 recipe serializer IDs are pinned in [`recipe-serializers.json`](recipe-serializers.json) from the official 1.21.1 `minecraft:recipe_serializer` registry, not a later-version packet enum. The preparation workflow regenerates this inventory from Mojang's report and checks it byte-for-byte. Vanilla serializer bodies are decoded and round-tripped for shaped, shapeless, special, cooking, stonecutting, and smithing recipes.
 - The 57 item data-component IDs are pinned in [`data-component-ids.json`](data-component-ids.json) and exposed through a protocol-767 lookup table. Recipe slots report the exact unsupported component rather than interpreting it with the incompatible 26.3 table.
+- The world block registry now has `BlockRegistry::from_nbt_with_data_version`, so a 1.21.1 caller can validate DataVersion 3955 without changing the active 26.3 constant (5023).
 - Recipe slot data-component patches are explicitly rejected until their 1.21.1-specific codecs are implemented; the 26.3 component ID table is never reused.
 - Built-in registry report parsing rejects duplicate IDs, gaps, negative/missing IDs, and IDs outside the contiguous range instead of silently constructing invalid lookup tables.
 
