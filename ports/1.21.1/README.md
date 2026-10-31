@@ -51,7 +51,7 @@ Protocol inventory changes are substantial: play clientbound has 4 added, 24 rem
 
 The highest-ranked blocker is the data-component registry: the target has a different 57-entry registry, with 69 current-version component types absent and 4 target-only types. This is why the port keeps its own component ID table and does not reuse the 26.3 item component IDs.
 
-The complete machine-generated comparison and ranked worklist are uploaded as the `nexora-26.3-to-1.21.1-port-diff` Actions artifact.
+The complete machine-generated comparison contains 930 ranked work items and is uploaded as the `nexora-26.3-to-1.21.1-port-diff` Actions artifact.
 
 ## Next port stages
 
