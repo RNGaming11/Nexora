@@ -88,8 +88,8 @@ The opening, then Play ([clip](docs/opening.webm)):
   folder, empty but for the player's options and name, or a copy of another instance (never its
   sign-in sessions or logs). Names, icons (a block or item texture from the
   player's prepared files, or a colour) and groups are kept in `instances.json` in the launcher's
-  data folder, so renaming moves nothing. Every instance follows the launcher's data collection
-  answer and No AI. In the window, **+** beside Instances makes one, the sidebar lists them by
+  data folder, so renaming moves nothing. Every instance follows
+  No AI. In the window, **+** beside Instances makes one, the sidebar lists them by
   group (click one to play it), and Home's Instance row has Edit (name, group, icon), Copy and
   Open folder. The Instance row shows its play time and when it was last played: every run started
   from the window or `nexora-launcher play` adds to it (`instance list` shows it too). Each
@@ -246,8 +246,8 @@ page `servers.json` (the list), `servers/<name>/` (the servers created there) an
   Without one, `HTTPS_PROXY` and `HTTP_PROXY` are used when the launcher is started with them, and
   `NO_PROXY` names the hosts to reach directly, a modpack import's jars included. A server on this
   computer never goes through it.
-- **Links**: the Discord invite, the Sponsors page and the website come from `launcher/links.json` on main
-  (`{"discord": "...", "sponsor": "...", "website": "..."}`), so they change without a launcher release. Offline,
+- **Links**: the Discord invite and the website come from `launcher/links.json` on main
+  (`{"discord": "...", "website": "..."}`), so they change without a launcher release. Offline,
   the launcher uses the same values built in; an empty address hides its button.
 
 Long pages, dialogs, the server console and data previews have a visible scrollbar when
