@@ -209,7 +209,7 @@ struct Launcher {
     /// Why the last picture for Home's background was refused.
     background_error: Option<String>,
     settings: Settings,
-    /// The Discord, sponsor and website links: built in until links.json on main has been read.
+    /// The Nexora website link, loaded from links.json when online.
     links: backend::Links,
     preparing: bool,
     prepare_log: VecDeque<String>,
