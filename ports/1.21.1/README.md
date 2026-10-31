@@ -35,6 +35,24 @@ The preparation work already present on this branch includes:
 
 Large downloaded and generated artifacts intentionally stay outside Git. By default, the preparation cache is under `~/code/horizon-parity/versions/1.21.1/`; set `HORIZON_VERSIONS` to select another location.
 
+## Generated 26.3-to-1.21.1 comparison
+
+The preparation workflow builds a mapped class diff and ranked worklist from the official artifacts. The latest generated comparison records these version changes:
+
+| Fact | Active 26.3 | Target 1.21.1 |
+| --- | ---: | ---: |
+| Java major | 25 | 21 |
+| Protocol | 777 | 767 |
+| World data version | 5023 | 3955 |
+| Resource pack format | 97.1 | 34 |
+| Data pack format | 121.0 | 48.0 |
+
+Protocol inventory changes are substantial: play clientbound has 4 added, 24 removed, and 118 renumbered packets; play serverbound has 3 added, 14 removed, and 54 renumbered. The registry comparison records 13 added, 30 removed, and 40 changed registries. The mapped class comparison records 1,132 added, 4,246 removed, 589 moved, and 5,353 changed classes.
+
+The highest-ranked blocker is the data-component registry: the target has a different 57-entry registry, with 69 current-version component types absent and 4 target-only types. This is why the port keeps its own component ID table and does not reuse the 26.3 item component IDs.
+
+The complete machine-generated comparison and ranked worklist are uploaded as the `nexora-26.3-to-1.21.1-port-diff` Actions artifact.
+
 ## Next port stages
 
 1. Generate and validate 1.21.1 registries from the verified vanilla artifacts. The version constants are isolated in `ports/1.21.1/version.rs` and exposed as `horizon_core::version_1_21_1`; do not hand-edit `crates/horizon-core/src/version.rs`, which describes the active 26.3 workspace.
