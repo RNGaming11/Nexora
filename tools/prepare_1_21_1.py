@@ -172,15 +172,16 @@ def main():
         json.dumps(server_classes, separators=(",", ":")), encoding="utf-8"
     )
 
-    print("Comparing mapped server classes against mapped client classes", flush=True)
-    client_server_diff = class_index.diff(server_classes, client_classes)
+    print("Comparing mapped client classes against mapped server classes", flush=True)
+    client_server_diff = class_index.diff(client_classes, server_classes)
     client_server_diff_path = directory / "classes-client-server-diff.json"
     client_server_diff_path.write_text(
         json.dumps(client_server_diff, separators=(",", ":")), encoding="utf-8"
     )
     client_server_summary = {
-        "server_to_client_added_classes": len(client_server_diff["added"]),
-        "server_to_client_removed_classes": len(client_server_diff["removed"]),
+        "server_only_classes": len(client_server_diff["added"]),
+        "client_only_classes": len(client_server_diff["removed"]),
+        "shared_classes": len(client_classes.keys() & server_classes.keys()),
         "moved_classes": len(client_server_diff["moved"]),
         "changed_common_classes": len(client_server_diff["changed"]),
         "changed_methods": sum(
@@ -189,7 +190,7 @@ def main():
         ),
         "diff_file": str(client_server_diff_path.resolve()),
     }
-    print("Client/server implementation differences: " +
+    print("Client/server implementation comparison: " +
           json.dumps(client_server_summary, sort_keys=True), flush=True)
 
     mapped_classes = dict(client_classes)
