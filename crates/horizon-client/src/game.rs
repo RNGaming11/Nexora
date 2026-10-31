@@ -17505,8 +17505,7 @@ impl Loading {
         );
         if let Some(renderer) = &mut self.renderer {
             match renderer.render(&frame) {
-                Ok(true) if self.gui.is_some() && self.menu.pending.is_none() => {
-                }
+                Ok(true) if self.gui.is_some() && self.menu.pending.is_none() => {}
                 Ok(_) => {}
                 Err(e) => log::warn!("Horizon: loading screen frame failed: {e}"),
             }
