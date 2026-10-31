@@ -264,6 +264,27 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_registry_protocol_ids() {
+        let report = r#"{"minecraft:item":{"entries":{"minecraft:air":{"protocol_id":0},"minecraft:stone":{"protocol_id":0}}}}"#;
+        let error = Builtin::parse(report).unwrap_err();
+        assert!(error.to_string().contains("duplicate protocol_id 0"));
+    }
+
+    #[test]
+    fn rejects_registry_protocol_id_gaps() {
+        let report = r#"{"minecraft:item":{"entries":{"minecraft:air":{"protocol_id":0},"minecraft:stone":{"protocol_id":2}}}}"#;
+        let error = Builtin::parse(report).unwrap_err();
+        assert!(error.to_string().contains("outside the contiguous registry range"));
+    }
+
+    #[test]
+    fn rejects_missing_registry_protocol_ids() {
+        let report = r#"{"minecraft:item":{"entries":{"minecraft:air":{}}}}"#;
+        let error = Builtin::parse(report).unwrap_err();
+        assert!(error.to_string().contains("no valid protocol_id"));
+    }
+
+    #[test]
     fn dynamic_registries_follow_arrival_order() {
         let mut d = Dynamic::default();
         d.add(RegistryData {
