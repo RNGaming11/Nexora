@@ -39,8 +39,8 @@ pub fn nightly_digest(
     keys: &[PublicKey],
     fetch: impl Fn(&str) -> Result<Option<Vec<u8>>, String>,
 ) -> Result<String, String> {
-    let sums = fetch(&asset_url(tag, SUMS)?)?;
-    let signature = fetch(&asset_url(tag, SIGNATURE)?)?
+    let sums = fetch(&asset_url(tag, SUMS))?;
+    let signature = fetch(&asset_url(tag, SIGNATURE))?
         .map(|bytes| String::from_utf8_lossy(&bytes).into_owned());
     horizon_release_sign::nightly_digest(asset, sums.as_deref(), signature.as_deref(), keys)
 }
