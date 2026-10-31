@@ -1,8 +1,8 @@
 //! The benchmark report format, version 1 (docs/benchmark-report.md).
 //!
-//! One JSON file per run, the same for the game, the launcher and `tools/perf_bench.py`: the local log
-//! a player can attach, and, with consent, what the telemetry upload sends ([`Report::for_upload`]).
-//! It holds summaries and fixed-edge histogram counts, never raw frame streams.
+//! One JSON file per run, the same for the game, the launcher and `tools/perf_bench.py`: a local report
+//! a player can inspect or attach to an issue. Reports are not uploaded. It holds summaries and
+//! fixed-edge histogram counts, never raw frame streams.
 
 use std::collections::BTreeMap;
 use std::io;
@@ -289,17 +289,6 @@ impl Report {
             ));
         }
         Ok(report)
-    }
-
-    /// The report without its local-only fields, dated to the day: what an upload sends.
-    pub fn for_upload(&self) -> Report {
-        let day = self.created.get(..10).unwrap_or_default();
-        Report {
-            label: None,
-            local: Vec::new(),
-            created: format!("{day}T00:00:00Z"),
-            ..self.clone()
-        }
     }
 
     pub fn to_json(&self) -> String {
