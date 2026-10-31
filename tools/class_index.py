@@ -175,7 +175,8 @@ class ClassFile:
         if tag == 15:
             return f"h{entry[1]}:{self.member(entry[2])}"
         if tag == 16:
-            return f"t:{self.utf8(entry[1])}"
+            descriptor = self.mappings.descriptor(self.utf8(entry[1])) if self.mappings else self.utf8(entry[1])
+            return f"t:{descriptor}"
         if tag in (17, 18):
             method, arguments = self.bootstrap[entry[1]]
             return (f"y:{self.constant(entry[2])}@{self.constant(method)}"
@@ -269,7 +270,8 @@ def index_jar(jar, jobs=None, prefixes=("net/minecraft/", "com/mojang/"), mappin
     """Index selected packages, or all classes after applying official mappings."""
     with zipfile.ZipFile(jar) as archive:
         names = sorted(n for n in archive.namelist() if n.endswith(".class") and
-                       (mappings is not None or n.startswith(prefixes)))
+                       ((n[:-6] in mappings.obfuscated_to_source) if mappings is not None
+                        else n.startswith(prefixes)))
     batches = [names[i::32] for i in range(32)]
     result = {}
     with ProcessPoolExecutor(max_workers=jobs) as pool:
