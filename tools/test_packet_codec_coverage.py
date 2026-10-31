@@ -30,6 +30,8 @@ class PacketCodecCoverageTests(unittest.TestCase):
         expected = {
             "VERSION_ID": facts["id"],
             "VANILLA_VERSION": facts["name"],
+            "RELEASE_TIME": facts["release_time"],
+            "ASSET_INDEX": target["artifacts"]["version_json"]["url"].rsplit("/", 1)[-1].split(".")[0],
             "PROTOCOL_VERSION": facts["protocol_version"],
             "DATA_VERSION": facts["data_version"],
             "JAVA_VERSION": facts["java_major"],
