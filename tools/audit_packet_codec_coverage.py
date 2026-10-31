@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Audit existing typed packet codecs against a generated target packet-ID inventory."""
+"""Audit 1.21.1 packet codec candidates without mistaking names for compatibility."""
 
 import argparse
 import json
 import re
 from pathlib import Path
 
-MODULE = re.compile(r"^\s*pub mod ([a-z_]+) \{$")
-CONST = re.compile(r"^\s*pub const ([A-Z0-9_]+): i32 = (-?\d+);$")
+MODULE = re.compile(r"^\\s*pub mod ([a-z_]+) \\{$")
+CONST = re.compile(r"^\\s*pub const ([A-Z0-9_]+): i32 = (-?\\d+);$")
 ENUM = re.compile(
-    r"packet_enum!\(\s*(Clientbound|Serverbound)\s*,\s*"
-    r"crate::ids::([a-z_]+)::(clientbound|serverbound)\s*\{(.*?)\}\s*\);",
+    r"packet_enum!\\(\\s*(Clientbound|Serverbound)\\s*,\\s*"
+    r"crate::ids::([a-z_]+)::(clientbound|serverbound)\\s*\\{(.*?)\\}\\s*\\);",
     re.S,
 )
 VARIANT = re.compile(
-    r"\b([A-Za-z][A-Za-z0-9_]*)\s*\(\s*"
+    r"\\b([A-Za-z][A-Za-z0-9_]*)\\s*\\(\\s*"
     r"((?:(?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*))"
-    r"\s*\)\s*=\s*([A-Z0-9_]+)"
+    r"\\s*\\)\\s*=\\s*([A-Z0-9_]+)"
 )
 
 
@@ -39,9 +39,7 @@ def read_ids(path):
             continue
         match = CONST.match(line)
         if match and state and direction:
-            result.setdefault((state, direction), {})[match.group(1)] = {
-                "id": int(match.group(2)), "name": match.group(1).lower()
-            }
+            result.setdefault((state, direction), {})[match.group(1)] = int(match.group(2))
     return result
 
 
@@ -80,11 +78,15 @@ def read_codecs(root):
     for path in packet_dir.glob("*.rs"):
         source = path.read_text(encoding="utf-8")
         for match in ENUM.finditer(source):
-            direction = match.group(3)
-            state = match.group(2)
+            state, direction = match.group(2), match.group(3)
             entries = result.setdefault((state, direction), {})
             for variant, packet_type, constant in VARIANT.findall(match.group(4)):
-                entries[constant] = {"variant": variant, "type": packet_type, "source": str(path)}
+                entries[constant] = {
+                    "variant": variant,
+                    "type": packet_type,
+                    "source": str(path),
+                    "version": "26.3",
+                }
     for key, entries in versioned.items():
         target = result.setdefault(key, {})
         for constant, (variant, packet_type) in entries.items():
@@ -98,42 +100,82 @@ def read_codecs(root):
     return result
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path("."))
-    parser.add_argument("--target", type=Path, default=Path("ports/1.21.1/packet_ids.rs"))
-    parser.add_argument("--out", type=Path, default=Path("ports/1.21.1/packet-codec-coverage.json"))
-    args = parser.parse_args()
-
-    target = read_ids(args.target)
-    codecs = read_codecs(args.root)
-    report = {"target_packet_count": sum(map(len, target.values())), "codec_packet_count": sum(map(len, codecs.values())), "states": {}}
+def audit(target, codecs, current_ids):
+    report = {
+        "target_packet_count": sum(map(len, target.values())),
+        "candidate_codec_count": 0,
+        "id_aligned_reuse_candidate_count": 0,
+        "version_specific_codec_count": 0,
+        "missing_codec_count": 0,
+        "payload_compatibility_verified_count": 0,
+        "states": {},
+    }
     for key in sorted(target):
-        wanted, existing = target[key], codecs.get(key, {})
-        missing = sorted(name for name in wanted if name not in existing)
-        obsolete = sorted(name for name in existing if name not in wanted)
+        wanted, existing, old_ids = target[key], codecs.get(key, {}), current_ids.get(key, {})
+        missing, mismatches, aligned, version_specific = [], [], [], []
+        for constant, target_id in sorted(wanted.items()):
+            codec = existing.get(constant)
+            if codec is None:
+                missing.append({"constant": constant, "id": target_id})
+                continue
+            report["candidate_codec_count"] += 1
+            item = {"constant": constant, "target_id": target_id, **codec}
+            if codec.get("version") == "1.21.1":
+                version_specific.append(item)
+                report["version_specific_codec_count"] += 1
+                continue
+            current_id = old_ids.get(constant)
+            if current_id == target_id:
+                aligned.append({**item, "current_id": current_id})
+                report["id_aligned_reuse_candidate_count"] += 1
+            else:
+                mismatches.append({**item, "current_id": current_id})
+        report["missing_codec_count"] += len(missing)
         report["states"][f"{key[0]}/{key[1]}"] = {
             "target_count": len(wanted),
-            "existing_codec_count": len(existing),
-            "covered_count": len(wanted) - len(missing),
-            "missing_codecs": [{"constant": name, **wanted[name]} for name in missing],
-            "codecs_not_in_target": [{"constant": name, **existing[name]} for name in obsolete],
+            "candidate_codec_count": len(wanted) - len(missing),
+            "id_aligned_reuse_candidate_count": len(aligned),
+            "version_specific_codec_count": len(version_specific),
+            "id_mismatches": mismatches,
+            "id_aligned_reuse_candidates": aligned,
+            "version_specific_codecs": version_specific,
+            "missing_codecs": missing,
         }
-        print(f"{key[0]}/{key[1]}: {len(wanted)-len(missing)}/{len(wanted)} target packets have existing codecs; {len(missing)} need codecs")
-        if missing:
-            print("  Missing: " + ", ".join(f"{name.lower()} (id {wanted[name]['id']})" for name in missing))
-    missing_total = sum(len(v["missing_codecs"]) for v in report["states"].values())
-    report["missing_codec_count"] = missing_total
+        print(
+            f"{key[0]}/{key[1]}: {len(wanted)-len(missing)}/{len(wanted)} "
+            f"have codec candidates; {len(aligned)} share the current packet ID, "
+            f"{len(mismatches)} have a different ID, {len(version_specific)} are version-specific"
+        )
     report["registry_dependent_codecs"] = [
         {"state": f"{state}/{direction}", "constant": name, **details}
         for (state, direction), entries in codecs.items()
         for name, details in entries.items()
         if details.get("registry_dependent")
     ]
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=Path("."))
+    parser.add_argument("--target", type=Path, default=Path("ports/1.21.1/packet_ids.rs"))
+    parser.add_argument("--current", type=Path, default=Path("crates/horizon-protocol/src/ids.rs"))
+    parser.add_argument("--out", type=Path, default=Path("ports/1.21.1/packet-codec-coverage.json"))
+    args = parser.parse_args()
+
+    target = read_ids(args.target)
+    current = read_ids(args.current)
+    codecs = read_codecs(args.root)
+    report = audit(target, codecs, current)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(f"Missing target codecs: {missing_total}")
-    print(f"Detailed coverage report: {args.out}")
+    args.out.write_text(json.dumps(report, indent=2) + "\\n", encoding="utf-8")
+    print(f"Target packets: {report['target_packet_count']}")
+    print(f"Codec candidates: {report['candidate_codec_count']}")
+    print(f"Same-ID reuse candidates: {report['id_aligned_reuse_candidate_count']}")
+    print(f"Version-specific codecs: {report['version_specific_codec_count']}")
+    print(f"Missing codec candidates: {report['missing_codec_count']}")
+    print("Payload compatibility verified: 0 (requires version-specific source review and wire tests)")
+    print(f"Detailed audit: {args.out}")
 
 
 if __name__ == "__main__":
