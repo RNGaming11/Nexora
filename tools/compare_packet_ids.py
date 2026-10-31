@@ -71,6 +71,17 @@ def main():
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result["summary"], sort_keys=True))
+    for state in ("handshake", "status", "login", "configuration", "play"):
+        for direction in ("clientbound", "serverbound"):
+            def count(items):
+                return sum(1 for item in items if item["state"] == state and item["direction"] == direction)
+            a, r, n = count(result["added"]), count(result["removed"]), count(result["renumbered"])
+            if a or r or n:
+                print(f"{state}/{direction}: added={a}, removed={r}, renumbered={n}")
+    if result["renumbered"]:
+        print("Renumbered packet examples:")
+        for item in result["renumbered"][:12]:
+            print(f"  {item['state']}/{item['direction']} {item['packet']}: {item['current_id']} -> {item['target_id']}")
     print(f"Detailed packet comparison: {args.out}")
 
 
