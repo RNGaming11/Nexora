@@ -109,6 +109,17 @@ pub fn get_bytes(url: &str) -> Result<Vec<u8>, String> {
 }
 
 pub(crate) fn get(url: &str) -> Result<ureq::Response, String> {
+    let resolved = if let Some(path) = url
+        .strip_prefix(&format!("https://github.com/{REPO}/releases/download/"))
+    {
+        let (tag, name) = path
+            .split_once('/')
+            .ok_or_else(|| "Invalid GitHub release asset URL.".to_string())?;
+        release_asset_url(tag, name)?
+    } else {
+        url.to_owned()
+    };
+    let url = resolved.as_str();
     let mut request = agent(url).get(url);
     // CI runners share addresses and hit GitHub's anonymous rate limit; they pass their own token.
     let token = github_token();
