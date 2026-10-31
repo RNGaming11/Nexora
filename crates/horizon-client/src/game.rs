@@ -16181,7 +16181,6 @@ impl Game<'_> {
         if self.rest_loader.is_none() && self.world_loader.is_none() {
             return Ok(false);
         }
-        self.perf.world_opening();
         if self.title.is_none() {
             self.title = Some(
                 Title::new(
@@ -17403,7 +17402,6 @@ impl Loading {
                 return;
             }
         };
-        horizon_client::telemetry::note_display(&window);
         let offscreen = self.options.as_ref().is_some_and(|o| o.offscreen);
         match loading_renderer(
             window.clone(),
