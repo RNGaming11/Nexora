@@ -128,12 +128,19 @@ def jar_facts(client_jar):
     with zipfile.ZipFile(client_jar) as archive:
         info = json.loads(archive.read("version.json"))
     pack = info.get("pack_version", {})
+    # Minecraft 1.21.1 stores pack formats as single integers ("resource" and
+    # "data"). Newer releases use major/minor pairs. Normalize both schemas.
+    def pack_format(name):
+        if name in pack:
+            return str(pack[name])
+        return f"{pack.get(name + '_major')}.{pack.get(name + '_minor')}"
+
     return {
         "id": info["id"],
         "world_version": info["world_version"],
         "protocol_version": info["protocol_version"],
-        "resource_pack": f"{pack.get('resource_major')}.{pack.get('resource_minor')}",
-        "data_pack": f"{pack.get('data_major')}.{pack.get('data_minor')}",
+        "resource_pack": pack_format("resource"),
+        "data_pack": pack_format("data"),
         "java_version": info["java_version"],
         "stable": info.get("stable"),
     }
