@@ -34,7 +34,7 @@ try {
         $env:Path = (Join-Path $jdk21 "bin") + ";" + $env:Path
     }
 
-    Invoke-Checked "Python mapping and packet-audit tests" { python -m unittest tools.test_proguard tools.test_packet_codec_coverage }
+    Invoke-Checked "Python mapping, packet-audit, and version-port tests" { python -m unittest tools.test_proguard tools.test_packet_codec_coverage tools.test_version_port }
     Invoke-Checked "Rust formatting" { cargo fmt --all -- --check }
     Invoke-Checked "Core version tests" { cargo test -p horizon-core }
     Invoke-Checked "Rust protocol tests" { cargo test -p horizon-protocol }
