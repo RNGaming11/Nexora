@@ -9,8 +9,9 @@
 //! Minecraft: Java Edition, as other launchers do. Offline names play behind such an account.
 //! The game binary itself, its harnesses and the servers don't go through the launcher's gate.
 //!
-//! The Azure app (client ID) is Horizon's own and is configuration: `HORIZON_MSA_CLIENT_ID` at
-//! build time, or at run time to override it. Without one, sign-in says it is not configured.
+//! The Azure app (client ID) belongs to Nexora and is configuration: `NEXORA_MSA_CLIENT_ID` at
+//! build time, or at run time to override it. The old `HORIZON_MSA_CLIENT_ID` name remains a
+//! compatibility fallback for existing local builds. Without one, sign-in says it is not configured.
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -21,7 +22,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub const SERVICE: &str = "dev.playhorizon.launcher";
 const SCOPE: &str = "XboxLive.signin offline_access";
 pub const NOT_CONFIGURED: &str =
-    "This build of the launcher has no Microsoft sign-in (HORIZON_MSA_CLIENT_ID), so it can't start the game.";
+    "Microsoft sign-in is not configured for this Nexora build (NEXORA_MSA_CLIENT_ID), so it can't start the game.";
 /// What every Play says while no account in the launcher owns the game.
 pub const NEEDS_OWNER: &str =
     "Sign in with a Microsoft account that owns Minecraft: Java Edition to play";
@@ -37,8 +38,10 @@ const RENEW_BEFORE: u64 = 3600;
 /// The configured Azure app, if any: the run-time variable wins over the build-time one, and an
 /// empty value means none.
 pub fn client_id() -> Option<String> {
-    std::env::var("HORIZON_MSA_CLIENT_ID")
+    std::env::var("NEXORA_MSA_CLIENT_ID")
         .ok()
+        .or_else(|| option_env!("NEXORA_MSA_CLIENT_ID").map(str::to_owned))
+        .or_else(|| std::env::var("HORIZON_MSA_CLIENT_ID").ok())
         .or_else(|| option_env!("HORIZON_MSA_CLIENT_ID").map(str::to_owned))
         .map(|id| id.trim().to_owned())
         .filter(|id| !id.is_empty())
