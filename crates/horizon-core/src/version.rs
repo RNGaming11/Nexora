@@ -19,3 +19,25 @@ pub const JAVA_VERSION: u32 = 25;
 pub const STABLE: bool = true;
 /// `WorldVersion.buildTime()` as `Date.toString()` prints it in UTC (`/version`).
 pub const BUILD_TIME: &str = "Tue Sep 15 11:20:48 UTC 2026";
+
+#[cfg(test)]
+mod port_tests {
+    use super::*;
+    use crate::version_1_21_1 as target;
+
+    #[test]
+    fn minecraft_1_21_1_facts_are_isolated_from_the_active_version() {
+        assert_eq!(target::VERSION_ID, "1.21.1");
+        assert_eq!(target::VANILLA_VERSION, "1.21.1");
+        assert_eq!(target::PROTOCOL_VERSION, 767);
+        assert_eq!(target::DATA_VERSION, 3955);
+        assert_eq!(target::RESOURCE_PACK_FORMAT, (34, 0));
+        assert_eq!(target::DATA_PACK_FORMAT, (48, 0));
+        assert_eq!(target::JAVA_VERSION, 21);
+        assert!(target::STABLE);
+
+        assert_eq!(VERSION_ID, "26.3");
+        assert_eq!(PROTOCOL_VERSION, 777);
+        assert_ne!(PROTOCOL_VERSION, target::PROTOCOL_VERSION);
+    }
+}
