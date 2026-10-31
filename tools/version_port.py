@@ -120,7 +120,11 @@ def paths(version):
     record = version_dir(version) / "prepared.json"
     if not record.exists():
         raise SystemExit(f"{version} is not prepared; run version_port.py prepare {version}")
-    return {key: Path(value) for key, value in json.loads(record.read_text())["paths"].items()}
+    prepared = json.loads(record.read_text())
+    result = {key: Path(value) for key, value in prepared["paths"].items()}
+    if "reports" not in result and prepared.get("reports"):
+        result["reports"] = Path(prepared["reports"])
+    return result
 
 
 def jar_facts(client_jar):
