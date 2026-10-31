@@ -371,6 +371,13 @@ mod tests {
     }
 
     #[test]
+    fn protocol_module_matches_the_isolated_target_version_facts() {
+        assert_eq!(PROTOCOL_VERSION, horizon_core::version_1_21_1::PROTOCOL_VERSION);
+        assert_eq!(horizon_core::version_1_21_1::VANILLA_VERSION, "1.21.1");
+        assert_ne!(PROTOCOL_VERSION, crate::PROTOCOL_VERSION);
+    }
+
+    #[test]
     fn generated_packet_inventory_matches_protocol_767_codec_ids() {
         use crate::{Direction, State, packet_ids_1_21_1 as generated};
 
