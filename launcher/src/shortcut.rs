@@ -19,7 +19,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub const DESKTOP_ENV: &str = "HORIZON_LAUNCHER_DESKTOP";
-const MAC_ICON: &[u8] = include_bytes!("../../packaging/icons/horizon.icns");
+const MAC_ICON: &[u8] = include_bytes!("../../packaging/icons/nexora.icns");
 /// The key a Linux shortcut names its instance with.
 const INSTANCE_KEY: &str = "X-Horizon-Instance";
 /// And a macOS one, in its Info.plist.
