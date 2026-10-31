@@ -207,6 +207,13 @@ def main():
     mapped_classes_path.write_text(
         json.dumps(mapped_classes, separators=(",", ":")), encoding="utf-8"
     )
+    # Keep the standard version-port diff pipeline usable: it expects the
+    # version's canonical class inventory at classes.json. For 1.21.1 that
+    # inventory must be the official-mapping-normalized union, never raw names.
+    classes_path = directory / "classes.json"
+    classes_path.write_text(
+        json.dumps(mapped_classes, separators=(",", ":")), encoding="utf-8"
+    )
 
     record = {
         "version": VERSION,
