@@ -269,8 +269,6 @@ struct Launcher {
     proxy_focus: FocusHandle,
     /// Settings' "Connect an AI agent" (`agents_page`).
     agents: agents_page::AgentsUi,
-    /// How many play Horizon now, while the server answers ("N playing now" on the Play page).
-    playing: Option<u64>,
     tx: Sender<Msg>,
     rx: Receiver<Msg>,
     _appearance: Subscription,
@@ -459,7 +457,6 @@ impl Launcher {
             client_run: None,
             client_vars: Vec::new(),
             agents: agents_page::AgentsUi::default(),
-            playing: None,
             tx,
             rx,
             _appearance: appearance,
@@ -711,7 +708,6 @@ impl Launcher {
                 Msg::Reused(_) => self.installed = backend::installed(),
                 Msg::Keychain(said) => self.keychain = said,
                 Msg::Owner(owns) => self.owner = Some(owns),
-                Msg::Playing(playing) => self.playing = playing,
                 Msg::JavaGame(id, home, cmd) => {
                     self.starting_client = None;
                     let spawned = cmd.and_then(|(cmd, vars)| {
@@ -4167,8 +4163,8 @@ impl Launcher {
 
 actions!(horizon_launcher, [Quit, CloseWindow]);
 
-/// What closing the last window does: stop the servers this launcher started, send the telemetry,
-/// exit. A game that is running keeps running. Cmd+Q goes through here too.
+/// What closing the last window does: stop the servers this launcher started and exit.
+/// A game that is running keeps running. Cmd+Q goes through here too.
 fn shut_down(cx: &mut App) {
     servers_page::stop_on_quit();
     cx.quit()
