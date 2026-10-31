@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 pub const REPO: &str = "RNGaming11/Nexora";
 pub const README_URL: &str = "https://github.com/RNGaming11/Nexora/blob/main/launcher/README.md";
 /// The players' page on connecting an AI agent (the website's docs/agents.md).
-pub const AGENT_DOCS_URL: &str = "https://playhorizon.dev/docs/agents";
+pub const AGENT_DOCS_URL: &str = "https://github.com/RNGaming11/Nexora/blob/main/docs/agent-control.md";
 /// This launcher's version: the release workflow sets `NEXORA_LAUNCHER_VERSION` from the
 /// tag it builds (no version-bump commits); other builds say Cargo.toml's.
 pub const VERSION: &str = version_or(option_env!("NEXORA_LAUNCHER_VERSION"));
