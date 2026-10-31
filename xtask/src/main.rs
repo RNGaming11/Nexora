@@ -192,7 +192,7 @@ fn icons() -> Result<(), String> {
     write(&packaging.join("nexora.icns"), &icns(&entries))?;
     // The window icon the game and the launcher set at run time (X11 and Windows title bars).
     write(
-        &repo.join("packaging/icons/hicolor/128x128/apps/nexora.png"),
+        &repo.join("crates/horizon-theme/icons/nexora-64.png"),
         &render(&square, (64, 64))?,
     )?;
     // Avatars, and the website's icons (horizon-site copies docs/media/brand/web/ into its public/).
