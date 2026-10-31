@@ -2,7 +2,6 @@
 //! a description, the error with its stack, then the details of the game and the machine.
 //! Written to `crash-reports/crash-<yyyy-MM-dd_HH.mm.ss>-client.txt` in the game folder when
 //! the main thread panics or `main` gets an error back. It leaves the machine only scrubbed, and
-//! only if the player allows crash reports (`telemetry`).
 use std::cell::{Cell, RefCell};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
