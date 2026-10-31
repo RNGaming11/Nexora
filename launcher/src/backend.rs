@@ -111,14 +111,10 @@ pub fn get_bytes(url: &str) -> Result<Vec<u8>, String> {
 pub(crate) fn get(url: &str) -> Result<ureq::Response, String> {
     let mut request = agent(url).get(url);
     // CI runners share addresses and hit GitHub's anonymous rate limit; they pass their own token.
-    let token = [
-        "NEXORA_GITHUB_TOKEN",
-        "GH_TOKEN",
-        "GITHUB_TOKEN",
-        "HORIZON_GITHUB_TOKEN",
-    ]
-    .into_iter()
-    .find_map(|name| std::env::var(name).ok().filter(|value| !value.is_empty()));
+    let token = github_token();
+    if url.starts_with("https://api.github.com/repos/") && url.contains("/releases/assets/") {
+        request = request.set("Accept", "application/octet-stream");
+    }
     if let Some(token) = token.as_deref() {
         if url.starts_with("https://api.github.com/") {
             request = request.set("Authorization", &format!("Bearer {token}"));
@@ -133,11 +129,57 @@ pub(crate) fn get(url: &str) -> Result<ureq::Response, String> {
                 && url.starts_with("https://api.github.com/repos/")
                 && url.contains("/releases") =>
         {
-            "GitHub returned 404 for Nexora's releases. GitHub hides private repositories from unauthenticated requests. Set NEXORA_GITHUB_TOKEN to a read-only token with access to this repository, or make the repository public.".into()
+            "GitHub returned 404 for Nexora's private releases. Install GitHub CLI and run `gh auth login`, or set NEXORA_GITHUB_TOKEN to a fine-grained token with Contents: read access.".into()
         }
         ureq::Error::Status(code, _) => format!("{url} answered {code}"),
         ureq::Error::Transport(t) => format!("No connection: {t}"),
     })
+}
+
+/// The API token already configured for CI or the player, or the player's GitHub CLI login.
+fn github_token() -> Option<String> {
+    if let Some(token) = [
+        "NEXORA_GITHUB_TOKEN",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "HORIZON_GITHUB_TOKEN",
+    ]
+    .into_iter()
+    .find_map(|name| std::env::var(name).ok().filter(|value| !value.trim().is_empty()))
+    {
+        return Some(token);
+    }
+
+    let output = Command::new("gh")
+        .args(["auth", "token"])
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|token| token.trim().to_owned())
+        .filter(|token| !token.is_empty())
+}
+
+/// Resolve a private release asset to GitHub's authenticated asset API endpoint.
+/// The filename query keeps archive detection and signed-checksum verification intact.
+pub(crate) fn release_asset_url(tag: &str, name: &str) -> Result<String, String> {
+    let url = format!("https://api.github.com/repos/{REPO}/releases/tags/{tag}");
+    let release: serde_json::Value = get(&url)?.into_json().map_err(|e| e.to_string())?;
+    let asset = release["assets"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|asset| asset["name"].as_str() == Some(name))
+        .ok_or_else(|| format!("Release {tag} has no asset named {name}."))?;
+    let url = asset["url"]
+        .as_str()
+        .ok_or_else(|| format!("GitHub did not provide an API URL for {name}."))?;
+    Ok(format!("{url}?filename={name}"))
 }
 
 /// A Nexora game tag: `v` then a digit (`v2026.10.13`). Launcher tags never match.
@@ -289,7 +331,10 @@ pub(crate) fn parse_releases(
         let found = r["assets"].as_array().into_iter().flatten().find_map(|a| {
             (Some(a["name"].as_str()?) == asset).then(|| {
                 Some((
-                    a["browser_download_url"].as_str()?.to_string(),
+                    a["url"]
+                        .as_str()
+                        .map(|url| format!("{url}?filename={asset}"))
+                        .or_else(|| a["browser_download_url"].as_str().map(str::to_owned))?,
                     a["size"].as_u64()?,
                 ))
             })?
@@ -586,7 +631,10 @@ pub(crate) fn download(
         done += n as u64;
         progress((done as f32 / size.max(1) as f32).min(1.0) * 0.9);
     }
-    let name = url.rsplit('/').next().unwrap_or(url);
+    let name = url
+        .split_once("filename=")
+        .map(|(_, name)| name)
+        .unwrap_or_else(|| url.rsplit('/').next().unwrap_or(url));
     horizon_release_sign::check(name, sha256, &hash.hex()).inspect_err(|_| {
         let _ = fs::remove_file(to);
     })
@@ -594,7 +642,11 @@ pub(crate) fn download(
 
 fn unpack(archive: &Path, url: &str, to: &Path) -> Result<(), String> {
     let file = fs::File::open(archive).map_err(|e| e.to_string())?;
-    if url.ends_with(".tar.gz") {
+    let filename = url
+        .split_once("filename=")
+        .map(|(_, name)| name)
+        .unwrap_or_else(|| url.rsplit('/').next().unwrap_or(url));
+    if filename.ends_with(".tar.gz") {
         tar::Archive::new(flate2::read::GzDecoder::new(file))
             .unpack(to)
             .map_err(|e| e.to_string())
