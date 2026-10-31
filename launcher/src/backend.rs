@@ -449,7 +449,7 @@ pub fn links() -> Links {
 
 /// The launcher's data folder; `HORIZON_LAUNCHER_HOME` overrides it (for tests and scripts).
 pub fn data_dir() -> PathBuf {
-    if let Some(home) = std::env::var_os("NEXORA_LAUNCHER_HOME").or_else(|_| std::env::var_os("HORIZON_LAUNCHER_HOME")).filter(|h| !h.is_empty()) {
+    if let Some(home) = std::env::var_os("NEXORA_LAUNCHER_HOME").or_else(|| std::env::var_os("HORIZON_LAUNCHER_HOME")).filter(|h| !h.is_empty()) {
         return PathBuf::from(home);
     }
     dirs::data_dir()
