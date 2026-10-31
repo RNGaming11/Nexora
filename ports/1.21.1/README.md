@@ -86,7 +86,7 @@ Microsoft sign-in is not required for artifact preparation, protocol development
 
 ## Preparing the full 1.21.1 data set
 
-The repository includes a one-click GitHub Actions workflow named **Prepare Minecraft 1.21.1 port data**. Run it from the Actions tab using **Run workflow**. It installs Python and Java 21, downloads and verifies Mojang's official artifacts, runs the vanilla server data generator, applies official mappings, builds the mapped class inventories, and uploads the registry/packet/item/block/command reports and class diff as the `nexora-minecraft-1.21.1-port-data` artifact. The workflow does not commit downloaded Minecraft jars or generated bulk data into the repository.
+The repository includes a one-click GitHub Actions workflow named **Prepare Minecraft 1.21.1 port data**. Run it from the Actions tab using **Run workflow**. It installs Python and Java 21, downloads and verifies Mojang's official artifacts, runs the vanilla server data generator, applies official mappings, builds the mapped class inventories, and uploads the registry/packet/item/block/command reports and class diff as the `nexora-minecraft-1.21.1-port-data` artifact. It also installs Java 25 to prepare the active 26.3 baseline and, when that succeeds, uploads the mapped 26.3-to-1.21.1 comparison and ranked worklist as `nexora-26.3-to-1.21.1-port-diff`. The workflow does not commit downloaded Minecraft jars or generated bulk data into the repository.
 
 ## Verification
 
