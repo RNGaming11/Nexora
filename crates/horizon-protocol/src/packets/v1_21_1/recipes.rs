@@ -220,6 +220,7 @@ mod tests {
         body.varint(1);
         body.varint(0);
         body.varint(0);
+        body.varint(0);
         body.bool(true);
         let body = body.data;
 
