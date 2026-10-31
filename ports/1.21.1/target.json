@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "minecraft": {
+    "id": "1.21.1",
+    "name": "1.21.1",
+    "release_time": "2024-08-08T12:24:45+00:00",
+    "stable": true,
+    "java_major": 21,
+    "protocol_version": 767,
+    "data_version": 3955,
+    "resource_pack_format": 34,
+    "data_pack_format": 48,
+    "asset_index": "17"
+  },
+  "artifacts": {
+    "version_json": {
+      "url": "https://piston-meta.mojang.com/v1/packages/1757c8b1fbfc6b638504e1f6cceb05893f7389d5/1.21.1.json",
+      "sha1": "1757c8b1fbfc6b638504e1f6cceb05893f7389d5",
+      "note": "Mojang republishes version metadata. Re-resolve this entry from the official version_manifest_v2.json before a clean prepare; do not assume this observed manifest hash is permanent."
+    },
+    "client": {
+      "url": "https://piston-data.mojang.com/v1/objects/30c73b1c5da787909b2f73340419fdf13b9def88/client.jar",
+      "sha1": "30c73b1c5da787909b2f73340419fdf13b9def88"
+    },
+    "server": {
+      "url": "https://piston-data.mojang.com/v1/objects/59353fb40c36d304f2035d51e7d6e6baa98dc05c/server.jar",
+      "sha1": "59353fb40c36d304f2035d51e7d6e6baa98dc05c"
+    },
+    "client_mappings": {
+      "url": "https://piston-data.mojang.com/v1/objects/2244b6f072256667bcd9a73df124d6c58de77992/client.txt",
+      "sha1": "2244b6f072256667bcd9a73df124d6c58de77992"
+    },
+    "server_mappings": {
+      "url": "https://piston-data.mojang.com/v1/objects/03f8985492bda0afc0898465341eb0acef35f570/server.txt",
+      "sha1": "03f8985492bda0afc0898465341eb0acef35f570"
+    }
+  },
+  "port_status": {
+    "phase": "baseline-pinned",
+    "gameplay_port_started": false,
+    "verification": "Artifact hashes and version facts must be checked against Mojang's official manifest and embedded version.json before generated constants or game code are changed."
+  }
+}
