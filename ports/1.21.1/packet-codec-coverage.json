@@ -1,18 +1,12 @@
 {
   "target_packet_count": 223,
-  "codec_packet_count": 243,
+  "codec_packet_count": 262,
   "states": {
     "configuration/clientbound": {
       "target_count": 17,
-      "existing_codec_count": 19,
-      "covered_count": 16,
-      "missing_codecs": [
-        {
-          "constant": "CUSTOM_REPORT_DETAILS",
-          "id": 15,
-          "name": "custom_report_details"
-        }
-      ],
+      "existing_codec_count": 20,
+      "covered_count": 17,
+      "missing_codecs": [],
       "codecs_not_in_target": [
         {
           "constant": "CLEAR_DIALOG",
@@ -63,15 +57,9 @@
     },
     "login/clientbound": {
       "target_count": 6,
-      "existing_codec_count": 6,
-      "covered_count": 5,
-      "missing_codecs": [
-        {
-          "constant": "GAME_PROFILE",
-          "id": 2,
-          "name": "game_profile"
-        }
-      ],
+      "existing_codec_count": 7,
+      "covered_count": 6,
+      "missing_codecs": [],
       "codecs_not_in_target": [
         {
           "constant": "LOGIN_FINISHED",
@@ -90,65 +78,9 @@
     },
     "play/clientbound": {
       "target_count": 124,
-      "existing_codec_count": 133,
-      "covered_count": 113,
-      "missing_codecs": [
-        {
-          "constant": "ADD_EXPERIENCE_ORB",
-          "id": 2,
-          "name": "add_experience_orb"
-        },
-        {
-          "constant": "COMMAND_SUGGESTIONS",
-          "id": 16,
-          "name": "command_suggestions"
-        },
-        {
-          "constant": "CUSTOM_REPORT_DETAILS",
-          "id": 122,
-          "name": "custom_report_details"
-        },
-        {
-          "constant": "DEBUG_SAMPLE",
-          "id": 27,
-          "name": "debug_sample"
-        },
-        {
-          "constant": "HORSE_SCREEN_OPEN",
-          "id": 35,
-          "name": "horse_screen_open"
-        },
-        {
-          "constant": "PLAYER_COMBAT_END",
-          "id": 58,
-          "name": "player_combat_end"
-        },
-        {
-          "constant": "PLAYER_COMBAT_ENTER",
-          "id": 59,
-          "name": "player_combat_enter"
-        },
-        {
-          "constant": "RECIPE",
-          "id": 65,
-          "name": "recipe"
-        },
-        {
-          "constant": "SELECT_ADVANCEMENTS_TAB",
-          "id": 74,
-          "name": "select_advancements_tab"
-        },
-        {
-          "constant": "SET_CARRIED_ITEM",
-          "id": 83,
-          "name": "set_carried_item"
-        },
-        {
-          "constant": "UPDATE_RECIPES",
-          "id": 119,
-          "name": "update_recipes"
-        }
-      ],
+      "existing_codec_count": 144,
+      "covered_count": 124,
+      "missing_codecs": [],
       "codecs_not_in_target": [
         {
           "constant": "ADD_TRANSIENT_BLOCK",
@@ -274,40 +206,9 @@
     },
     "play/serverbound": {
       "target_count": 58,
-      "existing_codec_count": 65,
-      "covered_count": 52,
-      "missing_codecs": [
-        {
-          "constant": "COMMAND_SUGGESTION",
-          "id": 11,
-          "name": "command_suggestion"
-        },
-        {
-          "constant": "DEBUG_SAMPLE_SUBSCRIPTION",
-          "id": 19,
-          "name": "debug_sample_subscription"
-        },
-        {
-          "constant": "PICK_ITEM",
-          "id": 32,
-          "name": "pick_item"
-        },
-        {
-          "constant": "RECIPE_BOOK_SEEN_RECIPE",
-          "id": 41,
-          "name": "recipe_book_seen_recipe"
-        },
-        {
-          "constant": "SEEN_ADVANCEMENTS",
-          "id": 44,
-          "name": "seen_advancements"
-        },
-        {
-          "constant": "SWING",
-          "id": 54,
-          "name": "swing"
-        }
-      ],
+      "existing_codec_count": 71,
+      "covered_count": 58,
+      "missing_codecs": [],
       "codecs_not_in_target": [
         {
           "constant": "ATTACK",
@@ -404,5 +305,16 @@
       "codecs_not_in_target": []
     }
   },
-  "missing_codec_count": 19
+  "missing_codec_count": 0,
+  "registry_dependent_codecs": [
+    {
+      "state": "play/clientbound",
+      "constant": "UPDATE_RECIPES",
+      "variant": "UpdateRecipes",
+      "type": "v1_21_1::UpdateRecipes (registry-backed)",
+      "source": "crates/horizon-protocol/src/packets/v1_21_1.rs",
+      "version": "1.21.1",
+      "registry_dependent": true
+    }
+  ]
 }
