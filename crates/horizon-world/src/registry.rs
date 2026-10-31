@@ -326,20 +326,14 @@ mod version_tests {
         Tag::compound([
             ("DataVersion", Tag::Int(data_version)),
             ("states", Tag::List(vec![state.to_nbt()])),
-            (
-                "defaults",
-                Tag::compound([("minecraft:air", Tag::Int(0))]),
-            ),
+            ("defaults", Tag::compound([("minecraft:air", Tag::Int(0))])),
         ])
     }
 
     #[test]
     fn block_registry_can_load_an_isolated_target_data_version() {
         assert!(BlockRegistry::from_nbt(&registry_tag(DATA_VERSION)).is_ok());
-        assert!(
-            BlockRegistry::from_nbt_with_data_version(&registry_tag(3955), 3955).is_ok()
-        );
+        assert!(BlockRegistry::from_nbt_with_data_version(&registry_tag(3955), 3955).is_ok());
         assert!(BlockRegistry::from_nbt(&registry_tag(3955)).is_err());
     }
 }
-
