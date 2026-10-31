@@ -99,16 +99,16 @@ jobs:
         include:
           - name: linux
             os: ubuntu-22.04
-            asset: horizon-launcher-linux-x86_64.tar.gz
-            binary: horizon-launcher
+            asset: nexora-launcher-linux-x86_64.tar.gz
+            binary: nexora-launcher
           - name: macos
             mac: true
-            asset: horizon-launcher-macos-arm64.zip
-            binary: horizon-launcher
+            asset: nexora-launcher-macos-arm64.zip
+            binary: nexora-launcher
           - name: windows
             os: windows-latest
-            asset: horizon-launcher-windows-x64.zip
-            binary: horizon-launcher.exe
+            asset: nexora-launcher-windows-x64.zip
+            binary: nexora-launcher.exe
             # The C runtime linked in: without it the launcher asks for VCRUNTIME140.dll,
             # which only the Visual C++ redistributable installs.
             rustflags: -C target-feature=+crt-static
@@ -167,7 +167,7 @@ jobs:
           out=$(target/release/${{ matrix.binary }} --version)
           echo "$out"
           expected="${HORIZON_LAUNCHER_VERSION:-$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)}"
-          [[ "$out" == "horizon-launcher $expected" ]] || { echo "::error::expected horizon-launcher $expected"; exit 1; }
+          [[ "$out" == "nexora-launcher $expected" ]] || { echo "::error::expected nexora-launcher $expected"; exit 1; }
       - name: Only system libraries
         run: |
           file=target/release/${{ matrix.binary }}
@@ -182,7 +182,7 @@ jobs:
           HORIZON_GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          export HORIZON_LAUNCHER_HOME="${RUNNER_TEMP//\\//}/horizon-launcher-smoke"
+          export HORIZON_LAUNCHER_HOME="${RUNNER_TEMP//\\//}/nexora-launcher-smoke"
           export HORIZON_HOME="$HORIZON_LAUNCHER_HOME/game"
           rm -rf "$HORIZON_LAUNCHER_HOME"
           launcher="$PWD/target/release/${{ matrix.binary }}"
@@ -262,7 +262,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
-          pattern: horizon-launcher-*
+          pattern: nexora-launcher-*
           merge-multiple: true
       - name: Sign the checksums (SHA256SUMS, SHA256SUMS.sig)
         env:
@@ -270,7 +270,7 @@ jobs:
           RELEASE_SIGNING_KEY_NEXT: ${{ secrets.RELEASE_SIGNING_KEY_NEXT }}
           EPHEMERAL: ${{ needs.decide.outputs.dry_run == 'true' && 'yes' || '' }}
           TAG: ${{ needs.decide.outputs.tag }}
-        run: bash tools/ci/sign_release.sh "$TAG" dist/horizon-launcher-*
+        run: bash tools/ci/sign_release.sh "$TAG" dist/nexora-launcher-*
       - uses: actions/upload-artifact@v4
         with:
           name: signature
@@ -321,7 +321,7 @@ jobs:
         run: |
           signature=(); [[ -f dist/SHA256SUMS.sig ]] && signature=(dist/SHA256SUMS.sig)
           gh release create "$TAG" --target "${{ needs.decide.outputs.head }}" --title "$(cat notes/title.txt)" \
-            --notes-file notes/body.md --latest=false dist/horizon-launcher-* dist/SHA256SUMS "${signature[@]}"
+            --notes-file notes/body.md --latest=false dist/nexora-launcher-* dist/SHA256SUMS "${signature[@]}"
       - name: Dry run, the release that would be published
         if: needs.decide.outputs.dry_run == 'true'
         run: |
