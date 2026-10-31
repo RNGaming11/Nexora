@@ -142,8 +142,6 @@ fn run(control: &Control, setup: Setup) -> Result<PathBuf, String> {
         kind: text(&renderer["device_type"]),
         vram_mb: None,
     });
-    if let Some(gpu) = report.hardware.gpu.as_mut() {
-    }
     report.hardware.display = serde_json::from_value(title["display"].clone()).ok();
 
     replace_world(&setup.game_dir)?;
