@@ -1,5 +1,5 @@
 //! `nexora-launcher mcp`: the Model Context Protocol over stdin and stdout (JSON-RPC 2.0, one
-//! message per line), so AI agents can install, prepare and run Horizon. Every tool goes through
+//! message per line), so AI agents can install, prepare and run Nexora. Every tool goes through
 //! `backend`. A server started here lives as long as the session. The running game's own tools
 //! come from its `horizon-ctl` as `game_*` (game_tools.rs).
 use crate::cli_tools;
