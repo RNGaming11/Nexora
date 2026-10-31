@@ -1,17 +1,31 @@
 # Nexora — Minecraft 1.21.1 port workspace
 
-The 1.21.1 port work is maintained on branch `nexora/master`. Do not run the existing 26.3 preparation command for this target: it intentionally rejects obfuscated releases.
+The 1.21.1 port is maintained on branch `nexora/master`. This is a development workspace, not a playable 1.21.1 launcher yet.
 
 ## Requirements
 
-- Windows 10/11, PowerShell
+- Windows 10/11 with PowerShell
 - Python 3.11 or newer
 - JDK 21 (the `java` command must resolve to Java 21)
-- Rust toolchain and the Visual Studio C++ Build Tools are still needed later for compiling Nexora; they are not needed for the artifact-preparation step.
+- Rust toolchain and Visual Studio C++ Build Tools for Rust builds and tests
 
-## Prepare the official 1.21.1 artifacts
+Microsoft sign-in is not needed to prepare Mojang artifacts, generate protocol inventories, or run the port's automated tests. It is only needed for the launcher's normal online-mode Minecraft account flow. Do not add a fake client ID or reuse another launcher's credentials.
 
-From the repository root in PowerShell:
+## Verify the existing baseline
+
+From the repository root:
+
+```powershell
+.\tools\verify_1_21_1.ps1
+```
+
+This fast-forwards the current branch, runs the mapping and packet-codec Python tests, Rust formatting, protocol tests, and the workspace compile check. If the prepared data-generator packet report is present, it also regenerates and audits the target packet inventory. The full log is written to `target/1.21.1-verification.log`.
+
+The artifact preparation and mapping-aware class-index work are already implemented. Do not rerun preparation just because this document was opened.
+
+## Prepare or refresh Mojang's official artifacts
+
+Only when the artifact cache is missing or needs refreshing, run:
 
 ```powershell
 py -3 --version
@@ -19,39 +33,52 @@ java -version
 py -3 tools/prepare_1_21_1.py
 ```
 
-Optional: set the number of parallel indexing workers:
+Optional parallel indexing:
 
 ```powershell
 py -3 tools/prepare_1_21_1.py --jobs 8
 ```
 
-To force re-download of the artifacts:
+Force a fresh download:
 
 ```powershell
 py -3 tools/prepare_1_21_1.py --force
 ```
 
-The script resolves the 1.21.1 entry from Mojang's live version manifest, verifies every downloaded file against the SHA-1 in that official metadata, extracts the server game jar, checks the version facts embedded in the client jar, runs the vanilla data generator with Java 21, validates both mapping files, and records an inventory of the raw obfuscated classes.
+The script resolves 1.21.1 from Mojang's live version manifest, verifies the client jar, server bundler, mappings and extracted server jar against official hashes, checks the version facts embedded in the client jar, applies the correct Mojang mappings to class inventories, and runs the vanilla data generator with Java 21.
 
 ## Output
 
-By default, files are stored outside the repository in:
+By default, generated files are stored outside the repository:
 
 ```text
 ~/code/horizon-parity/versions/1.21.1/
 ```
 
-Set `HORIZON_VERSIONS` to choose another artifact-cache directory. For example:
+Set `HORIZON_VERSIONS` to use another artifact-cache directory:
 
 ```powershell
 $env:HORIZON_VERSIONS = "D:\Nexora-artifacts"
 py -3 tools/prepare_1_21_1.py
 ```
 
-The preparation report is `prepared.json`; version facts are `facts.json`; the raw class inventory is `classes-obfuscated.json`; generated vanilla reports are under `datagen/reports`. These large downloaded/generated files are intentionally not committed.
+The preparation report is `prepared.json`; version facts are `facts.json`; raw and mapped class inventories are stored separately; generated vanilla reports are under `datagen/reports`. Large downloaded and generated files intentionally stay out of Git.
 
-## Current limitations — read before treating this as playable
+## Current implementation boundary
 
-This command prepares and verifies the official game inputs. It does **not** yet remap the obfuscated class inventory to Mojang's named symbols, regenerate Nexora's version constants, port missing gameplay systems, or produce a runnable 1.21.1 client. The current root workspace still targets its existing 26.3 baseline. Do not change `crates/horizon-core/src/version.rs` by hand or try to launch this branch as a finished 1.21.1 game. The version-specific packet codecs are not yet connected to the live client network state machine.
+Already present:
+- Official 1.21.1 target facts and artifact/mapping hash pins.
+- Mapping-aware preparation and semantic class indexing.
+- Verified client/server artifacts and vanilla data-generator reports.
+- Version-isolated protocol-767 packet IDs and codecs for the previously missing packet types.
+- Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
 
-The next engineering stages are mapping-aware symbol remapping, 1.21.1 protocol/data generation, parity harness adaptation, and implementation/testing of the missing client and server behavior. A playable milestone is only reached when the Rust client launches and successfully joins a local vanilla 1.21.1 server.
+Still required:
+- Generate and validate the 1.21.1 version constants and registries.
+- Produce and review the mapped 26.3-to-1.21.1 class/source diff and ranked worklist.
+- Select protocol 767 throughout the live client connection instead of the current protocol 777.
+- Integrate 1.21.1 login, configuration and play-state dispatch into the live network state machine.
+- Implement the registry-aware recipe serializers and remaining gameplay compatibility.
+- Demonstrate a playable milestone by launching the Rust client and joining a local vanilla 1.21.1 server.
+
+The root workspace still targets Minecraft 26.3. Do not change `crates/horizon-core/src/version.rs` by hand, remove the obfuscation guard in `tools/version_port.py`, or describe this branch as a playable 1.21.1 port. A successful compile is not proof of gameplay compatibility.
