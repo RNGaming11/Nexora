@@ -208,7 +208,7 @@ The opening, then Play ([clip](docs/opening.webm)):
   keeping every field the launcher doesn't show and the servers joined with Direct Connection. The
   same from the command line: `nexora-launcher multiplayer [list|add|remove] [--instance <name>]`
   and `nexora-launcher play --server <address or name>`.
-- **Patch notes**: each release's notes, newest first, with a link to GitHub Sponsors. Quiet "Sponsor", "Discord" and "Website" links sit in the sidebar footer.
+- **Patch notes**: each release's notes, newest first. Discord and Website links sit in the sidebar footer.
 
 Data lives in the platform's data directory (`~/.local/share/nexora-launcher` on Linux,
 `~/Library/Application Support/nexora-launcher` on macOS, `%APPDATA%\nexora-launcher` on
@@ -345,14 +345,9 @@ and don't set `%ERRORLEVEL%` / `$LASTEXITCODE`. Scripts that need the exit code 
     nexora-launcher servers run <server> -- <horizon-server command>   for example: servers run "My server" -- start
     nexora-launcher servers forget <server>        take it off the list (its folder stays)
     nexora-launcher benchmark [--repeats N]        measure the launcher (see Performance log)
-        nexora-launcher data allow|deny <kinds|all>    performance, crashes, bugs, benchmarks
-    nexora-launcher data show                      exactly what would be sent
-    nexora-launcher data delete                    delete what was sent and what waits; new install ID
-    nexora-launcher data bug "<text>" [--log]      a bug report, printed for you to confirm first
-    nexora-launcher data benchmark <report.json>   upload a benchmark report, printed first
 
 `--json` prints JSON where there is something to report (`versions`, `install`, `notes`,
-`next`, `links`, `game-args`, `update --check`, `logs`, `account`, `benchmark`, `data`, `modpack`). Errors go to stderr with exit code 1. `server` runs in the terminal,
+`next`, `links`, `game-args`, `update --check`, `logs`, `account`, `benchmark`, `modpack`). Errors go to stderr with exit code 1. `server` runs in the terminal,
 so lines you type reach its console. `HORIZON_LAUNCHER_HOME` replaces the data folder (for
 scripts and tests). Test runs also set `HORIZON_LAUNCHER_TRASH=<folder>` and
 `HORIZON_LAUNCHER_CLIPBOARD=<file>` inside their scratch folders: what Delete would move to the
@@ -420,8 +415,7 @@ The game writes its log to `logs/latest.log` in the game folder (`HORIZON_HOME`,
 archives the previous one at start as `logs/<date>-<n>.log.gz`, as Minecraft does. When it
 crashes it writes `crash-reports/crash-<date>_<time>-client.txt` beside them. When a game the
 launcher started crashes, the Play page says so, with buttons to open or copy the report, open the
-logs folder and report it on Discord; Settings has the logs folder too. A crash report leaves the
-machine only if you turn on crash reports (below).
+logs folder and report it on Discord; Settings has the logs folder too. Crash reports stay local unless you choose to share them.
 
 ## Performance log
 
