@@ -71,7 +71,7 @@ Even a matching name and ID does not prove that the payload layout is unchanged.
 
 ## Version-isolated packet codecs
 
-The crate now exposes `horizon_protocol::packets::v1_21_1`. It contains separate protocol-767 packet payload types and ID dispatch/encoders for the packets that were absent from the 26.3 codec enums. The active 26.3 enums and generated IDs remain unchanged.
+The crate now exposes `horizon_protocol::packets::v1_21_1`. It contains version-scoped protocol-767 packet IDs, login-state dispatch, configuration-state dispatch/encoders, and payload codecs for packets absent from the 26.3 enums. The active 26.3 enums and generated IDs remain unchanged.
 
 Eighteen of the nineteen previously missing packet payloads have concrete codecs and round-trip coverage. The 1.21.1 `update_recipes` packet is represented by a registry-aware `RecipeSerializer` interface: its entries are serializer-specific and must be decoded using the target registry. A generic byte-slice guess would corrupt packet boundaries. The coverage report records this packet separately as registry-dependent rather than treating it as a normal ready-to-use codec.
 
@@ -86,7 +86,7 @@ These codecs are not yet wired into the client connection state machine. Protoco
 - [ ] 1.21.1 generated constants and registries.
 - [ ] Mapped source/class diff and port worklist.
 - [x] Isolated 1.21.1 packet payload codecs for the 19 previously missing packet types (18 concrete; update_recipes registry-dependent), with round-trip tests for the concrete types.
-- [ ] Protocol-767 connection integration and built-in recipe serializer registry.
+- [x] Protocol-767 login and configuration packet dispatch adapters (not yet selected by the live connection).\n- [ ] Protocol-767 play-state connection integration and built-in recipe serializer registry.
 - [ ] Gameplay parity implementation and tests.
 - [ ] Playable client/server milestone.
 
