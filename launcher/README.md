@@ -301,7 +301,7 @@ and don't set `%ERRORLEVEL%` / `$LASTEXITCODE`. Scripts that need the exit code 
     nexora-launcher play [--version <tag>] [--instance <name>] [--arg <ARG>]...   start the client; --arg passes an extra argument through (repeatable)
     nexora-launcher server [--dir <dir>] [--version <tag>] [--accept-eula]
     nexora-launcher notes [<tag>]                  patch notes as plain text
-    nexora-launcher links                          the Discord, sponsor and website links
+    nexora-launcher links                          the Discord and website links
     nexora-launcher game-args [<line>]             show or set the extra arguments the game starts with
     nexora-launcher update [--check]               Nexora and the launcher
     nexora-launcher logs [--lines N] [--crash]     the end of the game's log, or its newest crash report
@@ -345,8 +345,7 @@ and don't set `%ERRORLEVEL%` / `$LASTEXITCODE`. Scripts that need the exit code 
     nexora-launcher servers run <server> -- <horizon-server command>   for example: servers run "My server" -- start
     nexora-launcher servers forget <server>        take it off the list (its folder stays)
     nexora-launcher benchmark [--repeats N]        measure the launcher (see Performance log)
-    nexora-launcher data [status]                  what data collection is allowed, the install ID, what waits
-    nexora-launcher data allow|deny <kinds|all>    performance, crashes, bugs, benchmarks
+        nexora-launcher data allow|deny <kinds|all>    performance, crashes, bugs, benchmarks
     nexora-launcher data show                      exactly what would be sent
     nexora-launcher data delete                    delete what was sent and what waits; new install ID
     nexora-launcher data bug "<text>" [--log]      a bug report, printed for you to confirm first
@@ -424,30 +423,9 @@ launcher started crashes, the Play page says so, with buttons to open or copy th
 logs folder and report it on Discord; Settings has the logs folder too. A crash report leaves the
 machine only if you turn on crash reports (below).
 
-## Data collection
-
-The first time it opens, the launcher asks whether you want to send performance statistics,
-crash reports, bug reports and benchmark uploads, each on its own switch and all off until you
-turn one on ("Send nothing" is one click). Settings → Data collection changes them any time, shows
-exactly what would be sent (the JSON), and deletes everything sent from your install. It asks
-again only when what is collected changes. The game obeys the same answer, kept in
-`telemetry/consent.json` in the game folder. What waits is sent when the launcher starts and
-closes. Every field, the caps and the format: [docs/telemetry.md](../docs/telemetry.md).
-
-
 ## Performance log
 
-Each session writes its own measurements to `benchmarks/launcher-<time>-session.json` in the
-launcher's data folder, in the [benchmark report format](../docs/benchmark-report.md): start to the
-first frame, the release list fetch, installs and updates (download and unpack), preparing, Play to
-the game's first frame, memory, UI frame times and the binary's size, with the machine's CPU, RAM
-and OS (read on a thread after the first frame: on Windows those queries take seconds). Attach it
-to an issue about the launcher being slow. `nexora-launcher benchmark` measures on purpose: it starts the launcher `--repeats` times (5; the first start is the cold one, as far
-as the OS's file cache allows), switches pages for a few seconds in each, rests 3 seconds to
-measure idle CPU, fetches the release list 3 times, and writes one report there with means and
-95% confidence intervals. Its window has to be on a screen that is awake. Session logs stay on
-your machine; a `benchmark` report is uploaded, dated to the day, only if you allowed benchmark
-uploads ([data collection](../docs/telemetry.md)).
+`nexora-launcher benchmark` is an explicit, user-started local test. It starts the launcher several times, measures cold and warm starts, page switching, idle CPU, memory and release-list fetches, then writes one report to `benchmarks/` in the launcher's data folder. The report stays on your machine; Nexora does not upload it.
 
 Long lists on Mods (results, installed entries, coverage reports and project versions), Versions
 and Patch notes build only nearby rows, including on their first frame. Variable row heights
