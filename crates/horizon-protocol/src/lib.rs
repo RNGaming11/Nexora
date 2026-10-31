@@ -13,6 +13,8 @@ pub mod ids;
 pub mod item;
 pub mod mod_net;
 pub mod packets;
+#[path = "../../../ports/1.21.1/packet_ids.rs"]
+pub mod packet_ids_1_21_1;
 pub mod quiet;
 pub mod registry;
 mod resolver;
