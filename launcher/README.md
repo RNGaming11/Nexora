@@ -86,7 +86,7 @@ The opening, then Play ([clip](docs/opening.webm)):
   folder stays the first one, "Nexora", exactly where it was; imported and registry modpacks are
   instances too, in their own folders as before; new ones go to `instances/<name>/` in the game's
   folder, empty but for the player's options and name, or a copy of another instance (never its
-  sign-in sessions, logs or data collection state). Names, icons (a block or item texture from the
+  sign-in sessions or logs). Names, icons (a block or item texture from the
   player's prepared files, or a colour) and groups are kept in `instances.json` in the launcher's
   data folder, so renaming moves nothing. Every instance follows the launcher's data collection
   answer and No AI. In the window, **+** beside Instances makes one, the sidebar lists them by
