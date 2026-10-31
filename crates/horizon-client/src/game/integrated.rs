@@ -580,7 +580,6 @@ impl Game<'_> {
         self.native_lifecycle_open_started();
         // `load_world`, with the world `serve` started preparing.
         self.join_world_rest()?;
-        self.perf.world_opening();
         self.finish_open_world(opening.world?.finish()?)?;
         if let Some(sync) = opening.sync {
             sync.adopt(&self.pack_files());
