@@ -9,6 +9,8 @@ permissions:
 jobs:
   prepare:
     runs-on: windows-latest
+    env:
+      HORIZON_VERSIONS: ${{ runner.temp }}\\nexora-versions
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +39,7 @@ jobs:
           if-no-files-found: error
           compression-level: 6
           path: |
-            ~/code/horizon-parity/versions/1.21.1/facts.json
+            ${{ runner.temp }}/nexora-versions/1.21.1/facts.json
             ~/code/horizon-parity/versions/1.21.1/prepared.json
             ~/code/horizon-parity/versions/1.21.1/classes-client-server-diff.json
             ~/code/horizon-parity/versions/1.21.1/classes-mapped.json
