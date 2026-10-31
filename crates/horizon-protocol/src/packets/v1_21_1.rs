@@ -349,6 +349,103 @@ pub fn decode_login_clientbound(id: i32, payload: &[u8]) -> Result<GameProfilePa
     decode_exact(payload, GameProfilePacket::read)
 }
 
+/// Login-state packets for protocol 767. The packet IDs are version-scoped;
+/// the Game Profile payload includes 1.21.1's strict-error-handling flag.
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoginClientbound {
+    Disconnect(crate::packets::login::Disconnect),
+    Hello(crate::packets::login::Hello),
+    GameProfile(GameProfilePacket),
+    Compression(crate::packets::login::Compression),
+    CustomQuery(crate::packets::login::CustomQuery),
+    CookieRequest(crate::packets::login::CookieRequest),
+    Unknown(i32, Vec<u8>),
+}
+
+impl LoginClientbound {
+    pub fn decode(id: i32, payload: &[u8]) -> Result<Self> {
+        use crate::packets::login as p;
+        let mut r = Reader::new(payload);
+        let packet = match id {
+            ids::login_clientbound::LOGIN_DISCONNECT => Self::Disconnect(p::Disconnect::read(&mut r)?),
+            ids::login_clientbound::HELLO => Self::Hello(p::Hello::read(&mut r)?),
+            ids::login_clientbound::GAME_PROFILE => Self::GameProfile(GameProfilePacket::read(&mut r)?),
+            ids::login_clientbound::LOGIN_COMPRESSION => Self::Compression(p::Compression::read(&mut r)?),
+            ids::login_clientbound::CUSTOM_QUERY => Self::CustomQuery(p::CustomQuery::read(&mut r)?),
+            ids::login_clientbound::COOKIE_REQUEST => Self::CookieRequest(p::CookieRequest::read(&mut r)?),
+            _ => return Ok(Self::Unknown(id, payload.to_vec())),
+        };
+        if r.remaining() != 0 {
+            return Err(Error::new(format!("1.21.1 login packet {id} has {} trailing bytes", r.remaining())));
+        }
+        Ok(packet)
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        use crate::packets::login as p;
+        let mut w = Writer::new();
+        let id = match self {
+            Self::Disconnect(v) => { p::Disconnect::write(v, &mut w); ids::login_clientbound::LOGIN_DISCONNECT }
+            Self::Hello(v) => { p::Hello::write(v, &mut w); ids::login_clientbound::HELLO }
+            Self::GameProfile(v) => { GameProfilePacket::write(v, &mut w); ids::login_clientbound::GAME_PROFILE }
+            Self::Compression(v) => { p::Compression::write(v, &mut w); ids::login_clientbound::LOGIN_COMPRESSION }
+            Self::CustomQuery(v) => { p::CustomQuery::write(v, &mut w); ids::login_clientbound::CUSTOM_QUERY }
+            Self::CookieRequest(v) => { p::CookieRequest::write(v, &mut w); ids::login_clientbound::COOKIE_REQUEST }
+            Self::Unknown(id, payload) => { w.bytes(payload); *id }
+        };
+        let mut out = Writer::new();
+        out.varint(id);
+        out.bytes(&w.data);
+        out.data
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoginServerbound {
+    Hello(crate::packets::login::ServerHello),
+    Key(crate::packets::login::Key),
+    CustomQueryAnswer(crate::packets::login::CustomQueryAnswer),
+    LoginAcknowledged(Empty),
+    CookieResponse(crate::packets::login::CookieResponse),
+    Unknown(i32, Vec<u8>),
+}
+
+impl LoginServerbound {
+    pub fn decode(id: i32, payload: &[u8]) -> Result<Self> {
+        use crate::packets::login as p;
+        let mut r = Reader::new(payload);
+        let packet = match id {
+            ids::login_serverbound::HELLO => Self::Hello(p::ServerHello::read(&mut r)?),
+            ids::login_serverbound::KEY => Self::Key(p::Key::read(&mut r)?),
+            ids::login_serverbound::CUSTOM_QUERY_ANSWER => Self::CustomQueryAnswer(p::CustomQueryAnswer::read(&mut r)?),
+            ids::login_serverbound::LOGIN_ACKNOWLEDGED => Self::LoginAcknowledged(Empty::read(&mut r)?),
+            ids::login_serverbound::COOKIE_RESPONSE => Self::CookieResponse(p::CookieResponse::read(&mut r)?),
+            _ => return Ok(Self::Unknown(id, payload.to_vec())),
+        };
+        if r.remaining() != 0 {
+            return Err(Error::new(format!("1.21.1 login packet {id} has {} trailing bytes", r.remaining())));
+        }
+        Ok(packet)
+    }
+
+    pub fn encode(&self) -> Vec<u8> {
+        use crate::packets::login as p;
+        let mut w = Writer::new();
+        let id = match self {
+            Self::Hello(v) => { p::ServerHello::write(v, &mut w); ids::login_serverbound::HELLO }
+            Self::Key(v) => { p::Key::write(v, &mut w); ids::login_serverbound::KEY }
+            Self::CustomQueryAnswer(v) => { p::CustomQueryAnswer::write(v, &mut w); ids::login_serverbound::CUSTOM_QUERY_ANSWER }
+            Self::LoginAcknowledged(v) => { Empty::write(v, &mut w); ids::login_serverbound::LOGIN_ACKNOWLEDGED }
+            Self::CookieResponse(v) => { p::CookieResponse::write(v, &mut w); ids::login_serverbound::COOKIE_RESPONSE }
+            Self::Unknown(id, payload) => { w.bytes(payload); *id }
+        };
+        let mut out = Writer::new();
+        out.varint(id);
+        out.bytes(&w.data);
+        out.data
+    }
+}
+
 fn decode_exact<T>(payload: &[u8], decode: impl FnOnce(&mut Reader) -> Result<T>) -> Result<T> {
     let mut r = Reader::new(payload);
     let value = decode(&mut r)?;
