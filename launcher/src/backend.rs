@@ -2847,8 +2847,6 @@ pub enum Msg {
     PackLine(String),
     /// A modpack step ended: the pack as it now is.
     PackDone(Result<Box<crate::modpacks::Imported>, String>),
-    /// How many play Horizon now, or none when the server can't be reached (`telemetry`).
-    Playing(Option<u64>),
     /// Where the native-mods build is (`native_mods::Step::label`).
     NativeProgress(String),
     /// The native-mods build ended: the version built, or why not.
