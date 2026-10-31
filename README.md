@@ -2,7 +2,7 @@
 
 Nexora is a Minecraft: Java Edition client and launcher project. This repository contains the Rust game client, launcher, server tools, tests and the version-port tooling.
 
-<badge color="warning">1.21.1 port in progress — not yet playable</badge>
+> **Port status:** Minecraft 1.21.1 support is in progress and is not yet playable.
 
 ## Current branch status
 
