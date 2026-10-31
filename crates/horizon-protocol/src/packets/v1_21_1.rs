@@ -642,7 +642,7 @@ pub mod configuration {
     }
 
     /// Encode a shared configuration packet with protocol 767's packet ID.
-    pub fn encode_serverbound(packet: &shared::Serverbound) -> Vec<u8> {
+    pub fn encode_serverbound(packet: &shared::Serverbound) -> Result<Vec<u8>> {
         let mut payload = Writer::new();
         let id = match packet {
             shared::Serverbound::ClientInformation(p) => { shared::ClientInformation::write(p, &mut payload); ids::configuration_serverbound::CLIENT_INFORMATION }
@@ -653,12 +653,12 @@ pub mod configuration {
             shared::Serverbound::Pong(p) => { shared::Ping::write(p, &mut payload); ids::configuration_serverbound::PONG }
             shared::Serverbound::ResourcePack(p) => { shared::ResourcePackResponse::write(p, &mut payload); ids::configuration_serverbound::RESOURCE_PACK }
             shared::Serverbound::SelectKnownPacks(p) => { shared::SelectKnownPacks::write(p, &mut payload); ids::configuration_serverbound::SELECT_KNOWN_PACKS }
-            _ => unreachable!("packet does not exist in protocol 767 configuration state"),
+            _ => return Err(Error::new("serverbound packet is not part of protocol 767 configuration state")),
         };
         let mut out = Writer::new();
         out.varint(id);
         out.bytes(&payload.data);
-        out.data
+        Ok(out.data)
     }
 
     #[cfg(test)]
@@ -667,12 +667,18 @@ pub mod configuration {
 
         #[test]
         fn configuration_packet_ids_are_protocol_767_scoped() {
-            let finish = encode_serverbound(&shared::Serverbound::FinishConfiguration(Empty));
+            let finish = encode_serverbound(&shared::Serverbound::FinishConfiguration(Empty)).unwrap();
             assert_eq!(finish, vec![3]);
-            let ping = encode_serverbound(&shared::Serverbound::Pong(shared::Ping { id: 42 }));
+            let ping = encode_serverbound(&shared::Serverbound::Pong(shared::Ping { id: 42 })).unwrap();
             assert_eq!(ping[0], 5);
             assert_eq!(decode_clientbound(3, &[]).unwrap(), Some(shared::Clientbound::FinishConfiguration(Empty)));
             assert!(decode_clientbound(17, &[]).is_err());
+        }
+
+        #[test]
+        fn unsupported_newer_configuration_packets_return_errors() {
+            let packet = shared::Serverbound::AcceptCodeOfConduct(Empty);
+            assert!(encode_serverbound(&packet).is_err());
         }
 
         #[test]
