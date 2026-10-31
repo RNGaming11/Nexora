@@ -22,23 +22,19 @@ VARIANT = re.compile(
 
 def read_ids(path):
     result = {}
-    state = direction = None
+    modules = []
     for line in Path(path).read_text(encoding="utf-8").splitlines():
         match = MODULE.match(line)
         if match:
-            if state is None:
-                state = match.group(1)
-            elif direction is None:
-                direction = match.group(1)
+            modules.append(match.group(1))
             continue
         if line.strip() == "}":
-            if direction is not None:
-                direction = None
-            elif state is not None:
-                state = None
+            if modules:
+                modules.pop()
             continue
         match = CONST.match(line)
-        if match and state and direction:
+        if match and len(modules) >= 2:
+            state, direction = modules[-2:]
             result.setdefault((state, direction), {})[match.group(1)] = int(match.group(2))
     return result
 
