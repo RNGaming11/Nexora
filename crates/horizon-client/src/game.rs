@@ -17782,10 +17782,6 @@ pub fn run() -> Result<()> {
         }
         return Err(error.into());
     }
-    // Someone is playing: the anonymous ping behind the launcher's "N playing now", and the
-    // official server in their list (servers.dat in the game folder, the working directory). Not
-    // for a server, a benchmark, a run that quits by itself, a harness's fixture or a run that
-    // horizon-ctl drives: those start in a source checkout and wrote the list there.
     let early_settings = Settings::load(&std::env::current_dir()?.join("options.txt"));
     // "Playing Nexora" on Discord: never for a server; an automated run only talks to a test's fake Discord.
     if options.dedicated.is_none() {
