@@ -77,6 +77,8 @@ def main():
             "codecs_not_in_target": [{"constant": name, **existing[name]} for name in obsolete],
         }
         print(f"{key[0]}/{key[1]}: {len(wanted)-len(missing)}/{len(wanted)} target packets have existing codecs; {len(missing)} need codecs")
+        if missing:
+            print("  Missing: " + ", ".join(f"{name.lower()} (id {wanted[name]['id']})" for name in missing))
     missing_total = sum(len(v["missing_codecs"]) for v in report["states"].values())
     report["missing_codec_count"] = missing_total
     args.out.parent.mkdir(parents=True, exist_ok=True)
