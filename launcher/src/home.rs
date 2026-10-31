@@ -41,9 +41,6 @@ impl Launcher {
             ));
         }
         what.push(tr(if prepared { "Ready" } else { "Needs preparing" }).to_string());
-        if let Some(playing) = self.playing {
-            what.push(format!("{} playing now", thousands(playing)));
-        }
         let state = div()
             .flex()
             .items_center()
@@ -114,44 +111,6 @@ impl Launcher {
                         })),
                 ),
             });
-        }
-        // Players who answered the first-run question before the ping existed read about it
-        // once here.
-        if !self.settings.ping_notice_seen && !self.collection.consent.needs_asking() {
-            hero = hero.child(
-                crate::plate::plate(&n)
-                    .flex()
-                    .flex_none()
-                    .flex_col()
-                    .gap(px(6.))
-                    .p(px(16.))
-                    .w_full()
-                    .max_w(px(560.))
-                    .child(
-                        shell::text(night::UI, c(n.ink))
-                            .relative()
-                            .child(telemetry::PING_NAME),
-                    )
-                    .child(
-                        shell::text(night::CAPTION, c(n.muted))
-                            .relative()
-                            .child(telemetry::PING),
-                    )
-                    .child(
-                        shell::text(night::UI, c(n.accent_hi))
-                            .relative()
-                            .id("ping-notice-ok")
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .cursor_pointer()
-                            .hover(|s| s.opacity(0.8))
-                            .child("Got it")
-                            .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
-                                this.settings.ping_notice_seen = true;
-                                this.settings.save();
-                                cx.notify();
-                            })),
-                    ),
-            );
         }
         hero
     }
