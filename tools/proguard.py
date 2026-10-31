@@ -33,55 +33,52 @@ class ProguardMappings:
     @classmethod
     def read(cls, path):
         result = cls()
-        current_source = None
-        current_obfuscated = None
+        current_source = current_obfuscated = None
         pending = []
-        for raw in open(path, encoding="utf-8-sig"):
-            line = raw.rstrip("\r\n")
-            if not line or line.lstrip().startswith("#"):
-                continue
-            if not line[0].isspace():
-                if " -> " not in line or not line.endswith(":"):
-                    raise ValueError(f"Invalid ProGuard class mapping: {line[:160]}")
-                source, obfuscated = line[:-1].split(" -> ", 1)
-                current_source, current_obfuscated = source.strip(), obfuscated.strip()
-                if not current_source or not current_obfuscated:
-                    raise ValueError(f"Empty class name in mapping: {line!r}")
-                obf_internal = current_obfuscated.replace(".", "/")
-                source_internal = current_source.replace(".", "/")
-                previous = result.obfuscated_to_source.get(obf_internal)
-                if previous is not None and previous != source_internal:
-                    raise ValueError(f"Duplicate obfuscated class mapping: {obfuscated}")
-                result.obfuscated_to_source[obf_internal] = source_internal
-                pending.append((current_source, current_obfuscated, []))
-                continue
-            if current_source is None:
-                raise ValueError("Member mapping appears before a class mapping")
-            if " -> " not in line:
-                raise ValueError(f"Invalid ProGuard member mapping: {line[:160]}")
-            left, obfuscated_name = (part.strip() for part in line.split(" -> ", 1))
-            left = re.sub(r"^\d+:\d+:", "", left)
-            left = re.sub(r":\d+:\d+$", "", left)
-            owner_obf = current_obfuscated.replace(".", "/")
-            source_to_obfuscated = {v.replace("/", "."): k.replace("/", ".")
-                                    for k, v in result.obfuscated_to_source.items()}
+        with open(path, encoding="utf-8-sig") as stream:
+            for raw in stream:
+                line = raw.rstrip("\r\n")
+                if not line or line.lstrip().startswith("#"):
+                    continue
+                if not line[0].isspace():
+                    if " -> " not in line or not line.endswith(":"):
+                        raise ValueError(f"Invalid ProGuard class mapping: {line[:160]}")
+                    source, obfuscated = line[:-1].split(" -> ", 1)
+                    current_source, current_obfuscated = source.strip(), obfuscated.strip()
+                    if not current_source or not current_obfuscated:
+                        raise ValueError(f"Empty class name in mapping: {line!r}")
+                    obf = current_obfuscated.replace(".", "/")
+                    src = current_source.replace(".", "/")
+                    previous = result.obfuscated_to_source.get(obf)
+                    if previous is not None and previous != src:
+                        raise ValueError(f"Duplicate obfuscated class mapping: {obfuscated}")
+                    result.obfuscated_to_source[obf] = src
+                    continue
+                if current_source is None or " -> " not in line:
+                    raise ValueError(f"Invalid ProGuard member mapping: {line[:160]}")
+                left, obfuscated_name = (part.strip() for part in line.split(" -> ", 1))
+                left = re.sub(r"^\d+:\d+:", "", left)
+                left = re.sub(r":\d+:\d+$", "", left)
+                pending.append((current_source, current_obfuscated, left, obfuscated_name))
+        if not result.obfuscated_to_source:
+            raise ValueError(f"No class mappings found in {path}")
+        source_to_obfuscated = {source.replace("/", "."): obfuscated.replace("/", ".")
+                                for obfuscated, source in result.obfuscated_to_source.items()}
+        for source_owner, obfuscated_owner, left, obfuscated_name in pending:
+            owner = obfuscated_owner.replace(".", "/")
             method = re.fullmatch(r"(.+?)\s+([^\s(]+)\((.*)\)", left)
             if method:
                 return_type, source_name, args = method.groups()
-                descriptor = _method_descriptor(return_type, args, source_to_obfuscated)
-                descriptor = descriptor.replace(".", "/")
-                key = (owner_obf, obfuscated_name, descriptor)
-                result.methods[key] = source_name
+                descriptor = _method_descriptor(return_type, args, source_to_obfuscated).replace(".", "/")
+                result.methods[(owner, obfuscated_name, descriptor)] = source_name
                 continue
             field = re.fullmatch(r"(.+?)\s+([^\s]+)", left)
             if field:
                 field_type, source_name = field.groups()
                 descriptor = _descriptor_type(field_type, source_to_obfuscated).replace(".", "/")
-                result.fields[(owner_obf, obfuscated_name, descriptor)] = source_name
+                result.fields[(owner, obfuscated_name, descriptor)] = source_name
                 continue
-            raise ValueError(f"Unrecognized member mapping: {line[:160]}")
-        if not result.obfuscated_to_source:
-            raise ValueError(f"No class mappings found in {path}")
+            raise ValueError(f"Unrecognized member mapping: {left[:160]}")
         return result
 
     def class_name(self, name):
