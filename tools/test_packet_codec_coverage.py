@@ -73,6 +73,26 @@ class PacketCodecCoverageTests(unittest.TestCase):
         self.assertEqual(rust_names, inventory["serializers"])
         self.assertEqual(len(rust_names), 23)
 
+    def test_data_component_ids_match_the_official_1211_registry(self):
+        import json
+        import re
+
+        root = Path(__file__).resolve().parents[1]
+        inventory = json.loads(
+            (root / "ports/1.21.1/data-component-ids.json").read_text(encoding="utf-8")
+        )
+        source = (
+            root / "ports/1.21.1/data_component_ids.rs"
+        ).read_text(encoding="utf-8")
+        match = re.search(r"pub const NAMES: &\[&str\] = &\[(.*?)\];", source, re.S)
+        self.assertIsNotNone(match)
+        rust_names = re.findall(r'"([^"]+)"', match.group(1))
+        self.assertEqual(inventory["registry"], "minecraft:data_component_type")
+        self.assertEqual(inventory["minecraft_version"], "1.21.1")
+        self.assertEqual(inventory["data_version"], 3955)
+        self.assertEqual(rust_names, inventory["components"])
+        self.assertEqual(len(rust_names), 57)
+
     def test_same_name_does_not_hide_packet_id_mismatch(self):
         target = {("play", "clientbound"): {"COMMANDS": 17, "KEEP_ALIVE": 38}}
         codecs = {
