@@ -66,25 +66,38 @@ impl Builtin {
     pub fn parse(text: &str) -> Result<Self> {
         let json: serde_json::Value = serde_json::from_str(text)
             .map_err(|e| Error::new(format!("registries report: {e}")))?;
-        let mut registries = HashMap::new();
-        for (name, registry) in json
+        let report = json
             .as_object()
-            .ok_or_else(|| Error::new("registries report is not an object"))?
-        {
+            .ok_or_else(|| Error::new("registries report is not an object"))?;
+        let mut registries = HashMap::new();
+        for (name, registry) in report {
             let Some(entries) = registry["entries"].as_object() else {
                 continue;
             };
-            let mut names = vec![String::new(); entries.len()];
+            let mut names = vec![None; entries.len()];
             for (entry, value) in entries {
-                let id = value["protocol_id"]
+                let raw_id = value["protocol_id"]
                     .as_u64()
-                    .ok_or_else(|| Error::new(format!("{entry}: no protocol_id")))?
-                    as usize;
+                    .ok_or_else(|| Error::new(format!("{name}/{entry}: no valid protocol_id")))?;
+                let id = usize::try_from(raw_id)
+                    .map_err(|_| Error::new(format!("{name}/{entry}: protocol_id is too large")))?;
                 if id >= names.len() {
-                    names.resize(id + 1, String::new());
+                    return Err(Error::new(format!(
+                        "{name}/{entry}: protocol_id {id} is outside the contiguous registry range 0..{}",
+                        names.len()
+                    )));
                 }
-                names[id] = entry.clone();
+                if names[id].replace(entry.clone()).is_some() {
+                    return Err(Error::new(format!("{name}: duplicate protocol_id {id}")));
+                }
             }
+            let names = names
+                .into_iter()
+                .enumerate()
+                .map(|(id, name)| {
+                    name.ok_or_else(|| Error::new(format!("{name}: missing protocol_id {id}")))
+                })
+                .collect::<Result<Vec<_>>>()?;
             registries.insert(name.clone(), Ids::from_names(names));
         }
         Ok(Self { registries })
