@@ -104,7 +104,7 @@ impl Codec<DebugSample> for DebugSample {
 crate::packet!(HorseScreenOpen {
     container_id: i32 => crate::buf::VarInt,
     size: i32 => crate::buf::VarInt,
-    entity_id: i32 => crate::buf::VarInt,
+    entity_id: i32 => crate::buf::Int,
 });
 crate::packet!(PlayerCombatEnd { duration: i32 => crate::buf::VarInt });
 
@@ -209,11 +209,11 @@ impl UpdateRecipes {
 /// IDs from the generated 1.21.1 packet inventory. They intentionally live
 /// here instead of crates/horizon-protocol/src/ids.rs (protocol 777).
 pub mod ids {
-    pub mod configuration_clientbound { pub const CUSTOM_REPORT_DETAILS: i32 = 16; }
+    pub mod configuration_clientbound { pub const CUSTOM_REPORT_DETAILS: i32 = 15; }
     pub mod login_clientbound { pub const GAME_PROFILE: i32 = 2; }
     pub mod play_clientbound {
         pub const ADD_EXPERIENCE_ORB: i32 = 2;
-        pub const COMMAND_SUGGESTIONS: i32 = 15;
+        pub const COMMAND_SUGGESTIONS: i32 = 16;
         pub const CUSTOM_REPORT_DETAILS: i32 = 122;
         pub const DEBUG_SAMPLE: i32 = 27;
         pub const HORSE_SCREEN_OPEN: i32 = 35;
@@ -255,4 +255,116 @@ pub enum MissingPacket {
     RecipeBookSeenRecipe(RecipeBookSeenRecipe),
     SeenAdvancements(SeenAdvancements),
     Swing(Swing),
+}
+
+
+/// Decode one of the missing 1.21.1 clientbound play packets whose payload
+/// codec is fully represented above. Unknown IDs remain the caller's concern.
+pub fn decode_play_clientbound(id: i32, payload: &[u8]) -> Result<MissingPacket> {
+    let mut r = Reader::new(payload);
+    let packet = match id {
+        ids::play_clientbound::ADD_EXPERIENCE_ORB => MissingPacket::AddExperienceOrb(AddExperienceOrb::read(&mut r)?),
+        ids::play_clientbound::COMMAND_SUGGESTIONS => MissingPacket::CommandSuggestions(CommandSuggestions::read(&mut r)?),
+        ids::play_clientbound::CUSTOM_REPORT_DETAILS => MissingPacket::CustomReportDetails(CustomReportDetails::read(&mut r)?),
+        ids::play_clientbound::DEBUG_SAMPLE => MissingPacket::DebugSample(DebugSample::read(&mut r)?),
+        ids::play_clientbound::HORSE_SCREEN_OPEN => MissingPacket::HorseScreenOpen(HorseScreenOpen::read(&mut r)?),
+        ids::play_clientbound::PLAYER_COMBAT_END => MissingPacket::PlayerCombatEnd(PlayerCombatEnd::read(&mut r)?),
+        ids::play_clientbound::PLAYER_COMBAT_ENTER => MissingPacket::PlayerCombatEnter(Empty::read(&mut r)?),
+        ids::play_clientbound::RECIPE => MissingPacket::Recipe(RecipePacket::read(&mut r)?),
+        ids::play_clientbound::SELECT_ADVANCEMENTS_TAB => MissingPacket::SelectAdvancementsTab(SelectAdvancementsTab::read(&mut r)?),
+        ids::play_clientbound::SET_CARRIED_ITEM => MissingPacket::SetCarriedItem(SetCarriedItem::read(&mut r)?),
+        other => return Err(Error::new(format!("not a supported missing 1.21.1 clientbound play packet: {other}"))),
+    };
+    if r.remaining() != 0 { return Err(Error::new(format!("1.21.1 packet {id} has {} trailing bytes", r.remaining()))); }
+    Ok(packet)
+}
+
+pub fn decode_play_serverbound(id: i32, payload: &[u8]) -> Result<MissingPacket> {
+    let mut r = Reader::new(payload);
+    let packet = match id {
+        ids::play_serverbound::COMMAND_SUGGESTION => MissingPacket::CommandSuggestionRequest(CommandSuggestionRequest::read(&mut r)?),
+        ids::play_serverbound::DEBUG_SAMPLE_SUBSCRIPTION => MissingPacket::DebugSampleSubscription(DebugSampleSubscription::read(&mut r)?),
+        ids::play_serverbound::PICK_ITEM => MissingPacket::PickItem(PickItem::read(&mut r)?),
+        ids::play_serverbound::RECIPE_BOOK_SEEN_RECIPE => MissingPacket::RecipeBookSeenRecipe(RecipeBookSeenRecipe::read(&mut r)?),
+        ids::play_serverbound::SEEN_ADVANCEMENTS => MissingPacket::SeenAdvancements(SeenAdvancements::read(&mut r)?),
+        ids::play_serverbound::SWING => MissingPacket::Swing(Swing::read(&mut r)?),
+        other => return Err(Error::new(format!("not a supported missing 1.21.1 serverbound play packet: {other}"))),
+    };
+    if r.remaining() != 0 { return Err(Error::new(format!("1.21.1 packet {id} has {} trailing bytes", r.remaining()))); }
+    Ok(packet)
+}
+
+pub fn decode_configuration_clientbound(id: i32, payload: &[u8]) -> Result<CustomReportDetails> {
+    if id != ids::configuration_clientbound::CUSTOM_REPORT_DETAILS {
+        return Err(Error::new(format!("not 1.21.1 configuration custom_report_details: {id}")));
+    }
+    decode_exact(payload, CustomReportDetails::read)
+}
+
+pub fn decode_login_clientbound(id: i32, payload: &[u8]) -> Result<GameProfilePacket> {
+    if id != ids::login_clientbound::GAME_PROFILE {
+        return Err(Error::new(format!("not 1.21.1 login game_profile: {id}")));
+    }
+    decode_exact(payload, GameProfilePacket::read)
+}
+
+fn decode_exact<T>(payload: &[u8], decode: impl FnOnce(&mut Reader) -> Result<T>) -> Result<T> {
+    let mut r = Reader::new(payload);
+    let value = decode(&mut r)?;
+    if r.remaining() != 0 { return Err(Error::new(format!("packet has {} trailing bytes", r.remaining()))); }
+    Ok(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn round_trip<T: Codec<T> + PartialEq + std::fmt::Debug>(value: T) {
+        let mut w = Writer::new();
+        T::write(&value, &mut w);
+        let mut r = Reader::new(&w.data);
+        let decoded = T::read(&mut r).unwrap();
+        assert_eq!(decoded, value);
+        assert_eq!(r.remaining(), 0);
+    }
+
+    #[test]
+    fn simple_missing_packets_round_trip() {
+        round_trip(AddExperienceOrb { entity_id: 9, x: 1.25, y: 64.0, z: -3.5, value: 7 });
+        round_trip(DebugSample { samples: vec![1, -2, i64::MAX], sample_type: 2 });
+        round_trip(HorseScreenOpen { container_id: 3, size: 5, entity_id: 900 });
+        round_trip(PlayerCombatEnd { duration: 120 });
+        round_trip(SelectAdvancementsTab { tab: Some("minecraft:story/root".into()) });
+        round_trip(SelectAdvancementsTab { tab: None });
+        round_trip(SetCarriedItem { slot: 8 });
+        round_trip(CommandSuggestionRequest { transaction_id: 4, text: "/time set".into() });
+        round_trip(DebugSampleSubscription { sample_type: 1 });
+        round_trip(PickItem { slot: 36 });
+        round_trip(RecipeBookSeenRecipe { recipe: "minecraft:oak_planks".into() });
+        round_trip(SeenAdvancements { action: 0, tab: Some("minecraft:story/root".into()) });
+        round_trip(SeenAdvancements { action: 1, tab: None });
+        round_trip(Swing { hand: 1 });
+        round_trip(CustomReportDetails { details: vec![("server".into(), "nexora".into())] });
+        round_trip(CommandSuggestions {
+            transaction_id: 8, start: 1, length: 4,
+            matches: vec![Suggestion { text: "help".into(), tooltip: Some(Tag::String("Help".into())) }],
+        });
+        round_trip(RecipePacket {
+            action: 0,
+            recipes: vec!["minecraft:stone".into()],
+            highlights: vec!["minecraft:oak_planks".into()],
+            book_settings: RecipeBookSettings { books: [(true, false), (false, true), (true, true), (false, false)] },
+        });
+    }
+
+    #[test]
+    fn play_decoders_reject_trailing_bytes_and_use_target_ids() {
+        let mut w = Writer::new();
+        PickItem::write(&PickItem { slot: 5 }, &mut w);
+        assert_eq!(decode_play_serverbound(ids::play_serverbound::PICK_ITEM, &w.data), Ok(MissingPacket::PickItem(PickItem { slot: 5 })));
+        w.data.push(0);
+        assert!(decode_play_serverbound(ids::play_serverbound::PICK_ITEM, &w.data).is_err());
+        assert_eq!(ids::play_clientbound::COMMAND_SUGGESTIONS, 16);
+        assert_eq!(ids::configuration_clientbound::CUSTOM_REPORT_DETAILS, 15);
+    }
 }
