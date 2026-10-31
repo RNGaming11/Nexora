@@ -1980,7 +1980,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
     let from_registry = installed::Installed::load(&home)
         .entries
         .iter()
-        .any(|e| e.source == SourceId::Nexora);
+        .any(|e| e.source == SourceId::Horizon);
     if from_registry {
         if let Ok(index) = horizon::index() {
             for said in horizon::turn_off_revoked(&index, &home) {
@@ -2069,7 +2069,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                         "id": p.id, "slug": p.slug, "title": p.title, "summary": p.summary,
                         "author": p.author, "downloads": p.downloads, "page": p.page,
                         "license": p.license, "support": support.label(), "reason": support.reason(),
-                        "about": if p.source == SourceId::Nexora { horizon::trust_and_capabilities(&p.id) } else { Vec::new() },
+                        "about": if p.source == SourceId::Horizon { horizon::trust_and_capabilities(&p.id) } else { Vec::new() },
                     })
                 }).collect());
             } else {
@@ -2078,7 +2078,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                 }
                 for p in &found {
                     let support = p.support();
-                    if p.source == SourceId::Nexora {
+                    if p.source == SourceId::Horizon {
                         println!("{}  ({})  {}\n  {}", p.title, p.slug, p.author, p.summary);
                         for line in horizon::trust_and_capabilities(&p.id) {
                             println!("  {line}");
@@ -2190,7 +2190,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                     p.title
                 ));
             }
-            if p.kind == Kind::Modpack && p.source == SourceId::Nexora {
+            if p.kind == Kind::Modpack && p.source == SourceId::Horizon {
                 let pack = horizon::pack::install(&p.id, &line)?;
                 if as_json {
                     json(
@@ -2375,7 +2375,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
             if on {
                 if let Some(r) = horizon::index()
                     .ok()
-                    .filter(|_| e.source == SourceId::Nexora)
+                    .filter(|_| e.source == SourceId::Horizon)
                     .and_then(|i| {
                         i.revoked(&e.project, e.checksum.trim_start_matches("SHA-256:"))
                             .cloned()
