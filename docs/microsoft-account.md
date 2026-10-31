@@ -3,18 +3,18 @@
 Nexora signs players in with their Microsoft account in the launcher and joins online-mode
 (authenticated) servers like vanilla 26.3 does. The launcher plays only with an account that owns
 Minecraft: Java Edition ([the owner gate](#the-owner-gate)); offline names, LAN and offline-mode
-servers play behind it. This note is the design, the status of each part and what Ludovic has to
+servers play behind it. This note is the design, the status of each part and what the Nexora maintainer has to
 register.
 
-## What Ludovic registers (needs his accounts)
+## What the Nexora maintainer must register
 
-Nothing below can be done by an agent: the app registrations belong to Ludovic. A build without
+Nothing below can be done by an agent: the app registrations must belong to the Nexora project owner. A build without
 the client ID can't sign in, so its launcher can't start the game ("This build of the launcher has
-no Microsoft sign-in"); release builds have it.
+no Microsoft sign-in"); release builds have it only after the repository variable is configured.
 
 1. **Azure app registration** (https://portal.azure.com → Microsoft Entra ID → App registrations →
    New registration):
-   - Name: `Horizon` (shown to players on the Microsoft consent page).
+   - Name: `Nexora` (shown to players on the Microsoft consent page).
    - Supported account types: **Personal Microsoft accounts only** (Minecraft accounts are
      consumer accounts; the launcher uses the `consumers` tenant).
    - Redirect URI: none needed for the device-code flow. If the form insists, add a
