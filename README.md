@@ -6,7 +6,7 @@ Nexora is a Minecraft: Java Edition client and launcher project. This repository
 
 ## Current branch status
 
-This branch, `nexora/1.21.1-port-baseline`, is the working baseline for the Minecraft 1.21.1 port.
+This branch, `nexora/master`, is the working baseline for the Minecraft 1.21.1 port.
 
 **Important:** the game itself is still pinned to Minecraft 26.3 / protocol 777. The protocol 767 (Minecraft 1.21.1) packet codecs are isolated and tested, but they are not yet connected to the live client session. The 1.21.1 registries, generated game data and gameplay compatibility are also unfinished. Do not treat the current build as a playable 1.21.1 client.
 
@@ -48,7 +48,7 @@ The report is written to the external version store under `diff-26.3-1.21.1/repo
 ## Project links
 
 - [Source repository](https://github.com/RNGaming11/Nexora)
-- [Current port branch](https://github.com/RNGaming11/Nexora/tree/nexora/1.21.1-port-baseline)
+- [Current port branch](https://github.com/RNGaming11/Nexora/tree/nexora/master)
 - [Releases](https://github.com/RNGaming11/Nexora/releases)
 - [Issues](https://github.com/RNGaming11/Nexora/issues)
 - [License](LICENSE)
