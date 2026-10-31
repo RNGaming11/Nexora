@@ -1,4 +1,4 @@
-//! Horizon's design tokens, the one source of truth for the launcher (`launcher/src/theme.rs`),
+//! Nexora's design tokens, the one source of truth for the launcher (`launcher/src/theme.rs`),
 //! the game's on-screen keyboard (`horizon-client`'s `ui_theme`) and the website (`tokens.css` in this crate,
 //! generated from [`css`] by `cargo run -p xtask -- tokens`, which the site's build reads from main). Change a value here and all three
 //! follow. The system is described in `docs/design-system.md`.
@@ -78,7 +78,7 @@ pub mod icons {
         "search",
         "server",
         "sliders",
-        // Not Pixelarticons': drawn for Horizon's ratings, in the same 2-unit grid.
+        // Not Pixelarticons': drawn for Nexora's ratings, in the same 2-unit grid.
         "star",
         "terminal",
         "trash",
@@ -92,7 +92,7 @@ pub mod icons {
     }
 }
 
-/// Horizon's icon at 64 px (PNG), for window title bars and task bars at run time. Rendered from
+/// Nexora's icon at 64 px (PNG), for window title bars and task bars at run time. Rendered from
 /// `docs/media/brand/icon.svg` by `cargo run -p xtask -- icons`.
 pub const ICON_PNG: &[u8] = include_bytes!("../icons/horizon-64.png");
 
