@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Horizon
-Comment=Minecraft: Java Edition 26.3, rewritten in Rust
-Exec=horizon-client
-Icon=horizon
+Name=Nexora
+Comment=Minecraft Java Edition client written in Rust
+Exec=nexora-client
+Icon=nexora
 Terminal=false
 Categories=Game;
-StartupWMClass=horizon
+StartupWMClass=nexora
 NoDisplay=true
