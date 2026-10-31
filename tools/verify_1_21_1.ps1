@@ -6,6 +6,12 @@ if (-not $repoRoot) {
 }
 Set-Location $repoRoot
 
+$expectedBranch = "nexora/1.21.1-port-baseline"
+$activeBranch = git branch --show-current
+if ($activeBranch -ne $expectedBranch) {
+    throw "This verifier must run on '$expectedBranch'. Current branch: '$activeBranch'. Switch branches first; no files were changed."
+}
+
 $logDir = Join-Path $repoRoot "target"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $logPath = Join-Path $logDir "1.21.1-verification.log"
