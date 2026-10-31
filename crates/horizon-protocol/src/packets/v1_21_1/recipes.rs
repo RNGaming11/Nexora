@@ -243,6 +243,71 @@ mod tests {
     }
 
     #[test]
+    fn every_registered_vanilla_serializer_accepts_its_empty_wire_shape() {
+        for serializer in SERIALIZERS {
+            let mut body = Writer::new();
+            match *serializer {
+                "minecraft:crafting_shaped" => {
+                    body.string("");
+                    body.varint(0);
+                    body.varint(1);
+                    body.varint(1);
+                    body.varint(0);
+                    body.varint(0);
+                    body.bool(false);
+                }
+                "minecraft:crafting_shapeless" => {
+                    body.string("");
+                    body.varint(0);
+                    body.varint(0);
+                    body.varint(0);
+                }
+                "minecraft:smelting"
+                | "minecraft:blasting"
+                | "minecraft:smoking"
+                | "minecraft:campfire_cooking" => {
+                    body.string("");
+                    body.varint(0);
+                    body.varint(0);
+                    body.varint(0);
+                    body.f32(0.0);
+                    body.varint(0);
+                }
+                "minecraft:stonecutting" => {
+                    body.string("");
+                    body.varint(0);
+                    body.varint(0);
+                }
+                "minecraft:smithing_transform" => {
+                    body.varint(0);
+                    body.varint(0);
+                    body.varint(0);
+                    body.varint(0);
+                }
+                "minecraft:smithing_trim" => {
+                    body.varint(0);
+                    body.varint(0);
+                    body.varint(0);
+                }
+                _ => body.varint(0),
+            }
+            let bytes = body.data;
+            let mut input = Reader::new(&bytes);
+            let codec = VanillaRecipeSerializers;
+            let parsed = codec
+                .read_recipe(serializer, "minecraft:test", &mut input)
+                .unwrap_or_else(|error| panic!("{serializer}: {error}"));
+            assert_eq!(parsed, bytes, "{serializer}");
+            assert_eq!(input.remaining(), 0, "{serializer}");
+            let mut output = Writer::new();
+            codec
+                .write_recipe(serializer, "minecraft:test", &parsed, &mut output)
+                .unwrap_or_else(|error| panic!("{serializer}: {error}"));
+            assert_eq!(output.data, bytes, "{serializer}");
+        }
+    }
+
+    #[test]
     fn parses_special_recipe_category_and_rejects_component_slots() {
         let codec = VanillaRecipeSerializers;
         let mut special = Reader::new(&[2]);
