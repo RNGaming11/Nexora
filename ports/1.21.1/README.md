@@ -32,7 +32,16 @@ The remaining import and port steps are:
 4. Apply the correct side's Mojang mappings when producing class inventories and decompiled sources. Keep raw obfuscated names available as provenance; never overwrite the downloaded jars.
 5. Run the 1.21.1 data generator using Java 21 and capture reports.
 6. Generate version constants from the actual embedded client `version.json`; do not hand-edit `crates/horizon-core/src/version.rs`.
-7. Diff mapped symbols and generated data against a 1.21.1-specific candidate baseline, then run the parity harnesses before treating any port as complete.
+7. Compare the mapped 1.21.1 class inventory and generated reports against the pinned game. The 1.21.1 preparation path writes its mapped union to both `classes-mapped.json` and the standard `classes.json` input expected by the version-port diff tool. With the pinned 26.3 files prepared in `.local`, run:
+
+   ```powershell
+   python tools/version_port.py prepare 26.3
+   python tools/version_port.py diff 26.3 1.21.1
+   python tools/version_port.py report 26.3 1.21.1
+   ```
+
+   This writes `diff-26.3-1.21.1/diff.json` and a ranked `report.md` worklist in the external version store. It is the next step after `prepare_1_21_1.py`; it does not port game code by itself.
+8. Run the parity harnesses against the candidate before treating any port as complete.
 
 ## Packet ID comparison
 
