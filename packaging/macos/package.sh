@@ -60,7 +60,7 @@ cat > "$out/dmg.json" <<JSON
   ]
 }
 JSON
-"${DMGBUILD:-dmgbuild}" -s "$out/dmg.json" Horizon "$out/nexora-launcher-macos-arm64.dmg"
+"${DMGBUILD:-dmgbuild}" -s "$out/dmg.json" Nexora "$out/nexora-launcher-macos-arm64.dmg"
 rm "$out/dmg.json"
 dmg=$out/nexora-launcher-macos-arm64.dmg
 if [[ "$identity" != "-" ]]; then
