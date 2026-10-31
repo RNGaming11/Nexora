@@ -520,7 +520,7 @@ pub fn encode_update_recipes(
 
 /// Configuration-state packet IDs and codecs for protocol 767.
 pub mod configuration {
-    use super::{CustomReportDetails, decode_exact};
+    use super::{CustomReportDetails, decode_exact, ids};
     use crate::{
         Error, Result,
         buf::{Codec, Reader, Writer},
