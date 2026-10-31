@@ -31,7 +31,7 @@ class PacketCodecCoverageTests(unittest.TestCase):
             "VERSION_ID": facts["id"],
             "VANILLA_VERSION": facts["name"],
             "RELEASE_TIME": facts["release_time"],
-            "ASSET_INDEX": facts["asset_index"],
+            "ASSET_INDEX": int(facts["asset_index"]),
             "PROTOCOL_VERSION": facts["protocol_version"],
             "DATA_VERSION": facts["data_version"],
             "JAVA_VERSION": facts["java_major"],
