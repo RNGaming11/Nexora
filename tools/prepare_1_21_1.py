@@ -115,6 +115,17 @@ def main():
     classes_path = directory / "classes-obfuscated.json"
     classes_path.write_text(json.dumps(classes, separators=(",", ":")), encoding="utf-8")
 
+    print("Applying official client/server ProGuard mappings and building semantic class index", flush=True)
+    mapped_classes = class_index.index_jars(
+        [artifacts["client"], artifacts["server_game"]],
+        jobs=args.jobs,
+        mappings=[artifacts["client_mappings"], artifacts["server_mappings"]],
+    )
+    mapped_classes_path = directory / "classes-mapped.json"
+    mapped_classes_path.write_text(
+        json.dumps(mapped_classes, separators=(",", ":")), encoding="utf-8"
+    )
+
     record = {
         "version": VERSION,
         "source": "Mojang version_manifest_v2.json",
@@ -127,8 +138,11 @@ def main():
         "obfuscated_class_index": str(classes_path.resolve()),
         "class_count": len(classes),
         "method_count": sum(len(item["methods"]) for item in classes.values()),
-        "mapping_applied_to_class_index": False,
-        "next_required_step": "Apply official ProGuard mappings before comparing symbols with deobfuscated Rust-side references.",
+        "mapped_class_index": str(mapped_classes_path.resolve()),
+        "mapped_class_count": len(mapped_classes),
+        "mapped_method_count": sum(len(item["methods"]) for item in mapped_classes.values()),
+        "mapping_applied_to_class_index": True,
+        "next_required_step": "Compare the mapped inventory against the 1.21.1-specific candidate baseline; raw obfuscated inventory is retained for provenance.",
     }
     lab.write_json(directory / "facts.json", facts)
     lab.write_json(directory / "prepared.json", record)
@@ -138,9 +152,12 @@ def main():
         "mapping_stats": mapping_report,
         "class_count": record["class_count"],
         "method_count": record["method_count"],
+        "mapped_class_count": record["mapped_class_count"],
+        "mapped_method_count": record["mapped_method_count"],
         "prepared_directory": str(directory.resolve()),
         "reports": str(reports.resolve()),
-        "warning": record["next_required_step"],
+        "mapped_class_index": str(mapped_classes_path.resolve()),
+        "next_step": record["next_required_step"],
     }, indent=2))
     return 0
 
