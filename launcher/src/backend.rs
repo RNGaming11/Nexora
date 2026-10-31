@@ -3979,36 +3979,24 @@ pub fn {f}("
     #[test]
     fn links_fall_back_to_the_built_in_ones() {
         let defaults = Links::default();
-        assert_eq!(defaults.discord, "https://discord.gg/HcTeMZxe5E");
-        assert_eq!(defaults.sponsor, "https://github.com/sponsors/ludovic111");
-        assert_eq!(defaults.website, "https://playhorizon.dev");
-        // The file on main says the same thing as the defaults.
+        assert!(defaults.discord.is_empty());
+        assert_eq!(defaults.website, "https://github.com/RNGaming11/Nexora");
         let file = Links::parse(
-            r#"{"discord": "https://discord.gg/HcTeMZxe5E", "sponsor": "https://github.com/sponsors/ludovic111", "website": "https://playhorizon.dev"}"#,
+            r#"{"discord": "", "website": "https://github.com/RNGaming11/Nexora"}"#,
         );
         assert_eq!(file, defaults);
-        // Unreadable or missing, offline included: the defaults.
         assert_eq!(Links::parse(""), defaults);
         assert_eq!(Links::parse("<html>404</html>"), defaults);
         assert_eq!(Links::parse("[1]"), defaults);
         assert_eq!(Links::parse(r#"{"discord": 5}"#), defaults);
-        // A key that is missing keeps its default; a new address replaces it; empty hides it.
         assert_eq!(
             Links::parse(r#"{"discord": "https://x.y/z"}"#),
-            Links {
-                discord: "https://x.y/z".into(),
-                ..defaults.clone()
-            }
+            Links { discord: "https://x.y/z".into(), ..defaults.clone() }
         );
         assert_eq!(
-            Links::parse(r#"{"discord": "", "sponsor": " "}"#),
-            Links {
-                discord: String::new(),
-                sponsor: String::new(),
-                ..defaults.clone()
-            }
+            Links::parse(r#"{"discord": " "}"#),
+            Links { discord: String::new(), ..defaults.clone() }
         );
-        // A key this launcher does not know is ignored.
         assert_eq!(Links::parse(r#"{"mastodon": "https://x.y/z"}"#), defaults);
     }
 
