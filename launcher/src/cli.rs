@@ -730,7 +730,7 @@ enum Cmd {
     },
     /// Show a release's patch notes (default: the newest)
     Notes { tag: Option<String> },
-    /// Show the Discord, sponsor and website links
+    /// Show the Nexora website link
     Links,
     /// Microsoft accounts: list them (the default), sign in, sign out, or pick the one that plays
     Account {
