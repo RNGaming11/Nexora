@@ -445,3 +445,14 @@ pub fn encode_play_serverbound(packet: &MissingPacket) -> Result<Vec<u8>> {
     write(&mut w);
     Ok(w.data)
 }
+
+
+pub fn encode_update_recipes(
+    packet: &UpdateRecipes,
+    serializers: &impl RecipeSerializer,
+) -> Result<Vec<u8>> {
+    let mut w = Writer::new();
+    w.varint(ids::play_clientbound::UPDATE_RECIPES);
+    packet.write_with(&mut w, serializers)?;
+    Ok(w.data)
+}
