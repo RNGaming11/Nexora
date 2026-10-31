@@ -566,7 +566,6 @@ impl Game<'_> {
         cookies: Option<horizon_client::net::Cookies>,
     ) -> Result<()> {
         self.reset_tutorial();
-        self.perf.world_opening();
         let root = self.options.resources.clone();
         let builtin = Builtin::find(&root)
             .and_then(|p| Builtin::load(&p).ok())
