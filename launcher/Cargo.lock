@@ -2733,7 +2733,6 @@ dependencies = [
 name = "nexora-launcher"
 version = "0.2.0"
 dependencies = [
- "horizon-telemetry",
  "base64",
  "chrono",
  "clap",
@@ -2749,7 +2748,6 @@ dependencies = [
  "horizon-port-pack",
  "horizon-prepare",
  "horizon-release-sign",
- "horizon-telemetry",
  "horizon-theme",
  "horizon-world",
  "image",
@@ -2833,17 +2831,6 @@ dependencies = [
  "sha2 0.10.9",
  "toml 1.1.8+spec-1.1.0",
  "zip",
-]
-
-[[package]]
-name = "horizon-telemetry"
-version = "0.1.0"
-dependencies = [
- "getrandom 0.3.4",
- "ruzstd",
- "serde",
- "serde_json",
- "ureq",
 ]
 
 [[package]]
