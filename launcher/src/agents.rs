@@ -1,5 +1,5 @@
-//! Connecting an AI agent (docs/agent-control.md): the launcher's MCP server, `horizon-launcher
-//! mcp`, as each common client wants it configured. `horizon-launcher agent-config` prints it and
+//! Connecting an AI agent (docs/agent-control.md): the launcher's MCP server, `nexora-launcher
+//! mcp`, as each common client wants it configured. `nexora-launcher agent-config` prints it and
 //! the Settings page's "Connect an AI agent" shows it. Nothing here runs a client's command: the
 //! window runs one only when the player clicks its button, and shows it first.
 use serde_json::{json, Value};
@@ -204,9 +204,9 @@ mod tests {
         let codex = &all[1];
         assert!(codex
             .config
-            .contains("command = \"/Applications/Horizon Launcher.app"));
+            .contains("command = \"/Applications/Nexora Launcher.app"));
         assert_eq!(
-            toml_string(r#"C:\Horizon\"x".exe"#),
+            toml_string(r#"C:\Nexora\"x".exe"#),
             r#""C:\\Nexora\\\"x\".exe""#
         );
         assert!(all.iter().any(|c| c.id == "cursor" && c.add.is_none()));
