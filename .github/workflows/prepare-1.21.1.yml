@@ -29,7 +29,7 @@ jobs:
       - name: Generate an independent packet inventory
         shell: pwsh
         run: |
-          $report = Join-Path $env:HORIZON_VERSIONS "1.21.1\datagen\out\reports\packets.json"
+          $report = Join-Path $env:HORIZON_VERSIONS "1.21.1\datagen\reports\packets.json"
           if (-not (Test-Path $report)) { throw "The official data generator did not produce packets.json." }
           New-Item -ItemType Directory -Force -Path "target\1.21.1" | Out-Null
           python tools/generate_packet_ids.py --report $report --out "target\1.21.1\packet_ids.rs" --protocol-version 767 --version-name 1.21.1
