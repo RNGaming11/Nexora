@@ -38,6 +38,7 @@ try {
     Invoke-Checked "Rust formatting" { cargo fmt --all -- --check }
     Invoke-Checked "Core version tests" { cargo test -p horizon-core }
     Invoke-Checked "Rust protocol tests" { cargo test -p horizon-protocol }
+    Invoke-Checked "World registry tests" { cargo test -p horizon-world }
     Invoke-Checked "Workspace compile check" { cargo check --workspace }
 
     $reportCandidates = @()
