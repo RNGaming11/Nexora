@@ -74,6 +74,7 @@ def main():
     reports = directory / "datagen" / "reports"
     jars.mkdir(parents=True, exist_ok=True)
     mappings.mkdir(parents=True, exist_ok=True)
+    reports.parent.mkdir(parents=True, exist_ok=True)
 
     manifest = json.loads(version_port.fetch_json(MANIFEST_URL))
     entry = next((item for item in manifest["versions"] if item["id"] == VERSION), None)
