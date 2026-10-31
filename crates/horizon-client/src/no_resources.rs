@@ -1,19 +1,19 @@
 //! The screen of a game started without its prepared files: the game build
 //! run by hand (the release's game zip) instead of through the launcher. It
-//! says where to get the launcher, and quits. Drawn in Horizon's design
+//! says where to get the launcher, and quits. Drawn in Nexora's design
 //! language with the bundled fonts: none of Minecraft's files are there.
 use crate::ui_theme::{self, Face, Ui, color};
 
 /// The launcher's download page.
-pub const DOWNLOAD_URL: &str = "https://playhorizon.dev";
+pub const DOWNLOAD_URL: &str = "https://github.com/RNGaming11/Nexora/releases";
 
-const TITLE: &str = "Start Horizon from the launcher";
+const TITLE: &str = "Start Nexora from the launcher";
 const PARAGRAPHS: [&str; 3] = [
-    "This is the game the Horizon launcher installs and starts. On its own it has none of \
+    "This is the game the Nexora launcher installs and starts. On its own it has none of \
      Minecraft's files, so it can't start.",
-    "Horizon needs your own copy of Minecraft: Java Edition. The launcher signs you in and \
+    "Nexora needs your own copy of Minecraft: Java Edition. The launcher signs you in and \
      prepares the game files from it.",
-    "Download the launcher at playhorizon.dev, then press Play there.",
+    "Download the launcher at github.com/RNGaming11/Nexora/releases, then press Play there.",
 ];
 const COLUMN: f32 = 560.0;
 const BUTTON_GAP: f32 = 12.0;
