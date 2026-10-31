@@ -332,7 +332,12 @@ mod tests {
         );
 
         let mut component_slot = Reader::new(&[1, 5, 1, 0, 0]);
-        assert!(read_slot(&mut component_slot).is_err());
+        let error = read_slot(&mut component_slot).unwrap_err();
+        assert!(error.to_string().contains("minecraft:custom_data"));
+
+        let mut removed_component = Reader::new(&[1, 5, 0, 1, 14]);
+        let error = read_slot(&mut removed_component).unwrap_err();
+        assert!(error.to_string().contains("minecraft:hide_additional_tooltip"));
     }
 
     #[test]
