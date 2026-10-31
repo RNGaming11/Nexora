@@ -9,6 +9,13 @@ fn output(program: &str, args: &[&str]) -> Option<String> {
     result.status.success().then(|| String::from_utf8_lossy(&result.stdout).trim().to_owned())
 }
 
+use std::process::Command;
+
+fn output(program: &str, args: &[&str]) -> Option<String> {
+    let result = Command::new(program).args(args).output().ok()?;
+    result.status.success().then(|| String::from_utf8_lossy(&result.stdout).trim().to_owned())
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Hardware {
     /// `macos`, `linux`, `windows`.
