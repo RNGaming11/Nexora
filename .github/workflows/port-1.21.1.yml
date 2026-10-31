@@ -34,6 +34,8 @@ jobs:
         run: python -m unittest tools.test_proguard tools.test_packet_codec_coverage
       - name: Rust formatting
         run: cargo fmt --all -- --check
+      - name: Core version tests
+        run: cargo test -p horizon-core
       - name: Protocol tests
         run: cargo test -p horizon-protocol
       - name: Workspace compile check
