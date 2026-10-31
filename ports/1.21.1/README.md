@@ -44,6 +44,16 @@ python tools/compare_packet_ids.py
 
 The tool writes `packet-id-diff.json` and prints counts for packets added, removed, and renumbered relative to the current 26.3 inventory. This is an inventory comparison only: matching names and IDs do not prove packet payload codecs or connection behavior are compatible.
 
+## Typed packet codec coverage audit
+
+After generating the target packet IDs, run:
+
+```powershell
+python tools/audit_packet_codec_coverage.py
+```
+
+This scans the existing Rust packet enums and reports which target packet constants already have typed packet codecs, grouped by state and direction. It writes `packet-codec-coverage.json`. A matching constant is only an initial reuse candidate: payload field layouts and semantics still need verification against 1.21.1 sources.
+
 ## Current status
 
 - [x] Isolated working branch: `nexora/1.21.1-port-baseline`.
