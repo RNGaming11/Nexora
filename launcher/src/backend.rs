@@ -402,12 +402,10 @@ pub fn installable_updates(releases: &[Release]) -> Vec<Release> {
 /// How often a launcher left open looks for new releases: they come out several times a day.
 pub const CHECK_EVERY: std::time::Duration = std::time::Duration::from_secs(30 * 60);
 
-/// The community, sponsor and website links, from `launcher/links.json` on main, so they can change
-/// without a launcher release. An empty address hides its button.
+/// The Nexora website link, from `launcher/links.json` on main.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct Links {
     pub discord: String,
-    pub sponsor: String,
     pub website: String,
 }
 
@@ -415,9 +413,8 @@ impl Default for Links {
     /// What the launcher uses until (or unless) it can read links.json.
     fn default() -> Self {
         Self {
-            discord: "https://discord.gg/HcTeMZxe5E".into(),
-            sponsor: "https://github.com/sponsors/ludovic111".into(),
-            website: "https://playhorizon.dev".into(),
+            discord: String::new(),
+            website: "https://github.com/RNGaming11/Nexora".into(),
         }
     }
 }
@@ -430,7 +427,6 @@ impl Links {
         if let Ok(serde_json::Value::Object(map)) = serde_json::from_str(text) {
             for (key, slot) in [
                 ("discord", &mut links.discord),
-                ("sponsor", &mut links.sponsor),
                 ("website", &mut links.website),
             ] {
                 if let Some(url) = map.get(key).and_then(|v| v.as_str()) {
@@ -3020,29 +3016,18 @@ pub struct Settings {
     /// Dark, Light, or the system's: the launcher's look. Dark by default.
     #[serde(default)]
     pub appearance: Appearance,
-    /// The player has read what the "I'm playing" ping holds (`telemetry::PING`): on the
-    /// first-run question, or on the Play page once if they answered that before it existed.
-    #[serde(default)]
-    pub ping_notice_seen: bool,
     /// The player without an account that owns the game has read, once, why the launcher needs
     /// one now (the owner gate's screen).
     #[serde(default)]
     pub owner_notice_seen: bool,
-    /// Seconds the sidebar's partner banner has been on screen, over every start, up to
-    /// `partner::SEEN_BEFORE_HIDE`: only then can the player hide it.
-    #[serde(default)]
-    pub partner_seen_secs: u64,
-    /// The player hid the sidebar's partner banner. The Servers page keeps its own.
-    #[serde(default)]
-    pub partner_hidden: bool,
     /// What the window does while the game runs. Stays by default.
     #[serde(default)]
     pub while_playing: WhilePlaying,
-    /// The accent colour on top of the appearance (`themes::Accent`). Horizon's violet by default.
+    /// The accent colour on top of the appearance (`themes::Accent`). Nexora blue by default.
     #[serde(default)]
     pub accent: crate::themes::Accent,
     /// Home's background: a picture the player picked, kept in the data folder under this name
-    /// (`themes::keep_background`). Unset shows Horizon's landscape.
+    /// (`themes::keep_background`). Unset shows the Nexora background.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<String>,
     /// The window's language. Unset follows the system's (`i18n::Language::system`).
