@@ -209,7 +209,45 @@ impl UpdateRecipes {
 /// IDs from the generated 1.21.1 packet inventory. They intentionally live
 /// here instead of crates/horizon-protocol/src/ids.rs (protocol 777).
 pub mod ids {
-    pub mod configuration_clientbound { pub const CUSTOM_REPORT_DETAILS: i32 = 15; }
+    pub mod configuration_clientbound {
+        pub const COOKIE_REQUEST: i32 = 0;
+        pub const CUSTOM_PAYLOAD: i32 = 1;
+        pub const DISCONNECT: i32 = 2;
+        pub const FINISH_CONFIGURATION: i32 = 3;
+        pub const KEEP_ALIVE: i32 = 4;
+        pub const PING: i32 = 5;
+        pub const RESET_CHAT: i32 = 6;
+        pub const REGISTRY_DATA: i32 = 7;
+        pub const RESOURCE_PACK_POP: i32 = 8;
+        pub const RESOURCE_PACK_PUSH: i32 = 9;
+        pub const STORE_COOKIE: i32 = 10;
+        pub const TRANSFER: i32 = 11;
+        pub const UPDATE_ENABLED_FEATURES: i32 = 12;
+        pub const UPDATE_TAGS: i32 = 13;
+        pub const SELECT_KNOWN_PACKS: i32 = 14;
+        pub const CUSTOM_REPORT_DETAILS: i32 = 15;
+        pub const SERVER_LINKS: i32 = 16;
+        pub const NAMES: &[&str] = &[
+            "cookie_request", "custom_payload", "disconnect", "finish_configuration",
+            "keep_alive", "ping", "reset_chat", "registry_data", "resource_pack_pop",
+            "resource_pack_push", "store_cookie", "transfer", "update_enabled_features",
+            "update_tags", "select_known_packs", "custom_report_details", "server_links",
+        ];
+    }
+    pub mod configuration_serverbound {
+        pub const CLIENT_INFORMATION: i32 = 0;
+        pub const COOKIE_RESPONSE: i32 = 1;
+        pub const CUSTOM_PAYLOAD: i32 = 2;
+        pub const FINISH_CONFIGURATION: i32 = 3;
+        pub const KEEP_ALIVE: i32 = 4;
+        pub const PONG: i32 = 5;
+        pub const RESOURCE_PACK: i32 = 6;
+        pub const SELECT_KNOWN_PACKS: i32 = 7;
+        pub const NAMES: &[&str] = &[
+            "client_information", "cookie_response", "custom_payload", "finish_configuration",
+            "keep_alive", "pong", "resource_pack", "select_known_packs",
+        ];
+    }
     pub mod login_clientbound { pub const GAME_PROFILE: i32 = 2; }
     pub mod play_clientbound {
         pub const ADD_EXPERIENCE_ORB: i32 = 2;
