@@ -25,6 +25,7 @@ The preparation work already present on this branch includes:
 - Version facts and official artifact/mapping hash pins.
 - Separate raw and mapped class inventories.
 - Version-isolated protocol-767 packet IDs and codecs for the previously missing packet types.
+- The generated `packet_ids.rs` inventory is imported by `horizon-protocol`; Rust tests compare every version-specific codec ID against the generated Mojang packet names so the hand-written dispatch table cannot silently drift.
 - Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
 
 Large downloaded and generated artifacts intentionally stay outside Git. By default, the preparation cache is under `~/code/horizon-parity/versions/1.21.1/`; set `HORIZON_VERSIONS` to select another location.
