@@ -224,7 +224,7 @@ def main():
         "fact_checks": checks,
         "mapping_stats": mapping_report,
         "mapping_coverage": coverage_report,
-        "paths": {key: str(path.resolve()) for key, path in artifacts.items()},
+        "paths": {**{key: str(path.resolve()) for key, path in artifacts.items()}, "reports": str(reports.resolve())},
         "reports": str(reports.resolve()),
         "obfuscated_class_index": str(classes_path.resolve()),
         "class_count": len(classes),
