@@ -2,6 +2,9 @@ name: Prepare Minecraft 1.21.1 port data
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/prepare-1.21.1.yml"
 
 permissions:
   contents: read
