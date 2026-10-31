@@ -48,7 +48,7 @@ const ICONS: [(&str, &[u8]); 9] = [
     ),
     (
         "scalable",
-        include_bytes!("../../packaging/icons/hicolor/scalable/apps/horizon.svg"),
+        include_bytes!("../../packaging/icons/hicolor/scalable/apps/nexora.svg"),
     ),
 ];
 
@@ -87,7 +87,7 @@ pub fn launcher_entry(exe: &Path) -> String {
          Comment=Install, prepare and play Nexora, Minecraft: Java Edition {minecraft} rewritten in Rust\n\
          Exec={}\n\
          TryExec={}\n\
-         Icon=horizon\n\
+         Icon=nexora\n\
          Terminal=false\n\
          Categories=Game;\n\
          StartupWMClass=nexora-launcher\n",
@@ -111,7 +111,7 @@ fn files(data: &Path, exe: &Path) -> Vec<(PathBuf, Vec<u8>)> {
     ];
     for (size, bytes) in ICONS {
         let name = if size == "scalable" {
-            "horizon.svg"
+            "nexora.svg"
         } else {
             "nexora.png"
         };
@@ -257,7 +257,7 @@ mod tests {
         let entry = launcher_entry(Path::new("/home/a b/Nexora \"x\"/nexora-launcher"));
         assert!(entry.contains("Exec=\"/home/a b/Nexora \\\"x\\\"/nexora-launcher\"\n"));
         assert!(entry.contains("TryExec=/home/a b/Nexora \"x\"/nexora-launcher\n"));
-        assert!(entry.contains("Icon=horizon\n"));
+        assert!(entry.contains("Icon=nexora\n"));
     }
 
     #[test]
@@ -269,7 +269,7 @@ mod tests {
         let png = data.join("icons/hicolor/48x48/apps/nexora.png");
         assert!(fs::read(&png).unwrap().starts_with(b"\x89PNG"));
         assert!(data
-            .join("icons/hicolor/scalable/apps/horizon.svg")
+            .join("icons/hicolor/scalable/apps/nexora.svg")
             .exists());
         assert!(install_in(&data, Path::new("/opt/b/nexora-launcher")).unwrap());
         let entry = fs::read_to_string(data.join("applications").join(LAUNCHER_ENTRY)).unwrap();
