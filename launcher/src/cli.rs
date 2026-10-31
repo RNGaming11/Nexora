@@ -1,4 +1,4 @@
-//! `horizon-launcher <subcommand>`: the same steps as the window, from a terminal. Every
+//! `nexora-launcher <subcommand>`: the same steps as the window, from a terminal. Every
 //! command goes through `backend`; this file only parses arguments and prints.
 use clap::{Parser, Subcommand};
 use horizon_launcher::account::{self, Accounts};
@@ -15,9 +15,9 @@ use std::process::Command;
 
 #[derive(Parser)]
 #[command(
-    name = "horizon-launcher",
+    name = "nexora-launcher",
     version = backend::VERSION,
-    about = "Installs, prepares and starts Horizon. Without a subcommand, opens the window."
+    about = "Installs, prepares and starts Nexora. Without a subcommand, opens the window."
 )]
 struct Cli {
     /// Print JSON instead of text, where a command has something to report
@@ -29,7 +29,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum JavaCmd {
-    /// The Java runtimes Horizon downloaded from Mojang and the ones installed on this computer
+    /// The Java runtimes Nexora downloaded from Mojang and the ones installed on this computer
     List,
     /// Download Mojang's Java runtime: a major (8, 16, 17, 21, 25) or a component name from a
     /// version's JSON (java-runtime-delta)
@@ -181,7 +181,7 @@ enum InstanceCmd {
         #[arg(long)]
         copy: Option<String>,
         /// Make a Minecraft: Java Edition instance of this version (1.21.4, latest or
-        /// latest-snapshot) instead of a Horizon one
+        /// latest-snapshot) instead of a Nexora one
         #[arg(long, conflicts_with = "copy")]
         minecraft: Option<String>,
         /// With this mod loader: fabric or quilt
@@ -233,7 +233,7 @@ enum InstanceCmd {
     /// Rename an instance (its folder stays)
     Rename { instance: String, name: String },
     /// Delete an instance: its folder (worlds, options, packs) goes to the Trash, where you can
-    /// get it back. Horizon's own instance stays
+    /// get it back. Nexora's own instance stays
     Delete { instance: String },
     /// Set an instance's icon: a block or item name from your prepared files (grass_block),
     /// a colour (#3fa7d6), or none
@@ -245,9 +245,9 @@ enum InstanceCmd {
     },
     /// Make Play start this instance
     Select { instance: String },
-    /// Keep an instance on one installed Horizon version, or "latest" to follow updates again
+    /// Keep an instance on one installed Nexora version, or "latest" to follow updates again
     Version { instance: String, version: String },
-    /// Export an instance (or a port) to share: its settings, packs, Horizon mods and the worlds
+    /// Export an instance (or a port) to share: its settings, packs, Nexora mods and the worlds
     /// named, as a .mrpack (resource packs from Modrinth listed by download) or a zip. Never
     /// logs, screenshots or account data; worlds go without their per-player files
     Export {
@@ -500,7 +500,7 @@ enum ModsCmd {
         #[arg(long)]
         instance: Option<String>,
     },
-    /// Search for packs Horizon loads, or for what a Java instance runs (made for its
+    /// Search for packs Nexora loads, or for what a Java instance runs (made for its
     /// Minecraft version and loader)
     Search {
         text: Vec<String>,
@@ -515,7 +515,7 @@ enum ModsCmd {
         #[arg(long)]
         instance: Option<String>,
     },
-    /// Say how well a Java mod runs in Horizon: its jar is downloaded (checksum checked),
+    /// Say how well a Java mod runs in Nexora: its jar is downloaded (checksum checked),
     /// carried over and read; the answer is kept
     Check {
         project: String,
@@ -556,7 +556,7 @@ enum ModsCmd {
     /// Install a native mod from a GitHub link (docs/native-mods.md, "Install from GitHub"):
     /// https://github.com/OWNER/REPO (its latest release, else its default branch),
     /// .../releases/tag/TAG, .../tree/REF or .../commit/SHA. Resolved to an exact release file or
-    /// commit, checked like a registry mod. NOT reviewed by the Horizon registry
+    /// commit, checked like a registry mod. NOT reviewed by the Nexora registry
     AddGithub {
         url: String,
         /// The mod to install when the link holds several
@@ -617,7 +617,7 @@ enum KindArg {
     Mod,
     Resource,
     Modpack,
-    /// Horizon's own shader packs (Horizon's registry only)
+    /// Nexora's own shader packs (Nexora's registry only)
     Shader,
     /// Data packs (Modrinth): install one into a world with `mods install <pack> --world <name>`
     Datapack,
@@ -628,8 +628,8 @@ enum SourceArg {
     Modrinth,
     /// CurseForge support is coming soon
     Curseforge,
-    /// Horizon's own registry: mods, modpacks and resource packs made for Horizon, reviewed
-    Horizon,
+    /// Nexora's own registry: mods, modpacks and resource packs made for Nexora, reviewed
+    Nexora,
 }
 
 impl SourceArg {
@@ -638,7 +638,7 @@ impl SourceArg {
         let id = match self {
             SourceArg::Modrinth => SourceId::Modrinth,
             SourceArg::Curseforge => SourceId::CurseForge,
-            SourceArg::Horizon => SourceId::Horizon,
+            SourceArg::Nexora => SourceId::Nexora,
         };
         browser::source(id).ok_or_else(|| browser::CURSEFORGE_SOON.into())
     }
@@ -646,7 +646,7 @@ impl SourceArg {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// List Horizon releases, or the installed versions
+    /// List Nexora releases, or the installed versions
     Versions {
         /// Only the versions installed here (no network)
         #[arg(long)]
@@ -706,7 +706,7 @@ enum Cmd {
         #[arg(long)]
         accept_eula: bool,
     },
-    /// Native mods (experimental, docs/native-mods.md): compile mixin bundles on the Horizon
+    /// Native mods (experimental, docs/native-mods.md): compile mixin bundles on the Nexora
     /// revision they pin, with the launcher's own Rust, as the version the "Native mods" instance
     /// plays. Not sandboxed: the mods' code runs with your rights
     NativeBuild {
@@ -724,7 +724,7 @@ enum Cmd {
         /// You read the mods' source and trust it with full access to this computer
         #[arg(long)]
         trust_native_code: bool,
-        /// Build mods made for different Horizon versions together anyway, on the newest of them
+        /// Build mods made for different Nexora versions together anyway, on the newest of them
         #[arg(long)]
         allow_version_mismatch: bool,
     },
@@ -745,7 +745,7 @@ enum Cmd {
     /// ("default" removes it), while-playing stay|minimize|hide (what the window does while the game runs), language
     /// system|en|fr|ru|de|zh|es|uk|pl (the window's language; system follows the computer's), accent
     /// violet|blue|teal|green|amber|red|pink, background PATH (a picture behind Home; "default"
-    /// shows Horizon's landscape)
+    /// shows Nexora's landscape)
     Settings {
         #[arg(value_parser = SETTING_KEYS)]
         key: Option<String>,
@@ -780,13 +780,13 @@ enum Cmd {
         #[arg(long)]
         crash: bool,
     },
-    /// Look for a newer Horizon release and launcher, and install them
+    /// Look for a newer Nexora release and launcher, and install them
     Update {
         /// Only report what is available
         #[arg(long)]
         check: bool,
     },
-    /// Linux: put Horizon in the applications menu (an entry and the icon, under
+    /// Linux: put Nexora in the applications menu (an entry and the icon, under
     /// $XDG_DATA_HOME), or take it out with --remove
     DesktopEntry {
         /// Remove the entry and the icon, and stop adding them back
@@ -1123,7 +1123,7 @@ fn execute(command: Cmd, as_json: bool) -> Result<(), String> {
                 );
             } else {
                 println!(
-                    "Installed {tag}. Prepare it next: horizon-launcher prepare --version {tag}"
+                    "Installed {tag}. Prepare it next: nexora-launcher prepare --version {tag}"
                 );
             }
         }
@@ -1214,7 +1214,7 @@ fn execute(command: Cmd, as_json: bool) -> Result<(), String> {
                 if version.is_some() || world.is_some() || join.is_some() || creative {
                     return Err(format!(
                         "{} plays Minecraft: Java Edition: --version, --world, --creative and \
-                         --join are for Horizon instances.",
+                         --join are for Nexora instances.",
                         instance.name
                     ));
                 }
@@ -1426,7 +1426,7 @@ fn execute(command: Cmd, as_json: bool) -> Result<(), String> {
             } else {
                 println!("{}", shared.url);
                 println!(
-                    "Delete it: horizon-launcher unshare-log {}:{}",
+                    "Delete it: nexora-launcher unshare-log {}:{}",
                     shared.id, shared.token
                 );
             }
@@ -1457,10 +1457,10 @@ fn execute(command: Cmd, as_json: bool) -> Result<(), String> {
             settings.save();
             if remove {
                 horizon_launcher::desktop::remove()?;
-                println!("Removed Horizon from the applications menu.");
+                println!("Removed Nexora from the applications menu.");
             } else {
                 horizon_launcher::desktop::install(backend::exe_path())?;
-                println!("Horizon is in the applications menu.");
+                println!("Nexora is in the applications menu.");
             }
         }
         Cmd::Worlds { action } => worlds(
@@ -1502,11 +1502,11 @@ fn java(action: JavaCmd, as_json: bool) -> Result<(), String> {
             if as_json {
                 json(serde_json::json!(all));
             } else if all.is_empty() {
-                println!("No Java yet. Horizon downloads Mojang's when an instance needs it.");
+                println!("No Java yet. Nexora downloads Mojang's when an instance needs it.");
             } else {
                 for r in &all {
                     let from = match r.source {
-                        java::Source::Mojang => "Mojang's, downloaded by Horizon",
+                        java::Source::Mojang => "Mojang's, downloaded by Nexora",
                         java::Source::Installed => "installed",
                     };
                     println!("Java {}  ({from})\n  {}", r.version, r.home.display());
@@ -1549,7 +1549,7 @@ fn rust(action: RustCmd, as_json: bool) -> Result<(), String> {
                 match (&installed, &version) {
                     (Some(t), Some(v)) => println!("{v} in {}", t.dir.display()),
                     _ => println!(
-                        "Rust {} is not installed (`horizon-launcher rust install`).",
+                        "Rust {} is not installed (`nexora-launcher rust install`).",
                         rust::VERSION
                     ),
                 }
@@ -1589,12 +1589,12 @@ fn update(check: bool, as_json: bool) -> Result<(), String> {
         return Ok(());
     }
     match &updates.horizon {
-        None => println!("Horizon: up to date."),
-        Some(r) if check => println!("Horizon: {} is available.", r.tag),
+        None => println!("Nexora: up to date."),
+        Some(r) if check => println!("Nexora: {} is available.", r.tag),
         Some(r) => {
             let tag =
                 backend::install_tag(&r.tag, true, progress(format!("Installing {}", r.tag)))?;
-            println!("Horizon: installed {tag}.");
+            println!("Nexora: installed {tag}.");
         }
     }
     match &updates.launcher {
@@ -1624,7 +1624,7 @@ fn account_command(action: AccountCmd, as_json: bool) -> Result<(), String> {
         accounts
             .find(who)
             .cloned()
-            .ok_or_else(|| format!("No signed-in account {who}. See `horizon-launcher account`."))
+            .ok_or_else(|| format!("No signed-in account {who}. See `nexora-launcher account`."))
     };
     match action {
         AccountCmd::List => {
@@ -1644,7 +1644,7 @@ fn account_command(action: AccountCmd, as_json: bool) -> Result<(), String> {
             } else if accounts.accounts.is_empty() && accounts.offline.is_empty() {
                 println!(
                     "No Microsoft account signed in. Play needs one that owns Minecraft: Java \
-                     Edition: horizon-launcher account sign-in"
+                     Edition: nexora-launcher account sign-in"
                 );
             } else {
                 for a in &accounts.accounts {
@@ -1793,7 +1793,7 @@ fn servers(action: ServersCmd, as_json: bool) -> Result<(), String> {
             .into_iter()
             .find(|e| e.name == which || e.dir == std::path::Path::new(which))
             .ok_or_else(|| {
-                format!("No server called {which}: `horizon-launcher servers` lists them")
+                format!("No server called {which}: `nexora-launcher servers` lists them")
             })
     };
     match action {
@@ -1811,7 +1811,7 @@ fn servers(action: ServersCmd, as_json: bool) -> Result<(), String> {
                         .collect(),
                 ));
             } else if list.is_empty() {
-                println!("No server yet: horizon-launcher servers create --accept-eula");
+                println!("No server yet: nexora-launcher servers create --accept-eula");
             }
             for e in list.iter().filter(|_| !as_json) {
                 println!(
@@ -1865,7 +1865,7 @@ fn servers(action: ServersCmd, as_json: bool) -> Result<(), String> {
             let tag = backend::resolve_version(version.as_deref())?;
             servers::set_up(&tag)?;
             println!(
-                "Servers run Horizon {}",
+                "Servers run Nexora {}",
                 servers::runtime_release().unwrap_or(tag)
             );
         }
@@ -1903,7 +1903,7 @@ fn github_native(
     trust: bool,
 ) -> Result<(), String> {
     if java {
-        return Err("Native mods from GitHub are for Horizon instances.".into());
+        return Err("Native mods from GitHub are for Nexora instances.".into());
     }
     println!("{}", found.label());
     println!("Source, to read: {}", found.source_url());
@@ -1942,7 +1942,7 @@ fn github_native(
         settings.native_mods_noticed = true;
         settings.save();
     }
-    println!("Build it next: horizon-launcher native-build --trust-native-code");
+    println!("Build it next: nexora-launcher native-build --trust-native-code");
     Ok(())
 }
 
@@ -1980,7 +1980,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
     let from_registry = installed::Installed::load(&home)
         .entries
         .iter()
-        .any(|e| e.source == SourceId::Horizon);
+        .any(|e| e.source == SourceId::Nexora);
     if from_registry {
         if let Ok(index) = horizon::index() {
             for said in horizon::turn_off_revoked(&index, &home) {
@@ -1996,7 +1996,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                 json(list.iter().map(entry_json).collect());
             } else if list.is_empty() && github_mods::origins(&home).is_empty() {
                 println!(
-                    "Nothing installed from the browser yet: horizon-launcher mods search <text>"
+                    "Nothing installed from the browser yet: nexora-launcher mods search <text>"
                 );
             }
             for o in horizon_launcher::github_mods::origins(&home)
@@ -2069,7 +2069,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                         "id": p.id, "slug": p.slug, "title": p.title, "summary": p.summary,
                         "author": p.author, "downloads": p.downloads, "page": p.page,
                         "license": p.license, "support": support.label(), "reason": support.reason(),
-                        "about": if p.source == SourceId::Horizon { horizon::trust_and_capabilities(&p.id) } else { Vec::new() },
+                        "about": if p.source == SourceId::Nexora { horizon::trust_and_capabilities(&p.id) } else { Vec::new() },
                     })
                 }).collect());
             } else {
@@ -2078,7 +2078,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                 }
                 for p in &found {
                     let support = p.support();
-                    if p.source == SourceId::Horizon {
+                    if p.source == SourceId::Nexora {
                         println!("{}  ({})  {}\n  {}", p.title, p.slug, p.author, p.summary);
                         for line in horizon::trust_and_capabilities(&p.id) {
                             println!("  {line}");
@@ -2099,9 +2099,9 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                         p.summary
                     );
                     if unchecked {
-                        println!("  horizon-launcher mods check {}", p.slug);
+                        println!("  nexora-launcher mods check {}", p.slug);
                     } else if datapack {
-                        println!("  horizon-launcher mods install {} --world <world>", p.slug);
+                        println!("  nexora-launcher mods install {} --world <world>", p.slug);
                     } else if let Some(why) = support.reason() {
                         println!("  {why}");
                     }
@@ -2190,7 +2190,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                     p.title
                 ));
             }
-            if p.kind == Kind::Modpack && p.source == SourceId::Horizon {
+            if p.kind == Kind::Modpack && p.source == SourceId::Nexora {
                 let pack = horizon::pack::install(&p.id, &line)?;
                 if as_json {
                     json(
@@ -2203,7 +2203,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                         pack.version,
                         pack.mods.join(", ")
                     );
-                    println!("Play it: horizon-launcher modpack play {}", pack.id);
+                    println!("Play it: nexora-launcher modpack play {}", pack.id);
                 }
                 return Ok(());
             }
@@ -2218,7 +2218,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
                     .map(|t| backend::resources(&t));
                 let pack = modpacks::import_and_port(&file, resources.as_deref(), log)?;
                 println!("{} ({})", modpacks::outcome(&pack), pack.summary());
-                println!("Play it: horizon-launcher modpack play {}", pack.slug);
+                println!("Play it: nexora-launcher modpack play {}", pack.slug);
                 return Ok(());
             }
             let done = match &java {
@@ -2316,14 +2316,14 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
             ..
         } => {
             if java.is_some() {
-                return Err("Native mods from GitHub are for Horizon instances.".into());
+                return Err("Native mods from GitHub are for Nexora instances.".into());
             }
             let mut origins = github_mods::origins(&home);
             origins.retain(|o| id.as_deref().is_none_or(|i| o.id == i));
             if origins.is_empty() {
                 return Err(match id {
                     Some(i) => format!("{i} wasn't installed from GitHub."),
-                    None => "No native mod was installed from GitHub: horizon-launcher mods add-github <url>".into(),
+                    None => "No native mod was installed from GitHub: nexora-launcher mods add-github <url>".into(),
                 });
             }
             for o in origins {
@@ -2375,7 +2375,7 @@ fn mods(action: ModsCmd, as_json: bool) -> Result<(), String> {
             if on {
                 if let Some(r) = horizon::index()
                     .ok()
-                    .filter(|_| e.source == SourceId::Horizon)
+                    .filter(|_| e.source == SourceId::Nexora)
                     .and_then(|i| {
                         i.revoked(&e.project, e.checksum.trim_start_matches("SHA-256:"))
                             .cloned()
@@ -2546,7 +2546,7 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
         } => {
             let Some(java) = instances::find(&instance)?.java else {
                 return Err(format!(
-                    "{instance} is a Horizon instance: mod loaders are for Java instances."
+                    "{instance} is a Nexora instance: mod loaders are for Java instances."
                 ));
             };
             if list {
@@ -2592,7 +2592,7 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
             let window = window.as_deref().map(parse_window).transpose()?;
             if instances::find(&instance)?.java.is_none() {
                 return Err(format!(
-                    "{instance} is a Horizon instance: Horizon is not a Java program."
+                    "{instance} is a Nexora instance: Nexora is not a Java program."
                 ));
             }
             changed(instances::edit(&instance, |m| {
@@ -2782,7 +2782,7 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
                 [] => {
                     return Err(format!(
                         "No other launcher has an instance called {name}: \
-                         horizon-launcher instance others"
+                         nexora-launcher instance others"
                     ))
                 }
                 _ => {
@@ -2816,7 +2816,7 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
                         json(value(&i, false));
                     } else {
                         println!(
-                            "Made the instance {} in {}: horizon-launcher instance select \"{}\"",
+                            "Made the instance {} in {}: nexora-launcher instance select \"{}\"",
                             i.name,
                             i.home.display(),
                             i.name
@@ -2827,7 +2827,7 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
                     let pack = modpacks::import(&file, &|line: String| eprintln!("{line}"))?;
                     println!("{} ({})", modpacks::outcome(&pack), pack.summary());
                     println!(
-                        "Port and play it: horizon-launcher modpack port {}",
+                        "Port and play it: nexora-launcher modpack port {}",
                         pack.slug
                     );
                 }
@@ -2838,13 +2838,13 @@ fn instance(action: InstanceCmd, as_json: bool) -> Result<(), String> {
                     };
                     let p = horizon_launcher::packs::add(&i.home, &file)?;
                     println!(
-                        "Added {} to {}: turn it on with horizon-launcher packs on",
+                        "Added {} to {}: turn it on with nexora-launcher packs on",
                         p.title, i.name
                     );
                 }
                 Dropped::DataPack => {
                     return Err(format!(
-                        "{} is a data pack: put it into a world with horizon-launcher worlds \
+                        "{} is a data pack: put it into a world with nexora-launcher worlds \
                          datapack-add <world> <file>",
                         file.display()
                     ))
@@ -3230,7 +3230,7 @@ fn modpack(action: ModpackCmd, as_json: bool) -> Result<(), String> {
             let packs = modpacks::list();
             let registry = horizon::pack::list();
             if packs.is_empty() && registry.is_empty() && !as_json {
-                println!("No modpack imported yet: horizon-launcher modpack import <pack>");
+                println!("No modpack imported yet: nexora-launcher modpack import <pack>");
             }
             packs.iter().for_each(show);
             for p in &registry {
@@ -3240,7 +3240,7 @@ fn modpack(action: ModpackCmd, as_json: bool) -> Result<(), String> {
                     );
                 } else {
                     println!(
-                        "{} {}  ({}, from Horizon's registry)\n  {}",
+                        "{} {}  ({}, from Nexora's registry)\n  {}",
                         p.name,
                         p.version,
                         p.id,
@@ -3300,7 +3300,7 @@ mod tests {
     #[test]
     fn play_takes_extra_arguments_that_start_with_hyphens() {
         let cli = Cli::try_parse_from([
-            "horizon-launcher",
+            "nexora-launcher",
             "play",
             "--arg",
             "--server-thread",
@@ -3317,7 +3317,7 @@ mod tests {
     #[test]
     fn game_args_takes_one_line_that_starts_with_hyphens() {
         let cli = Cli::try_parse_from([
-            "horizon-launcher",
+            "nexora-launcher",
             "game-args",
             "--server-thread --render-distance 40",
         ])
@@ -3345,7 +3345,7 @@ mod tests {
     #[test]
     fn mods_commands_name_their_instance() {
         let parse = |args: &[&str]| {
-            let cli = Cli::try_parse_from([&["horizon-launcher", "mods"], args].concat()).unwrap();
+            let cli = Cli::try_parse_from([&["nexora-launcher", "mods"], args].concat()).unwrap();
             match cli.command {
                 Some(Cmd::Mods { action }) => action,
                 _ => panic!("expected mods"),
@@ -3399,7 +3399,7 @@ mod tests {
             Some(ModsCmd::Search { instance: Some(i), .. }) if i == "A"
         ));
         assert!(
-            Cli::try_parse_from(["horizon-launcher", "mods", "check", "x", "--instance", "A"])
+            Cli::try_parse_from(["nexora-launcher", "mods", "check", "x", "--instance", "A"])
                 .is_err()
         );
     }
