@@ -9,6 +9,7 @@ pub mod login;
 pub mod play;
 pub mod recipes;
 pub mod status;
+#[rustfmt::skip]
 pub mod v1_21_1;
 
 use crate::buf::{Codec, Reader, Writer};
