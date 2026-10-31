@@ -273,6 +273,9 @@ pub fn decode_play_clientbound(id: i32, payload: &[u8]) -> Result<MissingPacket>
         ids::play_clientbound::RECIPE => MissingPacket::Recipe(RecipePacket::read(&mut r)?),
         ids::play_clientbound::SELECT_ADVANCEMENTS_TAB => MissingPacket::SelectAdvancementsTab(SelectAdvancementsTab::read(&mut r)?),
         ids::play_clientbound::SET_CARRIED_ITEM => MissingPacket::SetCarriedItem(SetCarriedItem::read(&mut r)?),
+        ids::play_clientbound::UPDATE_RECIPES => {
+            return Err(Error::new("1.21.1 update_recipes requires a registry-aware RecipeSerializer"));
+        }
         other => return Err(Error::new(format!("not a supported missing 1.21.1 clientbound play packet: {other}"))),
     };
     if r.remaining() != 0 { return Err(Error::new(format!("1.21.1 packet {id} has {} trailing bytes", r.remaining()))); }
@@ -366,5 +369,42 @@ mod tests {
         assert!(decode_play_serverbound(ids::play_serverbound::PICK_ITEM, &w.data).is_err());
         assert_eq!(ids::play_clientbound::COMMAND_SUGGESTIONS, 16);
         assert_eq!(ids::configuration_clientbound::CUSTOM_REPORT_DETAILS, 15);
+    }
+}
+
+
+pub fn decode_update_recipes(
+    payload: &[u8],
+    serializers: &impl RecipeSerializer,
+) -> Result<UpdateRecipes> {
+    decode_exact(payload, |r| UpdateRecipes::read_with(r, serializers))
+}
+
+#[cfg(test)]
+mod profile_tests {
+    use super::*;
+
+    #[test]
+    fn game_profile_packet_keeps_the_1211_strict_error_flag() {
+        let value = GameProfilePacket {
+            profile: GameProfile {
+                uuid: 0x1234,
+                name: "Nexora".into(),
+                properties: vec![],
+            },
+            strict_error_handling: true,
+        };
+        let mut writer = Writer::new();
+        GameProfilePacket::write(&value, &mut writer);
+        let decoded = decode_exact(&writer.data, GameProfilePacket::read).unwrap();
+        assert_eq!(decoded, value);
+    }
+
+    #[test]
+    fn empty_combat_enter_has_no_payload() {
+        assert_eq!(
+            decode_play_clientbound(ids::play_clientbound::PLAYER_COMBAT_ENTER, &[]).unwrap(),
+            MissingPacket::PlayerCombatEnter(Empty)
+        );
     }
 }
