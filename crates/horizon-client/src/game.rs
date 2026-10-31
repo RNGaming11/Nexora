@@ -423,7 +423,7 @@ struct Options {
 /// the in-frame world is unmaintained, gets no fixes and will be removed soon.
 fn warn_in_frame_deprecated(what: &str) {
     eprintln!(
-        "Horizon: DEPRECATED: {what} runs single player's world in the window, a path that is no longer supported, \
+        "Nexora: DEPRECATED: {what} runs single player's world in the window, a path that is no longer supported, \
          gets no fixes and will be removed soon. Do not use it: single player runs on its server thread by default."
     );
 }
@@ -467,7 +467,7 @@ impl Options {
                 horizon_client::auth::set_current(session);
             }
             Ok(None) => {}
-            Err(e) => eprintln!("Horizon: not signed in: {e}"),
+            Err(e) => eprintln!("Nexora: not signed in: {e}"),
         }
         if let Some(dir) = o.game_dir.take() {
             // Paths given on the command line stay relative to where the game was started.
@@ -554,7 +554,7 @@ impl Options {
             match arg.as_str() {
                 "--help" | "-h" => {
                     println!(
-                        "Horizon — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..128 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --session-file PATH     Signed-in account from the launcher (read once, then deleted)\n  --session-stdin         The same account as JSON on standard input\n  --game-dir DIR          Game folder: saves, options.txt, packs, mods (default: the working directory)\n  --home DIR              Logs and crash reports (default $HORIZON_HOME, else the platform data folder)\n  --fullscreen            Open the window fullscreen\n  --launch-api            Print the Launch API version and options as JSON (docs/api/launch.md)\n  --dev-mod PATH          A content mod (.hmod or folder) to develop: always on\n  --in-frame              DEPRECATED, do not use: unsupported, will be removed soon (also --no-server-thread)\n  --pregen                Add Horizon's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause.",
+                        "Nexora — Minecraft Java Edition {} in Rust\n\n  --resources PATH        Prepared resources (horizon-prepare)\n  --render-distance N     Chunks, 2..128 (default 12)\n  --world NAME            World folder under saves/ (default \"New World\")\n  --seed N                World seed for new worlds (default 0)\n  --width N, --height N   Window size (default 1280 x 720)\n  --creative              Creative mode (default survival)\n  --test-terrain          Simple test terrain instead of vanilla generation\n  --frames N              Exit after N frames (testing)\n  --world-frames N        Exit after N frames drawn in the world (testing)\n  --smoke-report PATH     Write a JSON report on exit\n  --benchmark SCENARIO    Run a benchmark (standard, village, forest, ocean, mountain), write its report to benchmarks/ and quit\n  --control               Accept horizon-ctl commands on a local socket\n  --control-socket PATH   Control socket path (default $XDG_RUNTIME_DIR/horizon-control.sock)\n  --server HOST[:PORT]    Join a multiplayer server (offline mode) at start\n  --quickPlaySingleplayer WORLD  Open this world of saves/ at start, only if it exists (vanilla's)\n  --quickPlayMultiplayer HOST[:PORT]  The same as --server (vanilla's name)\n  --name NAME             Player name for multiplayer (default: generated once, kept in horizon-player.txt)\n  --session-file PATH     Signed-in account from the launcher (read once, then deleted)\n  --session-stdin         The same account as JSON on standard input\n  --game-dir DIR          Game folder: saves, options.txt, packs, mods (default: the working directory)\n  --home DIR              Logs and crash reports (default $HORIZON_HOME, else the platform data folder)\n  --fullscreen            Open the window fullscreen\n  --launch-api            Print the Launch API version and options as JSON (docs/api/launch.md)\n  --dev-mod PATH          A content mod (.hmod or folder) to develop: always on\n  --in-frame              DEPRECATED, do not use: unsupported, will be removed soon (also --no-server-thread)\n  --pregen                Add Nexora's /pregen command (docs/pregeneration.md)\n\nControls: mouse look, WASD move, Space jump, Left Shift sneak, Left Ctrl sprint,\nleft click break, right click place/use, 1-9/scroll hotbar, E inventory,\nQ drop, F3 debug, Esc pause.",
                         horizon_core::VANILLA_VERSION
                     );
                     return Ok(None);
@@ -580,7 +580,7 @@ impl Options {
                     warn_in_frame_deprecated(&arg);
                     o.server_thread = false;
                 }
-                // Horizon's own commands (/pregen), off by default as on vanilla.
+                // Nexora's own commands (/pregen), off by default as on vanilla.
                 "--pregen" => horizon_client::command::vanilla::set_horizon_commands(true),
                 _ => {
                     let value = args
@@ -1963,7 +1963,7 @@ struct Game<'a> {
     renderer: Option<Renderer>,
     /// CPU geometry storage retained across frames, including empty/title frames.
     entity_vertices: Vec<Vertex>,
-    /// Horizon Extras' dynamic lights this frame (`dynamic_lights.rs`), and how brightly each
+    /// Nexora Extras' dynamic lights this frame (`dynamic_lights.rs`), and how brightly each
     /// item glows (built the first time the extra is on).
     dynamic_lights: Vec<[f32; 4]>,
     luminance: Option<horizon_client::dynamic_light::Luminance>,
@@ -1982,7 +1982,7 @@ struct Game<'a> {
     previous: Instant,
     /// FramerateLimitTracker.latestInputTime.
     last_input: Instant,
-    /// Controllers (Horizon's own).
+    /// Controllers (Nexora's own).
     pad: pad::Pads,
     frames: u64,
     /// The glint clock and options, read once at the start of each frame
@@ -2211,7 +2211,7 @@ struct Game<'a> {
     armor_stands: Vec<horizon_client::entities::ArmorStand>,
     /// `Cushion` decoration entities (game/cushions.rs).
     cushions: Vec<horizon_client::entities::Cushion>,
-    /// Entities of types Horizon does not simulate.
+    /// Entities of types Nexora does not simulate.
     others: Vec<commands::OtherEntity>,
     armor_stand_assets: armor_stands::ArmorStandAssets,
     /// `WaypointStyleManager`.
@@ -2319,21 +2319,21 @@ struct Game<'a> {
     pending_bench: Option<(Instant, std::sync::mpsc::Sender<String>)>,
     /// Recent frame times for the performance overlay.
     frame_graph: horizon_client::perf_overlay::FrameGraph,
-    /// Horizon's extras (minimap, auto-reconnect; mods' counters): `game/extras.rs`.
+    /// Nexora's extras (minimap, auto-reconnect; mods' counters): `game/extras.rs`.
     extras: extras::ExtrasState,
-    /// Horizon mods (`game/mods.rs`), none running unless turned on.
+    /// Nexora mods (`game/mods.rs`), none running unless turned on.
     mods: mods::ModsState,
     /// Every item and recipe, for mods (`game/native_recipes.rs`), made once.
     recipe_tables: native_recipes::RecipeTables,
     /// The item panel beside container screens (`game/native_panel.rs`).
     panel: native_panel::Panel,
-    /// Horizon's own shader pack, while one is picked (`game/native_shaders.rs`).
+    /// Nexora's own shader pack, while one is picked (`game/native_shaders.rs`).
     native_shaders: native_shaders::NativeShaders,
     /// The native lifecycle bookkeeping.
     native_lifecycle: native_lifecycle::NativeLifecycle,
     /// Native mods' messages waiting (`game/native_net.rs`).
     native_net: native_net::NativeNet,
-    /// Meshed sections waiting for an upload budget (Horizon settings).
+    /// Meshed sections waiting for an upload budget (Nexora settings).
     pending_uploads: Vec<((i32, i32, i32), horizon_client::mesher::SectionMesh)>,
     /// This frame's view frustum, for culling entities and block entities.
     view_frustum: Option<horizon_client::gfx::Frustum>,
@@ -7927,7 +7927,7 @@ impl Game<'_> {
         }
     }
     /// `AbstractContainerScreen` keeps `isQuickCrafting` and the drag it
-    /// belongs to on the screen. Horizon keeps both on `Game` (`inv_clicks`,
+    /// belongs to on the screen. Nexora keeps both on `Game` (`inv_clicks`,
     /// `inv_drag`, `last_inv_click`), so they are dropped when the pointer
     /// changes hands: a screen that opens or closes starts with its own
     /// state, and a press whose release never reached the screen -- the
@@ -8727,7 +8727,7 @@ impl Game<'_> {
                 last == slot && was_right == right && now.duration_since(at).as_millis() < 250
             });
             self.last_inv_click = Some((now, slot, right));
-            // mouseClicked's QUICK_MOVE (and Horizon's at-press QUICK_MOVE
+            // mouseClicked's QUICK_MOVE (and Nexora's at-press QUICK_MOVE
             // of a carried stack, mouseReleased's in vanilla) remember the
             // stack it moves.
             if input == Some(Input::QuickMove) || (self.carried.is_some() && !double) {
@@ -10401,7 +10401,7 @@ impl Game<'_> {
             let world = std::env::current_dir()?.join("saves").join(folder);
             let packs = create.map_or(&[][..], |o| &o.data_packs[..]);
             if let Err(e) = horizon_client::datapack::install(dir, &world, packs) {
-                log::warn!("Horizon: data packs for {folder}: {e}");
+                log::warn!("Nexora: data packs for {folder}: {e}");
             }
             let _ = std::fs::remove_dir_all(dir);
         }
@@ -13426,7 +13426,7 @@ impl Game<'_> {
         let mut outline_after_terrain = false;
         // GameRenderer.shouldRenderBlockOutline: not with the HUD hidden (F1), and only for a
         // player who may build. Adventure players only get one with a CAN_BREAK or
-        // CAN_PLACE_ON item matching the block, and spectators with a menu block; Horizon
+        // CAN_PLACE_ON item matching the block, and spectators with a menu block; Nexora
         // does not open menus for spectators, so those never show it. An open
         // screen does not hide it: vanilla checks the HUD and the game mode, not the screen.
         let adventure = self.mode == horizon_client::command::args::GameMode::Adventure;
@@ -14200,7 +14200,7 @@ impl Game<'_> {
     }
     fn update_world(&mut self) {
         if let Err(e) = self.poll_remote() {
-            log::warn!("Horizon: {e}");
+            log::warn!("Nexora: {e}");
         }
         self.prepare_lod();
         if self.lod.is_some() {
@@ -14273,7 +14273,7 @@ impl Game<'_> {
                     .save_later(&modified, self.pack.assets.registry, self.res.biomes())
             })
         {
-            log::warn!("Horizon: failed to save unloaded chunks: {e}");
+            log::warn!("Nexora: failed to save unloaded chunks: {e}");
         }
         let (far_distance, far_reduced) = self.far_terrain_choice();
         if let Some(renderer) = self.renderer.as_mut() {
@@ -14289,7 +14289,7 @@ impl Game<'_> {
                 });
                 self.streaming.free(uploads);
             } else {
-                // Horizon's chunk-update and upload budgets: the nearest
+                // Nexora's chunk-update and upload budgets: the nearest
                 // sections go first, the rest wait for later frames; a newer
                 // mesh of a waiting section replaces it, and sections of
                 // chunks no longer loaded are dropped.
@@ -14397,7 +14397,7 @@ impl ApplicationHandler for Game<'_> {
         let size = self.options.window_size.map(f64::from);
         self.fullscreen = horizon_client::window::FullscreenState::new(fullscreen);
         let attributes = Window::default_attributes()
-            .with_title("Horizon")
+            .with_title("Nexora")
             .with_window_icon(horizon_client::window::icon());
         // Wayland names the window by its app id, which the horizon.desktop entry matches.
         #[cfg(target_os = "linux")]
@@ -15391,7 +15391,7 @@ impl ApplicationHandler for Game<'_> {
                                     format!(", cpu {:.1} ms", (end - start).as_secs_f32() * 1000.0)
                                 });
                             log::info!(
-                                "Horizon: slow frame {cpu:.1} ms{worked} ({steps} ticks): {}",
+                                "Nexora: slow frame {cpu:.1} ms{worked} ({steps} ticks): {}",
                                 horizon_client::spans::describe(&spans)
                             );
                         }
@@ -15457,7 +15457,7 @@ impl ApplicationHandler for Game<'_> {
                     // (`tick_world_icon`): a failure tries again a second
                     // later, as `tryTakeScreenshotIfNeeded` does.
                     if !consumed && let Some(Err(error)) = finished {
-                        log::warn!("Horizon: couldn't save the world icon: {error}");
+                        log::warn!("Nexora: couldn't save the world icon: {error}");
                     }
                     if rendered {
                         self.frame_stats.record(elapsed.as_secs_f32() * 1000.0);
@@ -15465,7 +15465,7 @@ impl ApplicationHandler for Game<'_> {
                         if self.frames == 0 {
                             // The launcher times Play to this line (launcher/src/perf.rs).
                             log::info!(
-                                "Horizon: first frame after {} ms",
+                                "Nexora: first frame after {} ms",
                                 self.started.elapsed().as_millis()
                             );
                         }
@@ -15588,7 +15588,7 @@ impl ApplicationHandler for Game<'_> {
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         self.pad_close_output();
         if let Err(e) = self.save_for_exit() {
-            log::warn!("Horizon: failed to save the world on exit: {e}");
+            log::warn!("Nexora: failed to save the world on exit: {e}");
         }
     }
 }
@@ -16191,7 +16191,7 @@ impl Game<'_> {
             );
         }
         self.pending_entry = Some(entry);
-        log::info!("Horizon: world entry waiting for world resources");
+        log::info!("Nexora: world entry waiting for world resources");
         Ok(true)
     }
 
@@ -16308,14 +16308,14 @@ impl Game<'_> {
         let items = match Items::load(root, self.pack.assets.registry, self.res.facts(), &overlay) {
             Ok(items) => items,
             Err(e) => {
-                log::warn!("Horizon: the world's data packs are not applied: {e}");
+                log::warn!("Nexora: the world's data packs are not applied: {e}");
                 return None;
             }
         };
         let recipes = match Recipes::load(root, &items, &overlay) {
             Ok(recipes) => recipes,
             Err(e) => {
-                log::warn!("Horizon: the world's data packs are not applied: {e}");
+                log::warn!("Nexora: the world's data packs are not applied: {e}");
                 return None;
             }
         };
@@ -16345,7 +16345,7 @@ impl Game<'_> {
                         host.hub.reload_resources(sync);
                     }
                 }
-                Err(e) => log::warn!("Horizon: the players are not sent the reloaded data: {e}"),
+                Err(e) => log::warn!("Nexora: the players are not sent the reloaded data: {e}"),
             }
         }
         let overlay = pack_files(&self.world_tables);
@@ -16359,7 +16359,7 @@ impl Game<'_> {
     fn join_world_rest(&mut self) -> Result<()> {
         if self.rest_loader.is_some() {
             let waited = Instant::now();
-            log::info!("Horizon: waiting for world resources");
+            log::info!("Nexora: waiting for world resources");
             while self.rest_loader.is_some() {
                 self.poll_world_rest()?;
                 if self.rest_loader.is_some() {
@@ -16367,7 +16367,7 @@ impl Game<'_> {
                 }
             }
             log::info!(
-                "Horizon: world resources joined after {} ms",
+                "Nexora: world resources joined after {} ms",
                 waited.elapsed().as_millis()
             );
         }
@@ -16661,7 +16661,7 @@ fn load_resources(
     let mut offer = |ui: UiResources, root: &std::path::Path| {
         if menu {
             log::info!(
-                "Horizon: UI bundle ready after {} ms",
+                "Nexora: UI bundle ready after {} ms",
                 started.elapsed().as_millis()
             );
             publish(ui, root);
@@ -16693,7 +16693,7 @@ fn load_resources(
             (Err(e), Ok(Ok(_))) => return Err(e),
         };
         log::warn!(
-            "Horizon: resource packs failed to load ({failure}); using the default resources"
+            "Nexora: resource packs failed to load ({failure}); using the default resources"
         );
         pack_error = Some(failure);
         root = vanilla_root.to_path_buf();
@@ -16756,7 +16756,7 @@ fn load_resources(
     let resources = Arc::new(resources);
     if menu {
         log::info!(
-            "Horizon: core-ready after {} ms",
+            "Nexora: core-ready after {} ms",
             started.elapsed().as_millis()
         );
     }
@@ -16767,7 +16767,7 @@ fn load_resources(
     let renderer_cpu = menu.then(|| prepare_renderer_textures(&pack));
     if menu {
         log::info!(
-            "Horizon: handoff CPU resources prepared on worker in {} ms",
+            "Nexora: handoff CPU resources prepared on worker in {} ms",
             prepared_at.elapsed().as_millis()
         );
     }
@@ -16799,7 +16799,7 @@ fn load_resources(
                     .map_err(|_| "world resources already loaded".to_owned())?;
                 progress.set(9);
                 log::info!(
-                    "Horizon: rest-ready after {} ms",
+                    "Nexora: rest-ready after {} ms",
                     started.elapsed().as_millis()
                 );
                 Ok(())
@@ -16932,7 +16932,7 @@ fn load_world_rest(
     let (mob_types, mob_data) = mobs?;
     let (transformers, (player_type, player_arm, player_arm_slim, spin_attack)) = transformers?;
     log::info!(
-        "Horizon: resources loaded in {:.1}s; {} block states, {} items, {} biomes; {} worker threads",
+        "Nexora: resources loaded in {:.1}s; {} block states, {} items, {} biomes; {} worker threads",
         started.elapsed().as_secs_f32(),
         facts.states.len(),
         items.items.len(),
@@ -17381,7 +17381,7 @@ impl Loading {
             .map(f64::from);
         self.fullscreen = horizon_client::window::FullscreenState::new(fullscreen);
         let attributes = Window::default_attributes()
-            .with_title("Horizon")
+            .with_title("Nexora")
             .with_window_icon(horizon_client::window::icon());
         // Wayland names the window by its app id, which the horizon.desktop entry matches.
         #[cfg(target_os = "linux")]
@@ -17434,7 +17434,7 @@ impl Loading {
     /// and title panorama.
     fn set_ui(&mut self, gui: UiResources, root: PathBuf) {
         log::info!(
-            "Horizon: loading the title artwork after {} ms",
+            "Nexora: loading the title artwork after {} ms",
             self.started.elapsed().as_millis()
         );
         self.menu.set_root(root, &self.settings);
@@ -17507,13 +17507,13 @@ impl Loading {
             match renderer.render(&frame) {
                 Ok(true) if self.gui.is_some() && self.menu.pending.is_none() => {}
                 Ok(_) => {}
-                Err(e) => log::warn!("Horizon: loading screen frame failed: {e}"),
+                Err(e) => log::warn!("Nexora: loading screen frame failed: {e}"),
             }
         }
         if !self.shown {
             self.shown = true;
             log::info!(
-                "Horizon: loading screen shown after {} ms",
+                "Nexora: loading screen shown after {} ms",
                 self.started.elapsed().as_millis()
             );
         }
@@ -17542,7 +17542,7 @@ impl Loading {
             self.settings.horizon.api,
         )?;
         log::info!(
-            "Horizon: world renderer ready after {} ms",
+            "Nexora: world renderer ready after {} ms",
             self.started.elapsed().as_millis()
         );
         let renderer_ms = renderer_at.elapsed().as_millis();
@@ -17583,7 +17583,7 @@ impl Loading {
         game.apply_settings();
         game.previous = Instant::now();
         log::info!(
-            "Horizon: startup handoff {} ms (renderer {} ms, start_game {} ms)",
+            "Nexora: startup handoff {} ms (renderer {} ms, start_game {} ms)",
             handoff_at.elapsed().as_millis(),
             renderer_ms,
             game_ms
@@ -17677,8 +17677,8 @@ fn missing_resources(root: &std::path::Path) -> Option<String> {
     }
     let shown = std::path::absolute(root).unwrap_or_else(|_| root.to_path_buf());
     Some(format!(
-        "Horizon's prepared game files are missing: no horizon-resources.json in {}\n\
-         Horizon is started from its launcher: download it at {} (Download). It needs your \
+        "Nexora's prepared game files are missing: no horizon-resources.json in {}\n\
+         Nexora is started from its launcher: download it at {} (Download). It needs your \
          own Minecraft: Java Edition; the launcher signs you in and prepares the game files.\n\
          Developers: horizon-prepare --prepare, or pass --resources <folder>",
         shown.display(),
@@ -17776,7 +17776,7 @@ pub fn run() -> Result<()> {
         // launcher: a window says where to get it. Scripts and servers get
         // the error.
         if !options.offscreen && !synchronous_startup(&options) {
-            log::error!("Horizon: {error}");
+            log::error!("Nexora: {error}");
             let settings = Settings::load(&std::env::current_dir()?.join("options.txt"));
             return no_resources::show(&vanilla_root, &settings);
         }
@@ -17786,14 +17786,8 @@ pub fn run() -> Result<()> {
     // official server in their list (servers.dat in the game folder, the working directory). Not
     // for a server, a benchmark, a run that quits by itself, a harness's fixture or a run that
     // horizon-ctl drives: those start in a source checkout and wrote the list there.
-    if !options.offscreen && !synchronous_startup(&options) {
-        if let Err(e) = horizon_client::multiplayer::add_official_server(&std::env::current_dir()?)
-        {
-            log::warn!("could not add the official server to servers.dat: {e}");
-        }
-    }
     let early_settings = Settings::load(&std::env::current_dir()?.join("options.txt"));
-    // "Playing Horizon" on Discord: never for a server; an automated run only talks to a test's fake Discord.
+    // "Playing Nexora" on Discord: never for a server; an automated run only talks to a test's fake Discord.
     if options.dedicated.is_none() {
         let automated = options.benchmark.is_some()
             || options.offscreen
@@ -17810,7 +17804,7 @@ pub fn run() -> Result<()> {
     let mut pack_error = None;
     options.resources = packs::startup_root(&vanilla_root, &early_settings.resource_packs, &[])
         .unwrap_or_else(|e| {
-            log::warn!("Horizon: resource packs not applied: {e}");
+            log::warn!("Nexora: resource packs not applied: {e}");
             pack_error = Some(e.to_string());
             vanilla_root.clone()
         });
