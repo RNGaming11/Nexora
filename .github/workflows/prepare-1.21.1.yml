@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - ".github/workflows/prepare-1.21.1.yml"
+      - "tools/prepare_1_21_1.py"
 
 permissions:
   contents: read
