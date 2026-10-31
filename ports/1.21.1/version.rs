@@ -5,6 +5,10 @@
 pub const VERSION_ID: &str = "1.21.1";
 /// The display version reported by the game.
 pub const VANILLA_VERSION: &str = "1.21.1";
+/// Official release timestamp from Mojang's version manifest.
+pub const RELEASE_TIME: &str = "2024-08-08T12:24:45+00:00";
+/// Mojang asset index used by this release.
+pub const ASSET_INDEX: &str = "17";
 /// SharedConstants.getProtocolVersion().
 pub const PROTOCOL_VERSION: i32 = 767;
 /// WorldVersion.dataVersion().
