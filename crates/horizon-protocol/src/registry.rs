@@ -95,9 +95,8 @@ impl Builtin {
                 .into_iter()
                 .enumerate()
                 .map(|(id, entry_name)| {
-                    entry_name.ok_or_else(|| {
-                        Error::new(format!("{name}: missing protocol_id {id}"))
-                    })
+                    entry_name
+                        .ok_or_else(|| Error::new(format!("{name}: missing protocol_id {id}")))
                 })
                 .collect::<Result<Vec<_>>>()?;
             registries.insert(name.clone(), Ids::from_names(names));
@@ -274,7 +273,11 @@ mod tests {
     fn rejects_registry_protocol_id_gaps() {
         let report = r#"{"minecraft:item":{"entries":{"minecraft:air":{"protocol_id":0},"minecraft:stone":{"protocol_id":2}}}}"#;
         let error = Builtin::parse(report).unwrap_err();
-        assert!(error.to_string().contains("outside the contiguous registry range"));
+        assert!(
+            error
+                .to_string()
+                .contains("outside the contiguous registry range")
+        );
     }
 
     #[test]
