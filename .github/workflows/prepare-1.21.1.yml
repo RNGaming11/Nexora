@@ -35,6 +35,12 @@ jobs:
           New-Item -ItemType Directory -Force -Path "target\1.21.1" | Out-Null
           python tools/generate_packet_ids.py --report $report --out "target\1.21.1\packet_ids.rs" --protocol-version 767 --version-name 1.21.1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $registries = Join-Path $env:HORIZON_VERSIONS "1.21.1\datagen\reports\registries.json"
+          python tools/generate_recipe_serializer_inventory.py --report $registries --out "target\1.21.1\recipe-serializers.json" --version 1.21.1 --data-version 3955
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $generatedHash = (Get-FileHash "target\1.21.1\recipe-serializers.json" -Algorithm SHA256).Hash
+          $pinnedHash = (Get-FileHash "ports\1.21.1\recipe-serializers.json" -Algorithm SHA256).Hash
+          if ($generatedHash -ne $pinnedHash) { throw "Generated recipe serializer IDs differ from the pinned 1.21.1 registry inventory." }
       - name: Upload prepared port data
         uses: actions/upload-artifact@v4
         with:
@@ -54,3 +60,4 @@ jobs:
             .port-cache/versions/1.21.1/datagen/reports/blocks.json
             .port-cache/versions/1.21.1/datagen/reports/commands.json
             target/1.21.1/packet_ids.rs
+            target/1.21.1/recipe-serializers.json
