@@ -56,7 +56,7 @@ impl Launcher {
                     .font_weight(FontWeight::MEDIUM)
                     .child(what.join(" · ")),
             );
-        // Never squeezed by the rows below: the ping notice can make it tall.
+        // Keep the instance state and actions grouped beneath the selected instance.
         let mut hero = div()
             .flex()
             .flex_none()
