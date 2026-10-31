@@ -793,12 +793,6 @@ enum Cmd {
         #[arg(long)]
         remove: bool,
     },
-    /// Opt-in data collection (docs/telemetry.md): what is allowed, what would be sent, and
-    /// deleting it; all off until you allow a kind
-    Data {
-        #[command(subcommand)]
-        action: Option<DataCmd>,
-    },
     /// Instances: separate game folders, each with its own worlds, options and packs
     Instance {
         #[command(subcommand)]
