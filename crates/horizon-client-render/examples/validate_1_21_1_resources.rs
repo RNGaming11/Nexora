@@ -1,11 +1,7 @@
-use std::{collections::BTreeSet, env, fs, path::PathBuf, process};
+use std::{env, fs, path::PathBuf, process};
 
-use horizon_client_render::{models::StateModels, sprites::Sprites};
+use horizon_client_render::assets::Assets;
 use horizon_protocol::registry::Builtin;
-use horizon_world::{
-    registry::{BlockRegistry, BlockStateId},
-    worldgen::tags::TagDefinitions,
-};
 
 fn main() {
     if let Err(error) = validate() {
@@ -42,52 +38,17 @@ fn validate() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let (registry, _flags) = BlockRegistry::from_facts_json_with_data_version(
-        fs::File::open(root.join("facts.json"))?,
-        3955,
-    )?;
-    let mut block_names = BTreeSet::new();
-    for index in 0..registry.len() {
-        let state = registry
-            .state(BlockStateId(index as u32))
-            .ok_or("block state registry contains a gap")?;
-        block_names.insert(state.name.as_str());
-    }
-
-    let tags: serde_json::Map<String, serde_json::Value> =
-        serde_json::from_slice(&fs::read(root.join("block-tags.json"))?)?;
-    if tags.is_empty() {
-        return Err("vanilla block tag bundle is empty".into());
-    }
-    let mut definitions = TagDefinitions::default();
-    for (name, text) in &tags {
-        definitions.apply_json(
-            name,
-            "vanilla",
-            text.as_str().ok_or("block tag value is not JSON text")?,
-        )?;
-    }
-    let built =
-        definitions.build(|name, _| registry.default_state(name).map(|_| name.to_owned()))?;
-    if !built.missing.is_empty() {
-        return Err(format!("unresolved vanilla block tags: {:?}", built.missing).into());
-    }
-
-    let blocks: Vec<&str> = block_names.into_iter().collect();
-    let mut sprites = Sprites::default();
-    let _models = StateModels::load(&root, &registry, &blocks, &mut sprites)?;
-    sprites.finish();
-    if sprites.layers.is_empty() {
+    let assets = Assets::load(&root)?;
+    let render = assets.reload(&root)?;
+    if render.sprite_layers.is_empty() {
         return Err("block models did not resolve any sprite layers".into());
     }
 
     println!(
-        "Validated Minecraft 1.21.1 runtime resources: {} states, {} blocks, {} built-in registries, {} block tags, {} sprite layers",
-        registry.len(),
-        blocks.len(),
+        "Validated Minecraft 1.21.1 through the game resource loader: {} block states, {} built-in registries, {} sprite layers",
+        assets.registry.len(),
         builtin.registries.len(),
-        tags.len(),
-        sprites.layers.len()
+        render.sprite_layers.len()
     );
     Ok(())
 }
