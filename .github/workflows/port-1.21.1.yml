@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Python tests
-        run: python -m unittest tools.test_proguard tools.test_packet_codec_coverage tools.test_version_port tools.test_builtin_registry_inventory tools.test_1_21_1_block_facts tools.test_1_21_1_model_states tools.test_1_21_1_runtime_resources tools.test_1_21_1_heightmap_predicates
+        run: python -m unittest tools.test_proguard tools.test_packet_codec_coverage tools.test_version_port tools.test_builtin_registry_inventory tools.test_1_21_1_block_facts tools.test_1_21_1_model_states tools.test_1_21_1_runtime_resources tools.test_1_21_1_heightmap_predicates tools.test_remap_proguard_jar
       - name: Rust formatting
         run: cargo fmt --all -- --check
       - name: Core version tests
