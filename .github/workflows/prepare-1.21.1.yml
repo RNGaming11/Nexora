@@ -17,7 +17,10 @@ on:
       - "tools/export_1_21_1_gameplay_facts.py"
       - "tools/export_1_21_1_block_behaviours.py"
       - "tools/export_1_21_1_entity_types.py"
+      - "tools/export_1_21_1_collision.py"
       - "tools/java/dev/horizonlab/parity/Vanilla1211BlockBehaviourExporter.java"
+      - "tools/java/dev/horizonlab/parity/Vanilla1211CollisionExporter.java"
+      - "tools/java/dev/horizonlab/parity/Vanilla1211CollisionExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
       - "tools/test_1_21_1_gameplay_facts.py"
@@ -158,6 +161,8 @@ jobs:
             .port-cache/versions/1.21.1/gameplay-facts.json
             .port-cache/versions/1.21.1/block-behaviours.json
             .port-cache/versions/1.21.1/entity-types.json
+            .port-cache/versions/1.21.1/collision/cached-collision.nbt
+            .port-cache/versions/1.21.1/collision/occlusion.nbt
             .port-cache/versions/1.21.1/runtime-resources/
             target/1.21.1/packet_ids.rs
             target/1.21.1/recipe-serializers.json
