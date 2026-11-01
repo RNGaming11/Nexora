@@ -82,7 +82,7 @@ impl BlockRegistry {
     pub fn from_facts_json_with_flags(
         reader: impl io::Read,
     ) -> io::Result<(Self, Vec<(bool, bool)>)> {
-        Self::from_facts_json_with_data_version(reader, None)
+        Self::from_facts_json_with_data_version_inner(reader, None)
     }
 
     /// Load the facts generated for a specific Minecraft world data version.
