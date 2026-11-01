@@ -26,7 +26,7 @@ function Invoke-Checked {
 }
 
 try {
-    Invoke-Checked "Update branch" { git pull --ff-only }
+    Write-Host "Using the current local checkout. This verifier does not pull, commit, or push."
 
     $jdk21 = Join-Path $env:LOCALAPPDATA "Programs\Eclipse Adoptium\jdk-21.0.13.9-hotspot"
     if (Test-Path (Join-Path $jdk21 "bin\java.exe")) {
@@ -55,28 +55,12 @@ try {
         Invoke-Checked "Audit target packet codec coverage" {
             python tools/audit_packet_codec_coverage.py
         }
-        Invoke-Checked "Publish generated packet inventory and audit" {
-            git add "ports/1.21.1/packet_ids.rs" "ports/1.21.1/packet-codec-coverage.json"
-            git diff --cached --quiet
-            if ($LASTEXITCODE -ne 0) {
-                git commit -m "Add generated Minecraft 1.21.1 packet inventory and codec audit"
-                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-                git push
-            }
-        }
+        Write-Host "Generated packet inventory and audit locally; no commit or push was performed."
     } elseif (Test-Path "ports/1.21.1/packet_ids.rs") {
         Invoke-Checked "Audit target packet codec coverage" {
             python tools/audit_packet_codec_coverage.py
         }
-        Invoke-Checked "Publish packet codec coverage audit" {
-            git add "ports/1.21.1/packet-codec-coverage.json"
-            git diff --cached --quiet
-            if ($LASTEXITCODE -ne 0) {
-                git commit -m "Update Minecraft 1.21.1 packet codec coverage audit"
-                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-                git push
-            }
-        }
+        Write-Host "Updated packet codec coverage audit locally; no commit or push was performed."
     } else {
         Write-Warning "Skipped packet-ID generation/audit: no local 1.21.1 packets.json found. Set NEXORA_1_21_1_REPORT to its full path to enable it."
     }
