@@ -1261,7 +1261,7 @@ fn receive_play_1_21_1(
                         "protocol-767 packet needs gameplay integration: {other:?}"
                     )));
                 }
-            }
+            },
         }
     }
 }
