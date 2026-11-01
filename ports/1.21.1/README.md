@@ -110,6 +110,16 @@ All nineteen previously missing packet payloads now have target-specific codecs.
 
 Microsoft sign-in is not required for artifact preparation, protocol development, or automated tests. It remains required for the launcher's normal online-mode account flow. Keep the real authentication implementation intact; do not add a fake client ID or reuse another launcher's credentials.
 
+## Building the separate client profile
+
+The ordinary client remains the default 26.3 target. Build the isolated 1.21.1 executable without changing that default:
+
+```powershell
+cargo build -p horizon-client --bin horizon-client-1-21-1 --features minecraft-1-21-1
+```
+
+The executable is written to `target/debug/horizon-client-1-21-1.exe` on Windows (or the platform equivalent). A normal `cargo run -p horizon-client` still uses the 26.3 profile. This separate executable is a development target; the 1.21.1 gameplay port is not yet complete or advertised as playable.
+
 ## Preparing the full 1.21.1 data set
 
 The repository includes a one-click GitHub Actions workflow named **Prepare Minecraft 1.21.1 port data**. Run it from the Actions tab using **Run workflow**. It installs Python and Java 21, downloads and verifies Mojang's official artifacts, runs the vanilla server data generator, applies official mappings, builds the mapped class inventories, and uploads the registry/packet/item/block/command reports and class diff as the `nexora-minecraft-1.21.1-port-data` artifact. It also installs Java 25 to prepare the active 26.3 baseline and, when that succeeds, uploads the mapped 26.3-to-1.21.1 comparison and ranked worklist as `nexora-26.3-to-1.21.1-port-diff`. The workflow does not commit downloaded Minecraft jars or generated bulk data into the repository.
