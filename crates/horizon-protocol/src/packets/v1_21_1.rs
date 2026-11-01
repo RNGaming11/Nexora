@@ -482,6 +482,9 @@ pub enum PlayPacket1211 {
     SpawnPosition(SpawnPosition1211),
     EntityMotion(play_packets::SetEntityMotion),
     TeleportEntity(play_packets::TeleportEntity),
+    MoveEntityPos(play_packets::MoveEntityPos),
+    MoveEntityPosRot(play_packets::MoveEntityPosRot),
+    MoveEntityRot(play_packets::MoveEntityRot),
 }
 
 /// Decode the 1.21.1 play packets whose payloads have target-verified codecs.
@@ -523,6 +526,15 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
         }
         crate::packet_ids_1_21_1::play::clientbound::TELEPORT_ENTITY => {
             decode_teleport_entity_1_21_1(payload).map(PlayPacket1211::TeleportEntity)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::MOVE_ENTITY_POS => {
+            decode_move_entity_pos_1_21_1(payload).map(PlayPacket1211::MoveEntityPos)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::MOVE_ENTITY_POS_ROT => {
+            decode_move_entity_pos_rot_1_21_1(payload).map(PlayPacket1211::MoveEntityPosRot)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::MOVE_ENTITY_ROT => {
+            decode_move_entity_rot_1_21_1(payload).map(PlayPacket1211::MoveEntityRot)
         }
         ids::play_clientbound::LOGIN =>
             shared(|r| Login1211::read(r).map(PlayPacket1211::Login)),
@@ -910,6 +922,120 @@ pub fn decode_teleport_entity_1_21_1(
         relatives: 0,
         on_ground: value.on_ground,
     })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MoveEntityPos1211 {
+    pub entity_id: i32,
+    pub delta: [i16; 3],
+    pub on_ground: bool,
+}
+
+impl Codec<MoveEntityPos1211> for MoveEntityPos1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            entity_id: r.varint()?,
+            delta: [r.i16()?, r.i16()?, r.i16()?],
+            on_ground: r.bool()?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.varint(value.entity_id);
+        for component in value.delta {
+            w.i16(component);
+        }
+        w.bool(value.on_ground);
+    }
+}
+
+pub fn decode_move_entity_pos_1_21_1(payload: &[u8]) -> Result<play_packets::MoveEntityPos> {
+    let value = decode_exact(payload, MoveEntityPos1211::read)?;
+    Ok(play_packets::MoveEntityPos(play_packets::MoveEntity {
+        id: value.entity_id,
+        delta: Some(play_packets::VecDelta::Linear(value.delta)),
+        rotation: None,
+        on_ground: value.on_ground,
+    }))
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MoveEntityPosRot1211 {
+    pub entity_id: i32,
+    pub delta: [i16; 3],
+    pub yaw: i8,
+    pub pitch: i8,
+    pub on_ground: bool,
+}
+
+impl Codec<MoveEntityPosRot1211> for MoveEntityPosRot1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            entity_id: r.varint()?,
+            delta: [r.i16()?, r.i16()?, r.i16()?],
+            yaw: r.i8()?,
+            pitch: r.i8()?,
+            on_ground: r.bool()?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.varint(value.entity_id);
+        for component in value.delta {
+            w.i16(component);
+        }
+        w.i8(value.yaw);
+        w.i8(value.pitch);
+        w.bool(value.on_ground);
+    }
+}
+
+pub fn decode_move_entity_pos_rot_1_21_1(
+    payload: &[u8],
+) -> Result<play_packets::MoveEntityPosRot> {
+    let value = decode_exact(payload, MoveEntityPosRot1211::read)?;
+    Ok(play_packets::MoveEntityPosRot(play_packets::MoveEntity {
+        id: value.entity_id,
+        delta: Some(play_packets::VecDelta::Linear(value.delta)),
+        rotation: Some((value.yaw, value.pitch)),
+        on_ground: value.on_ground,
+    }))
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct MoveEntityRot1211 {
+    pub entity_id: i32,
+    pub yaw: i8,
+    pub pitch: i8,
+    pub on_ground: bool,
+}
+
+impl Codec<MoveEntityRot1211> for MoveEntityRot1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            entity_id: r.varint()?,
+            yaw: r.i8()?,
+            pitch: r.i8()?,
+            on_ground: r.bool()?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.varint(value.entity_id);
+        w.i8(value.yaw);
+        w.i8(value.pitch);
+        w.bool(value.on_ground);
+    }
+}
+
+pub fn decode_move_entity_rot_1_21_1(payload: &[u8]) -> Result<play_packets::MoveEntityRot> {
+    let value = decode_exact(payload, MoveEntityRot1211::read)?;
+    Ok(play_packets::MoveEntityRot(play_packets::MoveEntity {
+        id: value.entity_id,
+        delta: None,
+        rotation: Some((value.yaw, value.pitch)),
+        on_ground: value.on_ground,
+    }))
 }
 
 fn decode_compatible_play_packet_1_21_1(
@@ -1535,6 +1661,63 @@ mod tests {
         let mut truncated = packet.data;
         truncated.pop();
         assert!(decode_level_chunk_with_light_1_21_1(&truncated).is_err());
+    }
+
+    #[test]
+    fn protocol_767_relative_entity_move_packets_convert_ground_and_angles() {
+        let position = MoveEntityPos1211 {
+            entity_id: 5,
+            delta: [10, -20, 30],
+            on_ground: true,
+        };
+        let mut wire = Writer::new();
+        MoveEntityPos1211::write(&position, &mut wire);
+        assert_eq!(
+            decode_move_entity_pos_1_21_1(&wire.data).unwrap(),
+            play_packets::MoveEntityPos(play_packets::MoveEntity {
+                id: 5,
+                delta: Some(play_packets::VecDelta::Linear([10, -20, 30])),
+                rotation: None,
+                on_ground: true,
+            })
+        );
+
+        let position_rotation = MoveEntityPosRot1211 {
+            entity_id: 6,
+            delta: [1, 2, 3],
+            yaw: 64,
+            pitch: -32,
+            on_ground: false,
+        };
+        let mut wire = Writer::new();
+        MoveEntityPosRot1211::write(&position_rotation, &mut wire);
+        assert_eq!(
+            decode_move_entity_pos_rot_1_21_1(&wire.data).unwrap(),
+            play_packets::MoveEntityPosRot(play_packets::MoveEntity {
+                id: 6,
+                delta: Some(play_packets::VecDelta::Linear([1, 2, 3])),
+                rotation: Some((64, -32)),
+                on_ground: false,
+            })
+        );
+
+        let rotation = MoveEntityRot1211 {
+            entity_id: 7,
+            yaw: 0,
+            pitch: 32,
+            on_ground: true,
+        };
+        let mut wire = Writer::new();
+        MoveEntityRot1211::write(&rotation, &mut wire);
+        assert_eq!(
+            decode_move_entity_rot_1_21_1(&wire.data).unwrap(),
+            play_packets::MoveEntityRot(play_packets::MoveEntity {
+                id: 7,
+                delta: None,
+                rotation: Some((0, 32)),
+                on_ground: true,
+            })
+        );
     }
 
     #[test]
