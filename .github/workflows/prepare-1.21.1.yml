@@ -15,6 +15,7 @@ on:
       - "tools/build_1_21_1_runtime_resources.py"
       - "tools/generate_1_21_1_heightmap_predicates.py"
       - "tools/export_1_21_1_gameplay_facts.py"
+      - "tools/test_1_21_1_gameplay_facts.py"
       - "tools/remap_proguard_jar.py"
       - "tools/java/ProguardJarRemapper.java"
       - "mods/horizon/src/test/java/dev/horizonlab/parity/VanillaGameplayFactsExporter.java"
@@ -48,7 +49,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Test official ProGuard jar remapper
-        run: python -m unittest tools.test_remap_proguard_jar tools.test_1_21_1_heightmap_predicates
+        run: python -m unittest tools.test_remap_proguard_jar tools.test_1_21_1_heightmap_predicates tools.test_1_21_1_gameplay_facts
       - name: Prepare official 1.21.1 artifacts and mapped inventories
         run: python tools/prepare_1_21_1.py --jobs 4
       - name: Generate an independent packet inventory
