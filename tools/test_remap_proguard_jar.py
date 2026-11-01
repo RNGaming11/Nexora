@@ -25,9 +25,9 @@ net.minecraft.world.level.levelgen.Heightmap$Types -> d:
 
             rows = output.read_text(encoding="utf-8").splitlines()
             self.assertIn("C\ta\tnet/minecraft/world/level/block/Block", rows)
-            self.assertIn("F\ta\tb\Lnet/minecraft/core/IdMapper;\\tBLOCK_STATE_REGISTRY", rows)
+            self.assertIn("F\ta\tb\tLnet/minecraft/core/IdMapper;\tBLOCK_STATE_REGISTRY", rows)
             self.assertTrue(
-                any(row.startswith("M\ta\tc\\(La;)V\tregister") for row in rows)
+                any(row.startswith("M\ta\tc\t(La;)V\tregister") for row in rows)
             )
             self.assertIn("C\td\tnet/minecraft/world/level/levelgen/Heightmap$Types", rows)
 
