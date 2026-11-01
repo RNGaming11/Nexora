@@ -179,7 +179,9 @@ fn read_1211_id_set(reader: &mut Reader) -> Result<()> {
             )
             .map_err(|_| crate::Error::new("negative protocol-767 ID set size"))?;
             if count > reader.remaining() {
-                return Err(crate::Error::new("protocol-767 ID set exceeds remaining payload"));
+                return Err(crate::Error::new(
+                    "protocol-767 ID set exceeds remaining payload",
+                ));
             }
             for _ in 0..count {
                 reader.varint()?;
@@ -527,12 +529,8 @@ impl Component {
     pub(crate) fn read_1_21_1(kind: i32, r: &mut Reader) -> Result<Self> {
         use component::*;
         match kind {
-            0 | 19 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56 => {
-                Ok(Self::Nbt(r.nbt()?))
-            }
-            1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50 => {
-                Ok(Self::Int(r.varint()?))
-            }
+            0 | 19 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56 => Ok(Self::Nbt(r.nbt()?)),
+            1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50 => Ok(Self::Int(r.varint()?)),
             4 | 18 => Ok(Self::Bool(r.bool()?)),
             5 | 6 => Ok(Self::Text(r.nbt()?)),
             7 => capture_component(r, |r| {
@@ -743,13 +741,18 @@ impl Component {
             (4 | 18, Self::Bool(value)) => w.bool(*value),
             (0 | 19 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56, Self::Nbt(value))
             | (5 | 6, Self::Text(value)) => w.nbt(value),
-            (1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50, Self::Int(value)) => {
-                w.varint(*value)
-            }
+            (1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50, Self::Int(value)) => w.varint(*value),
             (25, Self::Int(value)) => w.i32(*value),
             (48, Self::Ident(value)) => w.string(value),
             (14 | 15 | 17 | 21, Self::Unit) => {}
-            (31, Self::Potion { potion, color, rest }) => {
+            (
+                31,
+                Self::Potion {
+                    potion,
+                    color,
+                    rest,
+                },
+            ) => {
                 w.bool(potion.is_some());
                 if let Some(value) = potion {
                     w.varint(*value);
@@ -1355,7 +1358,9 @@ impl Codec<Option<Stack>> for DelimitedSlot1211 {
         let mut encoded = Writer::new();
         encoded.varint(stack.count);
         encoded.varint(stack.item);
-        if write_delimited_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded).is_ok() {
+        if write_delimited_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded)
+            .is_ok()
+        {
             w.bytes(&encoded.data);
         } else {
             w.varint(0);
