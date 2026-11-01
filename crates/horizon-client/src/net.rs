@@ -1237,10 +1237,30 @@ fn receive_play_1_21_1(
                     return Ok("Disconnected".into());
                 }
             }
-            target::PlayPacket1211::Missing(packet) => {
-                let _ = send.send(Event::DecodeError(format!(
-                    "protocol-767 packet needs gameplay integration: {packet:?}"
-                )));
+            target::PlayPacket1211::Missing(packet) => match packet {
+                target::MissingPacket::SetCarriedItem(packet) => {
+                    let packet = play::Clientbound::SetHeldSlot(play::SetHeldSlot {
+                        slot: i32::from(packet.slot),
+                    });
+                    if send.send(Event::Packet(Box::new(packet))).is_err() {
+                        return Ok("Disconnected".into());
+                    }
+                }
+                target::MissingPacket::HorseScreenOpen(packet) => {
+                    let packet = play::Clientbound::MountScreenOpen(play::MountScreenOpen {
+                        container: packet.container_id,
+                        columns: packet.size,
+                        entity: packet.entity_id,
+                    });
+                    if send.send(Event::Packet(Box::new(packet))).is_err() {
+                        return Ok("Disconnected".into());
+                    }
+                }
+                other => {
+                    let _ = send.send(Event::DecodeError(format!(
+                        "protocol-767 packet needs gameplay integration: {other:?}"
+                    )));
+                }
             }
         }
     }
