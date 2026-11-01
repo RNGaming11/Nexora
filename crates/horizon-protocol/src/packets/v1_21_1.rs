@@ -2430,3 +2430,99 @@ pub mod login {
         }
     }
 }
+
+
+#[cfg(test)]
+mod live_inventory_tests {
+    use super::*;
+    use crate::buf::Codec;
+
+    #[test]
+    fn play_dispatch_uses_protocol_767_inventory_slot_codecs() {
+        let packet = inventory::ContainerSetContent {
+            container: 3,
+            state: 12,
+            items: vec![Some(crate::item::Stack::new(5, 2)), None],
+            carried: None,
+        };
+        let mut payload = Writer::new();
+        inventory::ContainerSetContent::write(&packet, &mut payload);
+
+        assert_eq!(
+            decode_play_packet_1_21_1(
+                crate::packet_ids_1_21_1::play::clientbound::CONTAINER_SET_CONTENT,
+                &payload.data,
+            )
+            .unwrap(),
+            PlayPacket1211::Inventory(inventory::Clientbound::SetContent(packet))
+        );
+    }
+
+    #[test]
+    fn live_inventory_serverbound_packets_use_protocol_767_slot_codecs() {
+        let click = inventory::ContainerClick {
+            container: 2,
+            state: 7,
+            slot: 4,
+            button: 1,
+            mode: 0,
+            changed: vec![inventory::ChangedSlot {
+                slot: 4,
+                item: Some(crate::item::Hashed {
+                    item: 5,
+                    count: 2,
+                    added: vec![],
+                    removed: vec![],
+                }),
+            }],
+            carried: None,
+        };
+        let encoded = encode_play_serverbound_1_21_1(
+            play_packets::Serverbound::ContainerClick(play_packets::ContainerClick {
+                container: click.container,
+                state: click.state,
+                slot: click.slot,
+                button: click.button,
+                input: click.mode,
+                changed: click
+                    .changed
+                    .iter()
+                    .map(|change| (change.slot, change.item.clone()))
+                    .collect(),
+                carried: click.carried.clone(),
+            }),
+        )
+        .unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::CONTAINER_CLICK
+        );
+        assert_eq!(inventory::ContainerClick::read(&mut reader).unwrap(), click);
+        assert_eq!(reader.remaining(), 0);
+
+        let creative = crate::item::Stack::new(9, 1);
+        let encoded = encode_play_serverbound_1_21_1(
+            play_packets::Serverbound::SetCreativeModeSlot(
+                play_packets::SetCreativeModeSlot {
+                    slot: 36,
+                    item: Some(creative.clone()),
+                },
+            ),
+        )
+        .unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::SET_CREATIVE_MODE_SLOT
+        );
+        assert_eq!(
+            inventory::SetCreativeModeSlot::read(&mut reader).unwrap(),
+            inventory::SetCreativeModeSlot {
+                slot: 36,
+                item: Some(creative),
+            }
+        );
+        assert_eq!(reader.remaining(), 0);
+    }
+}
