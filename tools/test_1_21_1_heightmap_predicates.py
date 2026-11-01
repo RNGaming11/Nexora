@@ -1,8 +1,9 @@
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
-from tools.generate_1_21_1_heightmap_predicates import runtime_class, runtime_member
+from tools.generate_1_21_1_heightmap_predicates import runtime_class, runtime_member, unsigned_jar
 from tools.proguard import ProguardMappings
 
 
@@ -81,6 +82,31 @@ net.minecraft.server.Bootstrap -> h:
                 ),
                 "i",
             )
+
+    def test_unsigned_jar_removes_only_signature_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "signed.jar"
+            destination = root / "unsigned.jar"
+            with zipfile.ZipFile(source, "w") as archive:
+                archive.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\n")
+                archive.writestr("META-INF/TEST.SF", "signature")
+                archive.writestr("META-INF/TEST.RSA", b"signature")
+                archive.writestr("META-INF/TEST.DSA", b"signature")
+                archive.writestr("META-INF/SIG-CUSTOM", b"signature")
+                archive.writestr("META-INF/services/example.Service", "example.Impl")
+                archive.writestr("a.class", b"class-bytes")
+            unsigned_jar(source, destination)
+            with zipfile.ZipFile(destination) as archive:
+                names = set(archive.namelist())
+                self.assertIn("META-INF/MANIFEST.MF", names)
+                self.assertIn("META-INF/services/example.Service", names)
+                self.assertIn("a.class", names)
+                self.assertFalse(any(
+                    name.upper().endswith((".SF", ".RSA", ".DSA", ".EC"))
+                    or name.upper().rsplit("/", 1)[-1].startswith("SIG-")
+                    for name in names
+                ))
 
     def test_unmapped_members_keep_their_source_name(self):
         mapping_text = """\
