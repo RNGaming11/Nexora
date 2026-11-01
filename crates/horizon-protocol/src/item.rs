@@ -1087,11 +1087,12 @@ impl Codec<Option<Stack>> for Slot1211 {
             w.varint(0);
             return;
         };
-        w.varint(stack.count);
-        w.varint(stack.item);
-        if write_component_patch_1_21_1(&stack.added, &stack.removed, w).is_err() {
-            w.data.clear();
-        }
+        let mut encoded = Writer::new();
+        encoded.varint(stack.count);
+        encoded.varint(stack.item);
+        write_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded)
+            .expect("invalid protocol-767 item component value");
+        w.bytes(&encoded.data);
     }
 }
 
@@ -1106,38 +1107,30 @@ impl Codec<Option<Stack>> for DelimitedSlot1211 {
             w.varint(0);
             return;
         };
-        w.varint(stack.count);
-        w.varint(stack.item);
+        let mut encoded = Writer::new();
+        encoded.varint(stack.count);
+        encoded.varint(stack.item);
         if let Some(patch) = &stack.wire.0 {
-            w.bytes(patch);
-            return;
-        }
-        let mut patch = Writer::new();
-        if write_component_patch_1_21_1(&stack.added, &stack.removed, &mut patch).is_err() {
-            w.data.clear();
-            return;
-        }
-        for (kind, component) in &stack.added {
-            let mut value = Writer::new();
-            if component.write_1_21_1(*kind, &mut value).is_err() {
-                w.data.clear();
-                return;
+            encoded.bytes(patch);
+        } else {
+            encoded.varint(stack.added.len() as i32);
+            encoded.varint(stack.removed.len() as i32);
+            for (kind, component) in &stack.added {
+                encoded.varint(*kind);
+                let mut value = Writer::new();
+                component
+                    .write_1_21_1(*kind, &mut value)
+                    .expect("invalid protocol-767 item component value");
+                encoded.byte_array(&value.data);
+            }
+            for kind in &stack.removed {
+                if crate::packets::v1_21_1::component_ids::name(*kind).is_none() {
+                    panic!("unknown protocol-767 removed item component id {kind}");
+                }
+                encoded.varint(*kind);
             }
         }
-        w.varint(stack.added.len() as i32);
-        w.varint(stack.removed.len() as i32);
-        for (kind, component) in &stack.added {
-            w.varint(*kind);
-            let mut value = Writer::new();
-            if component.write_1_21_1(*kind, &mut value).is_err() {
-                w.data.clear();
-                return;
-            }
-            w.byte_array(&value.data);
-        }
-        for kind in &stack.removed {
-            w.varint(*kind);
-        }
+        w.bytes(&encoded.data);
     }
 }
 
@@ -1160,11 +1153,12 @@ impl Codec<Stack> for Template1211 {
         })
     }
     fn write(stack: &Stack, w: &mut Writer) {
-        w.varint(stack.item);
-        w.varint(stack.count);
-        if write_component_patch_1_21_1(&stack.added, &stack.removed, w).is_err() {
-            w.data.clear();
-        }
+        let mut encoded = Writer::new();
+        encoded.varint(stack.item);
+        encoded.varint(stack.count);
+        write_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded)
+            .expect("invalid protocol-767 item component value");
+        w.bytes(&encoded.data);
     }
 }
 
