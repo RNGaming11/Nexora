@@ -183,6 +183,7 @@ def build(
     entity_types: Path | None = None,
     cached_collision: Path | None = None,
     occlusion: Path | None = None,
+    attributes: Path | None = None,
 ) -> dict:
     client_jar = client_jar.resolve()
     server_game_jar = server_game_jar.resolve()
@@ -288,6 +289,24 @@ def build(
         shutil.copyfile(cached_collision, stage / "cached-collision.nbt")
         shutil.copyfile(occlusion, stage / "occlusion.nbt")
 
+        if attributes is None or not attributes.is_file():
+            raise ValueError("official 1.21.1 entity attribute catalog is required for runtime resources")
+        attribute_catalog = json.loads(attributes.read_text(encoding="utf-8"))
+        definitions = attribute_catalog.get("attributes") if isinstance(attribute_catalog, dict) else None
+        suppliers = attribute_catalog.get("entities") if isinstance(attribute_catalog, dict) else None
+        expected_attributes = inventory["registries"].get("minecraft:attribute")
+        if (
+            attribute_catalog.get("data_version") != DATA_VERSION
+            or not isinstance(definitions, list)
+            or not isinstance(suppliers, dict)
+            or not isinstance(expected_attributes, list)
+            or {entry.get("id") for entry in definitions if isinstance(entry, dict)} != set(expected_attributes)
+            or "minecraft:player" not in suppliers
+            or any(name not in entity_facts for name in suppliers)
+        ):
+            raise ValueError("1.21.1 attribute catalog does not match the vanilla registries")
+        shutil.copyfile(attributes, stage / "attributes.json")
+
         if heightmap_predicates is None:
             raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
         motion = heightmap_predicates.get("motion")
@@ -342,6 +361,8 @@ def build(
             "entity_type_count": len(entity_facts),
             "collision_table_bytes": cached_collision.stat().st_size,
             "occlusion_table_bytes": occlusion.stat().st_size,
+            "attribute_definition_count": len(definitions),
+            "attribute_entity_supplier_count": len(suppliers),
             "block_tag_count": len(client_tags),
             "item_component_item_count": item_count,
             "biome_parameter_file_count": biome_count,
@@ -370,6 +391,7 @@ def main() -> None:
     parser.add_argument("--entity-types", required=True, type=Path)
     parser.add_argument("--cached-collision", required=True, type=Path)
     parser.add_argument("--occlusion", required=True, type=Path)
+    parser.add_argument("--attributes", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     heightmap_predicates = json.loads(args.heightmap_predicates.read_text(encoding="utf-8"))
@@ -384,6 +406,7 @@ def main() -> None:
         args.entity_types,
         args.cached_collision,
         args.occlusion,
+        args.attributes,
     )
     print(json.dumps({
         "runtime_resources": str(args.out.resolve()),
