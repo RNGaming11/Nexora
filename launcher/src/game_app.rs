@@ -16,7 +16,7 @@ const PROGRAMS: [&str; 2] = ["horizon-client", "horizon-ctl"];
 
 const ICON: &[u8] = include_bytes!("../../packaging/icons/nexora.icns");
 
-/// Its own identifier, so macOS keeps it apart from the launcher (dev.horizon.launcher); the
+/// Its own identifier, so macOS keeps it apart from the launcher (app.nexora.launcher); the
 /// games category lets macOS turn Game Mode on when it plays full screen.
 const INFO_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -27,7 +27,7 @@ const INFO_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 	<key>CFBundleExecutable</key>
 	<string>horizon-client</string>
 	<key>CFBundleIconFile</key>
-	<string>horizon</string>
+	<string>nexora</string>
 	<key>CFBundleIdentifier</key>
 	<string>dev.nexora.game</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -44,7 +44,7 @@ const INFO_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </plist>
 "#;
 
-/// Brings `version`'s Horizon.app up to date and returns the game's program inside it. A program
+/// Brings `version`'s Nexora.app up to date and returns the game's program inside it. A program
 /// replaced in the version folder (a reinstall, a build copied over) is linked again.
 pub fn ensure(version: &Path, client: &str) -> io::Result<PathBuf> {
     let contents = version.join(APP).join("Contents");
@@ -109,7 +109,7 @@ mod tests {
         let plist = fs::read_to_string(version.join("Nexora.app/Contents/Info.plist")).unwrap();
         assert!(plist.contains("<string>Nexora</string>"));
         assert_eq!(
-            fs::read(version.join("Nexora.app/Contents/Resources/horizon.icns")).unwrap(),
+            fs::read(version.join("Nexora.app/Contents/Resources/nexora.icns")).unwrap(),
             ICON
         );
 
