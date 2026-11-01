@@ -746,6 +746,13 @@ impl Launcher {
                                 continue;
                             }
                         };
+                        if let Err(error) = backend::client_preflight(&tag) {
+                            self.client_error = Some(error);
+                            self.starting_pack = None;
+                            self.joining = None;
+                            self.quick_play = None;
+                            continue;
+                        }
                         // Past the gate by the developer option alone is no owner.
                         if !self.settings.dev_offline {
                             self.owner = Some(true);
