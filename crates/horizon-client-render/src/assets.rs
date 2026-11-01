@@ -110,7 +110,7 @@ struct HeightmapPredicateFacts {
 }
 impl Assets {
     pub fn load(root: &Path) -> Result<Self> {
-        Self::load_with_data_version(root, DATA_VERSION)
+        Self::load_with_data_version(root, horizon_core::version::DATA_VERSION)
     }
 
     /// Load resources only when their manifest and block facts match the explicitly
