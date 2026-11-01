@@ -113,7 +113,9 @@ impl Assets {
             root.join("horizon-resources.json"),
         )?))?;
         if manifest["data_version"].as_i64() != Some(i64::from(data_version)) {
-            return Err(invalid("resources do not match the selected Minecraft data version").into());
+            return Err(
+                invalid("resources do not match the selected Minecraft data version").into(),
+            );
         }
         let (registry, flags) = if data_version == DATA_VERSION {
             BlockRegistry::from_facts_json_with_flags(File::open(root.join("facts.json"))?)?
