@@ -22,6 +22,12 @@ class ModelStates1211Tests(unittest.TestCase):
                     {"id": 5, "properties": {"age": "7"}},
                 ]},
                 "minecraft:stone": {"states": [{"id": 6}]},
+                "minecraft:oak_stairs": {"states": [
+                    {"id": 7, "properties": {"facing": "north"}},
+                    {"id": 8, "properties": {"facing": "south"}},
+                    {"id": 9, "properties": {"facing": "west"}},
+                    {"id": 10, "properties": {"facing": "east"}},
+                ]},
             }), encoding="utf-8")
 
             result = build(report)
@@ -34,6 +40,10 @@ class ModelStates1211Tests(unittest.TestCase):
                 {"age": {"integer": [0, 7]}},
             )
             self.assertEqual(result["minecraft:stone"]["states"], [{}])
+            self.assertEqual(
+                result["minecraft:oak_stairs"]["schema"],
+                {"facing": {"named": ["north", "south", "west", "east"]}},
+            )
 
     def test_rejects_inconsistent_property_sets(self):
         with tempfile.TemporaryDirectory() as directory:
