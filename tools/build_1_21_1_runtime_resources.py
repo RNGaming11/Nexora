@@ -178,6 +178,7 @@ def build(
     reports: Path,
     output: Path,
     heightmap_predicates: dict | None = None,
+    gameplay_facts: Path | None = None,
 ) -> dict:
     client_jar = client_jar.resolve()
     server_game_jar = server_game_jar.resolve()
@@ -221,6 +222,17 @@ def build(
         block_facts = generate_1_21_1_block_facts.build(
             reports / "blocks.json", DATA_VERSION
         )
+        if gameplay_facts is None or not gameplay_facts.is_file():
+            raise ValueError("official 1.21.1 gameplay facts are required for runtime resources")
+        gameplay = json.loads(gameplay_facts.read_text(encoding="utf-8"))
+        gameplay_states = gameplay.get("states") if isinstance(gameplay, dict) else None
+        if not isinstance(gameplay_states, list) or len(gameplay_states) != len(block_facts["states"]):
+            raise ValueError("1.21.1 gameplay facts do not match the block-state registry")
+        for index, entry in enumerate(gameplay_states):
+            if not isinstance(entry, dict) or entry.get("id") != index:
+                raise ValueError(f"1.21.1 gameplay facts are malformed at state {index}")
+        shutil.copyfile(gameplay_facts, stage / "gameplay-facts.json")
+
         if heightmap_predicates is None:
             raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
         motion = heightmap_predicates.get("motion")
@@ -269,6 +281,7 @@ def build(
             "block_state_count": len(block_facts["states"]),
             "model_schema_count": len(model_states),
             "heightmap_predicate_state_count": heightmap_predicates["states"],
+            "gameplay_fact_state_count": len(gameplay_states),
             "block_tag_count": len(client_tags),
             "item_component_item_count": item_count,
             "biome_parameter_file_count": biome_count,
@@ -292,6 +305,7 @@ def main() -> None:
     parser.add_argument("--server-game-jar", required=True, type=Path)
     parser.add_argument("--reports", required=True, type=Path)
     parser.add_argument("--heightmap-predicates", required=True, type=Path)
+    parser.add_argument("--gameplay-facts", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     heightmap_predicates = json.loads(args.heightmap_predicates.read_text(encoding="utf-8"))
@@ -301,6 +315,7 @@ def main() -> None:
         args.reports,
         args.out,
         heightmap_predicates,
+        args.gameplay_facts,
     )
     print(json.dumps({
         "runtime_resources": str(args.out.resolve()),
