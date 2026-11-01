@@ -1344,6 +1344,24 @@ fn encode_signed_chat_command_1_21_1(
 
 /// Re-encode a shared play packet with its protocol-767 packet ID. Only
 /// serverbound payloads whose layouts are verified for 1.21.1 are accepted.
+/// Encode the 1.21.1 PlaceRecipe packet, whose recipe field is a recipe
+/// identifier rather than the newer protocol's recipe-display integer.
+pub fn encode_place_recipe_1_21_1(
+    container: i32,
+    recipe: &str,
+    use_max: bool,
+) -> Result<Vec<u8>> {
+    if recipe.is_empty() {
+        return Err(Error::new("protocol-767 place-recipe identifier is empty"));
+    }
+    let mut writer = Writer::new();
+    writer.varint(crate::packet_ids_1_21_1::play::serverbound::PLACE_RECIPE);
+    writer.varint(container);
+    writer.string(recipe);
+    writer.bool(use_max);
+    Ok(writer.data)
+}
+
 pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Result<Vec<u8>> {
     match packet {
         play_packets::Serverbound::Chat(packet) => return encode_chat_1_21_1(packet),
@@ -1412,6 +1430,7 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
             | "player_action"
             | "player_command"
             | "player_input"
+            | "recipe_book_change_settings"
             | "pong"
             | "resource_pack"
             | "set_carried_item"
@@ -2827,6 +2846,41 @@ mod live_inventory_tests {
         assert_eq!(chat.chat_type.chat_type, 1);
         assert_eq!(chat.chat_type.name, Tag::String("Alex".into()));
         assert!(chat.chat_type.target.is_none());
+    }
+
+    #[test]
+    fn protocol_767_place_recipe_uses_a_recipe_identifier() {
+        let encoded = encode_place_recipe_1_21_1(4, "minecraft:planks", true).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::PLACE_RECIPE
+        );
+        assert_eq!(reader.varint().unwrap(), 4);
+        assert_eq!(reader.string(32767).unwrap(), "minecraft:planks");
+        assert!(reader.bool().unwrap());
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
+    fn protocol_767_recipe_book_settings_use_the_target_packet_id() {
+        let packet = play_packets::Serverbound::RecipeBookChangeSettings(
+            crate::packets::recipes::RecipeBookChangeSettings {
+                book_type: 2,
+                open: true,
+                filtering: false,
+            },
+        );
+        let encoded = encode_play_serverbound_1_21_1(packet).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::RECIPE_BOOK_CHANGE_SETTINGS
+        );
+        assert_eq!(reader.varint().unwrap(), 2);
+        assert!(reader.bool().unwrap());
+        assert!(!reader.bool().unwrap());
+        assert_eq!(reader.remaining(), 0);
     }
 
     #[test]
