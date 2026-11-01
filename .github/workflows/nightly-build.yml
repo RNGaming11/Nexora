@@ -98,10 +98,11 @@ jobs:
           persist-credentials: false
       - id: mode
         # A dry run never publishes; a hand-started run off main is always one.
-        run: echo "dry_run=${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run || github.ref != 'refs/heads/main') }}" >> "$GITHUB_OUTPUT"
+        run: echo "dry_run=${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run || github.ref != format('refs/heads/{0}', github.event.repository.default_branch)) }}" >> "$GITHUB_OUTPUT"
       - id: pick
         env:
           GH_TOKEN: ${{ github.token }}
+          NEXORA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           FORCE: ${{ (inputs.force || steps.mode.outputs.dry_run == 'true') && 'yes' || '' }}
           DRY_RUN: ${{ steps.mode.outputs.dry_run }}
           NIGHTLY_ISSUE: ${{ inputs.issue }}
