@@ -1055,7 +1055,7 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
             | "move_vehicle"
             | "player_action"
             | "player_command"
-            | "pong_response"
+            | "pong"
             | "resource_pack"
             | "set_carried_item"
             | "use_item"
@@ -1065,20 +1065,7 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
             "protocol-767 serverbound packet {name} has no verified payload adapter"
         )));
     }
-    let target_name = match name {
-        "move_player_pos" => "position",
-        "move_player_pos_rot" => "position_look",
-        "move_player_rot" => "look",
-        "move_player_status_only" => "flying",
-        "move_vehicle" => "vehicle_move",
-        "player_action" => "block_dig",
-        "player_command" => "entity_action",
-        "resource_pack" => "resource_pack_receive",
-        "pong_response" => "pong",
-        "set_carried_item" => "held_item_slot",
-        "use_item_on" => "block_place",
-        other => other,
-    };
+    let target_name = name;
     let target_id = crate::packet_ids_1_21_1::play::serverbound::NAMES
         .iter()
         .position(|candidate| *candidate == target_name)
@@ -1496,12 +1483,12 @@ mod tests {
         let blocks = Paletted {
             bits: 15,
             palette: vec![],
-            data: vec![0; (4096usize * 15).div_ceil(64)],
+            data: vec![0; crate::chunk::storage_len(15, 4096)],
         };
         let biomes = Paletted {
             bits: 6,
             palette: vec![],
-            data: vec![0; (64usize * 6).div_ceil(64)],
+            data: vec![0; crate::chunk::storage_len(6, 64)],
         };
         let mut section_data = Writer::new();
         section_data.i16(12);
@@ -1652,7 +1639,7 @@ mod tests {
             reader.varint().unwrap(),
             crate::packet_ids_1_21_1::play::serverbound::NAMES
                 .iter()
-                .position(|name| *name == "position")
+                .position(|name| *name == "move_player_pos")
                 .unwrap() as i32
         );
         assert_eq!(reader.f64().unwrap(), 1.5);
@@ -1674,7 +1661,7 @@ mod tests {
             reader.varint().unwrap(),
             crate::packet_ids_1_21_1::play::serverbound::NAMES
                 .iter()
-                .position(|name| *name == "vehicle_move")
+                .position(|name| *name == "move_vehicle")
                 .unwrap() as i32
         );
         assert_eq!(
@@ -1703,7 +1690,7 @@ mod tests {
             reader.varint().unwrap(),
             crate::packet_ids_1_21_1::play::serverbound::NAMES
                 .iter()
-                .position(|name| *name == "block_place")
+                .position(|name| *name == "use_item_on")
                 .unwrap() as i32
         );
         assert_eq!(reader.varint().unwrap(), 1);
