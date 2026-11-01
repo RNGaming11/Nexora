@@ -2621,6 +2621,123 @@ mod live_inventory_tests {
     use crate::buf::Codec;
 
     #[test]
+    fn protocol_767_player_info_update_is_adapted_to_the_shared_gameplay_shape() {
+        let mut payload = Writer::new();
+        payload.u8(0x3f);
+        payload.varint(1);
+        payload.uuid(7);
+        payload.string("Alex");
+        payload.varint(1);
+        login_packets::Property::write(
+            &login_packets::Property {
+                name: "textures".into(),
+                value: "dGVzdA==".into(),
+                signature: Some("signature".into()),
+            },
+            &mut payload,
+        );
+        payload.bool(true);
+        payload.uuid(8);
+        payload.i64(1_900_000_000_000);
+        payload.byte_array(&[1, 2, 3]);
+        payload.byte_array(&[4, 5, 6]);
+        payload.varint(1);
+        payload.bool(true);
+        payload.varint(55);
+        payload.bool(true);
+        payload.nbt(&Tag::String("Alex".into()));
+
+        let decoded = decode_play_packet_1_21_1(
+            crate::packet_ids_1_21_1::play::clientbound::PLAYER_INFO_UPDATE,
+            &payload.data,
+        )
+        .unwrap();
+        let PlayPacket1211::Compatible(play_packets::Clientbound::PlayerInfoUpdate(info)) =
+            decoded
+        else {
+            panic!("protocol-767 player info packet was not adapted");
+        };
+        assert_eq!(info.actions, 0x3f);
+        assert_eq!(info.entries.len(), 1);
+        let player = &info.entries[0];
+        assert_eq!(player.uuid, 7);
+        assert_eq!(player.name.as_deref(), Some("Alex"));
+        assert_eq!(player.properties.len(), 1);
+        assert_eq!(player.properties[0].name, "textures");
+        assert_eq!(
+            player.chat_session,
+            Some((8, 1_900_000_000_000, vec![1, 2, 3], vec![4, 5, 6]))
+        );
+        assert_eq!(player.game_mode, Some(1));
+        assert_eq!(player.listed, Some(true));
+        assert_eq!(player.latency, Some(55));
+        assert_eq!(player.display_name, Some(Some(Tag::String("Alex".into()))));
+
+        payload.u8(0);
+        assert!(decode_player_info_update_1_21_1(&payload.data).is_err());
+    }
+
+    #[test]
+    fn protocol_767_player_chat_maps_previous_messages_and_chat_type() {
+        let mut payload = Writer::new();
+        payload.uuid(7);
+        payload.varint(3);
+        payload.bool(false);
+        payload.string("hello from 1.21.1");
+        payload.i64(1_728_000_000_000);
+        payload.i64(19);
+        payload.varint(1);
+        play_packets::PackedSignature::write(&(-1, Some(vec![0x5a; 256])), &mut payload);
+        payload.bool(true);
+        payload.nbt(&Tag::String("unsigned".into()));
+        payload.varint(2);
+        payload.long_array(&[5]);
+        play_packets::ChatTypeBound::write(
+            &play_packets::ChatTypeBound {
+                chat_type: 1,
+                name: Tag::String("Alex".into()),
+                target: None,
+            },
+            &mut payload,
+        );
+
+        let decoded = decode_play_packet_1_21_1(
+            crate::packet_ids_1_21_1::play::clientbound::PLAYER_CHAT,
+            &payload.data,
+        )
+        .unwrap();
+        let PlayPacket1211::Compatible(play_packets::Clientbound::PlayerChat(chat)) = decoded
+        else {
+            panic!("protocol-767 player chat packet was not adapted");
+        };
+        assert_eq!(chat.global_index, 0);
+        assert_eq!(chat.sender, 7);
+        assert_eq!(chat.index, 3);
+        assert_eq!(chat.content, "hello from 1.21.1");
+        assert_eq!(chat.timestamp, 1_728_000_000_000);
+        assert_eq!(chat.salt, 19);
+        assert_eq!(chat.last_seen, vec![(-1, Some(vec![0x5a; 256]))]);
+        assert_eq!(chat.unsigned_content, Some(Tag::String("unsigned".into())));
+        assert_eq!(chat.filter, (2, vec![5]));
+        assert_eq!(chat.chat_type.chat_type, 1);
+        assert_eq!(chat.chat_type.name, Tag::String("Alex".into()));
+        assert!(chat.chat_type.target.is_none());
+    }
+
+    #[test]
+    fn protocol_767_hand_swing_uses_the_target_packet_and_hand_field() {
+        let encoded =
+            encode_play_serverbound_1_21_1(play_packets::Serverbound::Punch(Empty)).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::SWING
+        );
+        assert_eq!(reader.varint().unwrap(), 0);
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
     fn protocol_767_chat_omits_the_newer_checksum_field() {
         let packet = play_packets::Chat {
             message: "hello 1.21.1".into(),
