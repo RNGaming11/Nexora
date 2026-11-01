@@ -807,7 +807,11 @@ mod tests {
         assert_eq!(decode_play_login(&encoded.data).unwrap(), packet);
         assert_eq!(
             decode_play_clientbound(ids::play_clientbound::LOGIN, &encoded.data).unwrap(),
-            MissingPacket::Login(packet)
+            MissingPacket::Login(packet.clone())
+        );
+        assert_eq!(
+            decode_play_packet_1_21_1(ids::play_clientbound::LOGIN, &encoded.data).unwrap(),
+            PlayPacket1211::Login(packet)
         );
         let mut trailing = encoded.data;
         trailing.push(0);
@@ -900,6 +904,42 @@ mod tests {
     }
 
     #[test]
+    fn protocol_767_core_play_packets_use_target_ids_and_shared_payload_codecs() {
+        let keep_alive = cfg::KeepAlive { id: 0x102030405060708 };
+        let mut payload = Writer::new();
+        cfg::KeepAlive::write(&keep_alive, &mut payload);
+        assert_eq!(
+            decode_play_packet_1_21_1(ids::play_clientbound::KEEP_ALIVE, &payload.data).unwrap(),
+            PlayPacket1211::KeepAlive(keep_alive)
+        );
+
+        let cookie = cfg::CookieRequest {
+            key: "proxy:session".into(),
+        };
+        let mut payload = Writer::new();
+        cfg::CookieRequest::write(&cookie, &mut payload);
+        assert_eq!(
+            decode_play_packet_1_21_1(ids::play_clientbound::COOKIE_REQUEST, &payload.data)
+                .unwrap(),
+            PlayPacket1211::CookieRequest(cookie)
+        );
+
+        assert_eq!(
+            decode_play_packet_1_21_1(ids::play_clientbound::BUNDLE_DELIMITER, &[]).unwrap(),
+            PlayPacket1211::BundleDelimiter(Empty)
+        );
+        assert_eq!(
+            decode_play_packet_1_21_1(ids::play_clientbound::START_CONFIGURATION, &[]).unwrap(),
+            PlayPacket1211::StartConfiguration(Empty)
+        );
+        assert!(decode_play_packet_1_21_1(
+            ids::play_clientbound::LEVEL_CHUNK_WITH_LIGHT,
+            &[]
+        )
+        .is_err());
+    }
+
+    #[test]
     fn simple_missing_packets_round_trip() {
         round_trip(AddExperienceOrb { entity_id: 9, x: 1.25, y: 64.0, z: -3.5, value: 7 });
         round_trip(DebugSample { samples: vec![1, -2, i64::MAX], sample_type: 2 });
@@ -936,6 +976,11 @@ mod tests {
         w.data.push(0);
         assert!(decode_play_serverbound(ids::play_serverbound::PICK_ITEM, &w.data).is_err());
         assert_eq!(ids::play_clientbound::COMMAND_SUGGESTIONS, 16);
+        assert_eq!(ids::play_clientbound::BUNDLE_DELIMITER, 0);
+        assert_eq!(ids::play_clientbound::KEEP_ALIVE, 38);
+        assert_eq!(ids::play_clientbound::LOGIN, 43);
+        assert_eq!(ids::play_clientbound::START_CONFIGURATION, 105);
+        assert_eq!(ids::play_clientbound::SERVER_LINKS, 123);
         assert_eq!(ids::configuration_clientbound::CUSTOM_REPORT_DETAILS, 15);
     }
 }
