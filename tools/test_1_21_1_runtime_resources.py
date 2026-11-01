@@ -72,7 +72,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
             model_states = json.loads((output / "model-states.json").read_text())
             self.assertEqual(
                 model_states["minecraft:oak_log"]["schema"],
-                {"axis": {"named": ["x", "y", "z"]}},
+                {"axis": {"named": ["y", "x", "z"]}},
             )
             rebuilt = build(client, server, reports, output)
             self.assertEqual(rebuilt["client_jar_sha1"], manifest["client_jar_sha1"])
