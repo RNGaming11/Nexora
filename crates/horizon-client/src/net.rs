@@ -1245,6 +1245,21 @@ fn receive_play_1_21_1(
             }
             target::PlayPacket1211::UpdateRecipes(_) => {}
             target::PlayPacket1211::Missing(packet) => match packet {
+                target::MissingPacket::CommandSuggestions(packet) => {
+                    let encoded = target::encode_play_clientbound(
+                        &target::MissingPacket::CommandSuggestions(packet),
+                    )
+                    .map_err(|error| error.to_string())?;
+                    let mut reader = horizon_protocol::buf::Reader::new(&encoded);
+                    let _target_id = reader.varint().map_err(|error| error.to_string())?;
+                    let packet = play::Clientbound::Unknown(
+                        horizon_protocol::ids::play::clientbound::COMMAND_SUGGESTIONS,
+                        reader.rest().to_vec(),
+                    );
+                    if send.send(Event::Packet(Box::new(packet))).is_err() {
+                        return Ok("Disconnected".into());
+                    }
+                }
                 target::MissingPacket::SetCarriedItem(packet) => {
                     let packet = play::Clientbound::SetHeldSlot(play::SetHeldSlot {
                         slot: i32::from(packet.slot),
