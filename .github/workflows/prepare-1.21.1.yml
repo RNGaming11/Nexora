@@ -15,6 +15,9 @@ on:
       - "tools/build_1_21_1_runtime_resources.py"
       - "tools/generate_1_21_1_heightmap_predicates.py"
       - "tools/java/Vanilla1211HeightmapPredicates.java"
+      - "tools/remap_proguard_jar.py"
+      - "tools/java/ProguardJarRemapper.java"
+      - "tools/test_remap_proguard_jar.py"
       - "crates/horizon-client-render/src/assets.rs"
       - "crates/horizon-client-render/examples/validate_1_21_1_resources.rs"
       - "ports/1.21.1/recipe-serializers.json"
@@ -39,6 +42,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Test official ProGuard jar remapper
+        run: python -m unittest tools.test_remap_proguard_jar
       - name: Prepare official 1.21.1 artifacts and mapped inventories
         run: python tools/prepare_1_21_1.py --jobs 4
       - name: Generate an independent packet inventory
