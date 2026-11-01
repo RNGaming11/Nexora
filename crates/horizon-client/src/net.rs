@@ -1042,9 +1042,9 @@ fn receive_play_1_21_1(
             }
             target::PlayPacket1211::ChangeDifficulty(packet) => {
                 if send
-                    .send(Event::Packet(Box::new(play::Clientbound::ChangeDifficulty(
-                        packet,
-                    ))))
+                    .send(Event::Packet(Box::new(
+                        play::Clientbound::ChangeDifficulty(packet),
+                    )))
                     .is_err()
                 {
                     return Ok("Disconnected".into());
