@@ -631,6 +631,448 @@ fn run(
     )
 }
 
+#[cfg(feature = "minecraft-1-21-1")]
+fn run(
+    local: Option<horizon_protocol::connection::Pipe>,
+    address: &str,
+    name: &str,
+    auth: Option<&AuthSession>,
+    info: cfg::ClientInformation,
+    lang: &Language,
+    send: &Sender<Event>,
+    shared_writer: &Mutex<Option<ConnWriter>>,
+    configuring: &AtomicBool,
+    shared_counters: &Mutex<Option<Arc<Counters>>>,
+    cookies: &Cookies,
+    transferred: bool,
+    resources: &Path,
+) -> Result<String, String> {
+    use horizon_protocol::packets::v1_21_1 as target;
+
+    let (host, port, mut c) = if let Some(pipe) = local {
+        (address.to_owned(), 0, Connection::local(pipe))
+    } else {
+        let (host, port) = match address.strip_prefix(FRIEND) {
+            Some(code) => join_friend(code, send)?,
+            None => {
+                let Some(target) = parse_address(address) else {
+                    return Ok(format!("Invalid server address: {address}"));
+                };
+                status(send, "Connecting to the server...");
+                target
+            }
+        };
+        let c = connect_tcp(&host, port, address.starts_with(FRIEND), READ_TIMEOUT)?;
+        (host, port, c)
+    };
+
+    *shared_counters.lock().unwrap() = Some(c.reader.counters.clone());
+    let map_error = |error: horizon_protocol::Error| connection_lost(error, lang);
+    c.send(
+        &handshake::Serverbound::Intention(handshake::Intention {
+            protocol: PROTOCOL_VERSION,
+            host: host.clone(),
+            port,
+            intent: if transferred {
+                handshake::TRANSFER
+            } else {
+                handshake::LOGIN
+            },
+        })
+        .encode(),
+    )
+    .map_err(map_error)?;
+
+    let uuid = auth.map_or_else(|| offline_uuid(name), |account| account.uuid);
+    c.send(
+        &login::Serverbound::Hello(login::ServerHello {
+            name: name.to_owned(),
+            uuid,
+        })
+        .encode(),
+    )
+    .map_err(map_error)?;
+
+    let (profile, strict_error_handling) = loop {
+        let (id, payload) = c.recv().map_err(map_error)?;
+        match target::decode_login_packet_1_21_1(id, &payload).map_err(map_error)? {
+            target::LoginPacket1211::GameProfile(success) => {
+                c.send(&login::Serverbound::LoginAcknowledged(Empty).encode())
+                    .map_err(map_error)?;
+                break (success.profile, success.strict_error_handling);
+            }
+            target::LoginPacket1211::Shared(login::Clientbound::Compression(packet)) => {
+                c.set_compression(packet.threshold);
+            }
+            target::LoginPacket1211::Shared(login::Clientbound::Disconnect(packet)) => {
+                let reason = serde_json::from_str::<serde_json::Value>(&packet.reason_json)
+                    .map(|value| json_text(&value, lang))
+                    .unwrap_or(packet.reason_json);
+                return Ok(reason);
+            }
+            target::LoginPacket1211::Shared(login::Clientbound::Hello(hello)) => {
+                status(send, &tr(lang, "connect.authorizing"));
+                let key = RsaPublicKey::from_der(&hello.public_key)
+                    .map_err(|error| format!("Protocol error: {error}"))?;
+                let secret = generate_secret().map_err(map_error)?;
+                if hello.should_authenticate {
+                    let account = auth.ok_or_else(|| NOT_SIGNED_IN.to_owned())?;
+                    let hash = server_hash(&hello.server_id, &secret, &hello.public_key);
+                    if let Err(error) = crate::auth::join_server(account, &hash) {
+                        let reason = match error.reason() {
+                            Ok(key) => tr(lang, key),
+                            Err(message) => message.to_owned(),
+                        };
+                        return Err(plain(
+                            &translatable("disconnect.loginFailedInfo", &[&reason]),
+                            lang,
+                        ));
+                    }
+                }
+                status(send, &tr(lang, "connect.encrypting"));
+                c.send(
+                    &login::Serverbound::Key(login::Key {
+                        key: key.encrypt(&secret).map_err(map_error)?,
+                        challenge: key.encrypt(&hello.challenge).map_err(map_error)?,
+                    })
+                    .encode(),
+                )
+                .map_err(map_error)?;
+                c.enable_encryption(&secret);
+            }
+            target::LoginPacket1211::Shared(login::Clientbound::CustomQuery(query)) => {
+                c.send(
+                    &login::Serverbound::CustomQueryAnswer(login::CustomQueryAnswer {
+                        transaction: query.transaction,
+                        payload: None,
+                    })
+                    .encode(),
+                )
+                .map_err(map_error)?;
+            }
+            target::LoginPacket1211::Shared(login::Clientbound::CookieRequest(query)) => {
+                let payload = cookies.lock().unwrap().get(&query.key).cloned();
+                c.send(
+                    &login::Serverbound::CookieResponse(login::CookieResponse {
+                        key: query.key,
+                        payload,
+                    })
+                    .encode(),
+                )
+                .map_err(map_error)?;
+            }
+            target::LoginPacket1211::Shared(login::Clientbound::Unknown(_, _)) => {}
+            target::LoginPacket1211::Shared(login::Clientbound::LoginFinished(_)) => {
+                return Err("Unexpected protocol-777 login-success packet in protocol-767 session".into());
+            }
+        }
+    };
+
+    status(send, "Joining world...");
+    c.send(&cfg::Serverbound::ClientInformation(info).encode())
+        .map_err(map_error)?;
+    c.send(
+        &cfg::Serverbound::CustomPayload(cfg::CustomPayload {
+            channel: "minecraft:brand".into(),
+            data: brand(),
+        })
+        .encode(),
+    )
+    .map_err(map_error)?;
+
+    let (mut reader, writer) = c.split();
+    *shared_writer.lock().unwrap() = Some(writer);
+    let registries = configure_1_21_1(
+        &mut reader,
+        shared_writer,
+        configuring,
+        lang,
+        send,
+        cookies,
+        resources,
+    )?;
+    let _ = send.send(Event::Joined {
+        registries: Arc::new(registries),
+        uuid: profile.uuid,
+        name: profile.name,
+    });
+    receive_play_1_21_1(
+        &mut reader,
+        shared_writer,
+        configuring,
+        lang,
+        send,
+        cookies,
+        resources,
+        auth.is_some() || strict_error_handling,
+    )
+}
+
+#[cfg(feature = "minecraft-1-21-1")]
+fn configure_1_21_1(
+    reader: &mut ConnReader,
+    writer: &Mutex<Option<ConnWriter>>,
+    configuring: &AtomicBool,
+    lang: &Language,
+    send: &Sender<Event>,
+    cookies: &Cookies,
+    resources: &Path,
+) -> Result<Dynamic, String> {
+    use horizon_protocol::packets::v1_21_1 as target;
+
+    let mut registries = Dynamic::default();
+    let reply = |packet: cfg::Serverbound| -> Result<(), String> {
+        match writer.lock().unwrap().as_mut() {
+            Some(writer) => writer.send(&packet.encode()).map_err(|error| connection_lost(error, lang)),
+            None => Err("Disconnected".into()),
+        }
+    };
+
+    loop {
+        let (id, payload) = reader.recv().map_err(|error| connection_lost(error, lang))?;
+        match target::decode_configuration_packet_1_21_1(id, &payload)
+            .map_err(|error| connection_lost(error, lang))?
+        {
+            target::ConfigurationPacket1211::CustomReportDetails(_) => {}
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::KeepAlive(packet)) => {
+                reply(cfg::Serverbound::KeepAlive(packet))?;
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::CustomPayload(packet))
+                if packet.channel == crate::content_identity::CHANNEL =>
+            {
+                let hash = crate::content_identity::identity(resources)
+                    .map_err(|_| crate::content_identity::MISMATCH.to_string())?;
+                reply(cfg::Serverbound::CustomPayload(cfg::CustomPayload {
+                    channel: crate::content_identity::CHANNEL.into(),
+                    data: hash.to_vec(),
+                }))?;
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::CustomPayload(packet)) => {
+                receive_brand(&packet, send);
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::Ping(packet)) => {
+                reply(cfg::Serverbound::Pong(packet))?;
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::SelectKnownPacks(_)) => {
+                reply(cfg::Serverbound::SelectKnownPacks(cfg::SelectKnownPacks {
+                    packs: vec![],
+                }))?;
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::RegistryData(packet)) => {
+                registries.add(packet);
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::UpdateTags(packet)) => {
+                registries.add_tags(&packet);
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::ResourcePackPush(packet)) => {
+                let _ = send.send(Event::PackPush(packet));
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::ResourcePackPop(packet)) => {
+                let _ = send.send(Event::PackPop(packet.id));
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::CookieRequest(packet)) => {
+                let payload = cookies.lock().unwrap().get(&packet.key).cloned();
+                reply(cfg::Serverbound::CookieResponse(cfg::CookieResponse {
+                    key: packet.key,
+                    payload,
+                }))?;
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::StoreCookie(packet)) => {
+                cookies.lock().unwrap().insert(packet.key, packet.payload);
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::ServerLinks(packet)) => {
+                let _ = send.send(Event::ServerLinks(packet.links));
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::Transfer(packet)) => {
+                let _ = send.send(Event::Transfer {
+                    host: packet.host,
+                    port: packet.port,
+                });
+                return Err(tr(lang, "disconnect.transfer"));
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::Disconnect(packet)) => {
+                return Err(plain(&packet.reason, lang));
+            }
+            target::ConfigurationPacket1211::Shared(cfg::Clientbound::FinishConfiguration(_)) => {
+                let mut writer = writer.lock().unwrap();
+                let writer = writer.as_mut().ok_or("Disconnected")?;
+                writer
+                    .send(&cfg::Serverbound::FinishConfiguration(Empty).encode())
+                    .map_err(|error| connection_lost(error, lang))?;
+                configuring.store(false, Ordering::Relaxed);
+                return Ok(registries);
+            }
+            target::ConfigurationPacket1211::Shared(_) => {}
+        }
+    }
+}
+
+#[cfg(feature = "minecraft-1-21-1")]
+fn active_login_from_1_21_1(
+    packet: horizon_protocol::packets::v1_21_1::Login1211,
+    online_mode: bool,
+) -> play::Login {
+    let spawn = play::SpawnInfo {
+        dimension_type: packet.spawn.dimension_type,
+        dimension: packet.spawn.dimension,
+        seed: packet.spawn.seed,
+        game_type: packet.spawn.game_type,
+        previous_game_type: packet.spawn.previous_game_type,
+        debug: packet.spawn.debug,
+        flat: packet.spawn.flat,
+        last_death: packet.spawn.last_death.map(|position| play::GlobalPos {
+            dimension: position.dimension,
+            pos: position.position,
+        }),
+        portal_cooldown: packet.spawn.portal_cooldown,
+        sea_level: 63,
+    };
+    play::Login {
+        player_id: packet.player_id,
+        hardcore: packet.hardcore,
+        levels: packet.levels,
+        max_players: packet.max_players,
+        chunk_radius: packet.chunk_radius,
+        simulation_distance: packet.simulation_distance,
+        reduced_debug_info: packet.reduced_debug_info,
+        show_death_screen: packet.show_death_screen,
+        limited_crafting: packet.limited_crafting,
+        spawn,
+        online_mode,
+        enforces_secure_chat: packet.enforces_secure_chat,
+    }
+}
+
+#[cfg(feature = "minecraft-1-21-1")]
+fn receive_play_1_21_1(
+    reader: &mut ConnReader,
+    shared_writer: &Mutex<Option<ConnWriter>>,
+    configuring: &AtomicBool,
+    lang: &Language,
+    send: &Sender<Event>,
+    cookies: &Cookies,
+    resources: &Path,
+    online_mode: bool,
+) -> Result<String, String> {
+    use horizon_protocol::packets::v1_21_1 as target;
+
+    let reply = |packet: play::Serverbound| {
+        if let Some(writer) = shared_writer.lock().unwrap().as_mut() {
+            match encode_play_serverbound(packet) {
+                Ok(body) => {
+                    let _ = writer.send(&body);
+                }
+                Err(error) => {
+                    let _ = send.send(Event::DecodeError(format!(
+                        "Cannot send a protocol-767 response: {error}"
+                    )));
+                }
+            }
+        }
+    };
+
+    loop {
+        let (id, payload) = reader.recv().map_err(|error| connection_lost(error, lang))?;
+        let packet = match target::decode_play_packet_1_21_1(id, &payload) {
+            Ok(packet) => packet,
+            Err(error) => {
+                let name = horizon_protocol::packet_ids_1_21_1::name(
+                    horizon_protocol::State::Play,
+                    horizon_protocol::Direction::Clientbound,
+                    id,
+                )
+                .unwrap_or("?");
+                let _ = send.send(Event::DecodeError(format!("{name}: {error}")));
+                continue;
+            }
+        };
+        match packet {
+            target::PlayPacket1211::KeepAlive(packet) => {
+                reply(play::Serverbound::KeepAlive(packet));
+            }
+            target::PlayPacket1211::BundleDelimiter(_) => {}
+            target::PlayPacket1211::Login(packet) => {
+                let packet = active_login_from_1_21_1(packet, online_mode);
+                if send.send(Event::Packet(Box::new(play::Clientbound::Login(packet)))).is_err() {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::LevelChunkWithLight(packet) => {
+                if send.send(Event::Packet(Box::new(play::Clientbound::LevelChunkWithLight(packet)))).is_err() {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::LightUpdate(packet) => {
+                if send.send(Event::Packet(Box::new(play::Clientbound::LightUpdate(packet)))).is_err() {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::ResourcePackPush(packet) => {
+                let _ = send.send(Event::PackPush(packet));
+            }
+            target::PlayPacket1211::ResourcePackPop(packet) => {
+                let _ = send.send(Event::PackPop(packet.id));
+            }
+            target::PlayPacket1211::StartConfiguration(_) => {
+                let _ = send.send(Event::Reconfiguring);
+                if let Some(writer) = shared_writer.lock().unwrap().as_mut() {
+                    writer
+                        .send(&encode_play_serverbound(play::Serverbound::ConfigurationAcknowledged(Empty))?)
+                        .map_err(|error| error.to_string())?;
+                    configuring.store(true, Ordering::Relaxed);
+                }
+                let registries = configure_1_21_1(
+                    reader,
+                    shared_writer,
+                    configuring,
+                    lang,
+                    send,
+                    cookies,
+                    resources,
+                )?;
+                let _ = send.send(Event::Reconfigured(Arc::new(registries)));
+            }
+            target::PlayPacket1211::CookieRequest(packet) => {
+                let payload = cookies.lock().unwrap().get(&packet.key).cloned();
+                reply(play::Serverbound::CookieResponse(cfg::CookieResponse {
+                    key: packet.key,
+                    payload,
+                }));
+            }
+            target::PlayPacket1211::StoreCookie(packet) => {
+                cookies.lock().unwrap().insert(packet.key, packet.payload);
+            }
+            target::PlayPacket1211::ServerLinks(packet) => {
+                let _ = send.send(Event::ServerLinks(packet.links));
+            }
+            target::PlayPacket1211::Transfer(packet) => {
+                let _ = send.send(Event::Transfer {
+                    host: packet.host,
+                    port: packet.port,
+                });
+                return Ok(tr(lang, "disconnect.transfer"));
+            }
+            target::PlayPacket1211::Disconnect(packet) => {
+                return Ok(plain(&packet.reason, lang));
+            }
+            target::PlayPacket1211::CustomPayload(packet) if packet.channel == "minecraft:brand" => {
+                receive_brand(&packet, send);
+            }
+            target::PlayPacket1211::CustomPayload(packet) => receive_brand(&packet, send),
+            target::PlayPacket1211::Compatible(packet) => {
+                if send.send(Event::Packet(Box::new(packet))).is_err() {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::Missing(packet) => {
+                let _ = send.send(Event::DecodeError(format!(
+                    "protocol-767 packet needs gameplay integration: {packet:?}"
+                )));
+            }
+        }
+    }
+}
+
 fn receive_play(
     reader: &mut ConnReader,
     shared_writer: &Mutex<Option<ConnWriter>>,
