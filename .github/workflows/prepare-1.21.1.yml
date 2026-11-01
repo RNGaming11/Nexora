@@ -21,6 +21,7 @@ on:
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
       - "tools/test_1_21_1_gameplay_facts.py"
+      - "tools/test_1_21_1_entity_types.py"
       - "tools/test_1_21_1_runtime_resources.py"
       - "tools/remap_proguard_jar.py"
       - "tools/java/ProguardJarRemapper.java"
@@ -58,7 +59,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Test official ProGuard jar remapper
-        run: python -m unittest tools.test_remap_proguard_jar tools.test_1_21_1_heightmap_predicates tools.test_1_21_1_gameplay_facts
+        run: python -m unittest tools.test_remap_proguard_jar tools.test_1_21_1_heightmap_predicates tools.test_1_21_1_gameplay_facts tools.test_1_21_1_entity_types
       - name: Prepare official 1.21.1 artifacts and mapped inventories
         run: python tools/prepare_1_21_1.py --jobs 4
       - name: Generate an independent packet inventory
