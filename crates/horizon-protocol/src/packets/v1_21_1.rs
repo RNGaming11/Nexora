@@ -878,6 +878,8 @@ fn decode_compatible_play_packet_1_21_1(
             | "teleport_entity"
             | "set_projectile_power"
             | "ping"
+            | "player_abilities"
+            | "ping"
     ) {
         return Err(Error::new(format!(
             "protocol-767 packet {name} has no verified compatible payload adapter"
