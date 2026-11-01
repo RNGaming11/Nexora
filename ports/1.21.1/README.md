@@ -102,6 +102,9 @@ All nineteen previously missing packet payloads now have target-specific codecs.
 - [x] Generate the core 1.21.1 runtime bundle: official client assets/data, built-in registry inventory, block facts/tags, model-state schemas, heightmap predicates, gameplay facts, and block behaviours. The gameplay/behaviour exporters are backports of the existing vanilla exporters, not replacement game logic; CI checks their registry coverage.
 - [ ] Reuse and adapt the remaining existing runtime exporters for collision/occlusion, motion, items, entities, mob data, creative data, and other startup tables; feed their output into the existing Rust loaders.
 - [x] Connect protocol-767 container content/slot/equipment and merchant-offer decoding, plus container-click/creative-slot encoding, to the live client path using the 1.21.1 item/component codecs.
+- [x] Route protocol-767's dedicated experience-orb spawn packet into the shared orb simulation, preserving its server-provided position and XP value.
+- [x] Apply protocol-767 recipe-book initialization/add/remove/highlight/settings packets to the shared UI, and encode recipe placement with the target's recipe-identifier field.
+- [x] Verify serverbound recipe-book settings and villager trade selection against the target packet IDs and payload layouts.
 - [x] Add live hotbar selection and horse-inventory packet adaptation into existing gameplay handlers.
 - [x] Add a separately named `horizon-client-1-21-1` binary target; the normal `horizon-client` target still uses the 26.3 profile.
 - [ ] Package and select that target binary plus its matching runtime resources from the launcher.
