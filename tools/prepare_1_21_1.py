@@ -9,8 +9,9 @@ import sys
 import zipfile
 
 try:
-    from . import export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
+    from . import export_1_21_1_block_behaviours, export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
 except ImportError:
+    import export_1_21_1_block_behaviours
     import export_1_21_1_gameplay_facts
     import generate_1_21_1_heightmap_predicates
     import build_1_21_1_runtime_resources
@@ -157,6 +158,16 @@ def main():
     )
     artifacts["gameplay_facts"] = gameplay_facts
 
+    block_behaviours = directory / "block-behaviours.json"
+    print("Backporting the vanilla block behaviour exporter to 1.21.1", flush=True)
+    block_behaviour_summary = export_1_21_1_block_behaviours.export(
+        Path(gameplay_summary["named_server_jar"]),
+        artifacts["server_libraries"],
+        reports / "blocks.json",
+        block_behaviours,
+    )
+    artifacts["block_behaviours"] = block_behaviours
+
     runtime_resources = directory / "runtime-resources"
     print("Building local Minecraft 1.21.1 runtime resources", flush=True)
     runtime_summary = build_1_21_1_runtime_resources.build(
@@ -166,6 +177,7 @@ def main():
         runtime_resources,
         heightmap_data,
         gameplay_facts,
+        block_behaviours,
     )
 
     print("Indexing raw obfuscated class names for provenance", flush=True)
@@ -289,6 +301,7 @@ def main():
         "runtime_resources": str(runtime_resources.resolve()),
         "runtime_resource_summary": runtime_summary,
         "gameplay_fact_summary": gameplay_summary,
+        "block_behaviour_summary": block_behaviour_summary,
         "next_required_step": "Runtime resources and version-pinned built-in registries are prepared locally; gameplay packet integration and parity remain incomplete.",
     }
     lab.write_json(directory / "facts.json", facts)
@@ -306,6 +319,7 @@ def main():
         "runtime_resources": str(runtime_resources.resolve()),
         "runtime_resource_summary": runtime_summary,
         "gameplay_fact_summary": gameplay_summary,
+        "block_behaviour_summary": block_behaviour_summary,
         "reports": str(reports.resolve()),
         "mapped_class_index": str(mapped_classes_path.resolve()),
         "client_server_diff": client_server_summary,
