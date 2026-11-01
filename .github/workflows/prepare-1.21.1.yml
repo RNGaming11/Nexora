@@ -19,13 +19,14 @@ on:
       - "tools/export_1_21_1_entity_types.py"
       - "tools/export_1_21_1_entity_attributes.py"
       - "tools/export_1_21_1_collision.py"
+      - "tools/export_1_21_1_movement.py"
       - "tools/test_1_21_1_entity_attributes.py"
       - "tools/java/dev/horizonlab/parity/Vanilla1211BlockBehaviourExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211CollisionExporter.java"
-      - "tools/java/dev/horizonlab/parity/Vanilla1211CollisionExporter.java"
+      - "tools/java/dev/horizonlab/parity/Vanilla1211MovementExporter.java"
+undefined
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityAttributeExporter.java"
-      - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
       - "tools/test_1_21_1_gameplay_facts.py"
       - "tools/test_1_21_1_entity_types.py"
       - "tools/test_1_21_1_runtime_resources.py"
@@ -167,6 +168,7 @@ jobs:
             .port-cache/versions/1.21.1/attributes.json
             .port-cache/versions/1.21.1/collision/cached-collision.nbt
             .port-cache/versions/1.21.1/collision/occlusion.nbt
+            .port-cache/versions/1.21.1/movement/movement-properties.nbt
             .port-cache/versions/1.21.1/runtime-resources/
             target/1.21.1/packet_ids.rs
             target/1.21.1/recipe-serializers.json
