@@ -3,7 +3,7 @@ name: release
 # workflow is the batch train that decides when a new Nightly goes out, and `nightly build` (nightly-build.yml) builds,
 # signs and publishes it. After every green `checks` run on main, every 10 minutes (so a batch waiting for merges to
 # settle goes out without another merge) and by hand, tools/release_train.py decides, for a commit whose checks and
-# parity-main (the vanilla harnesses on main) both passed: a Nightly when 5 pull requests merged since the published
+# required checks passed (plus parity-main only when configured): a Nightly when 5 pull requests merged since the published
 # Nightly changed what players run and the newest merged 5 minutes ago, or when the oldest has waited 6 hours, or at
 # once for a pull request labelled release-now. RELEASES_PAUSED=1 (repository variable) stops it; so does an open issue
 # labelled release-blocker, forced runs too (nightly-build.yml checks again before publishing). One Nightly build at a
@@ -12,7 +12,7 @@ name: release
 #   gh workflow run release -f dry_run=false -f force=true       # on main: a Nightly now, whatever the rules say
 on:
   workflow_run:
-    # A game release ships a commit both passed on (parity-main runs on batches: the newest commit it passed on).
+    # The default release gate is the hosted checks workflow.
     workflows: [checks]
     types: [completed]
     branches: [nexora/master]
