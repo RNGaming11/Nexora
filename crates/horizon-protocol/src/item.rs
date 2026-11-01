@@ -1751,7 +1751,10 @@ mod tests {
         for kind in [37, 39] {
             let mut value = Writer::new();
             value.varint(4);
-            value.nbt(&Tag::compound([("id", Tag::String("minecraft:chest".into()))]));
+            value.nbt(&Tag::compound([(
+                "id",
+                Tag::String("minecraft:chest".into()),
+            )]));
             let bytes = value.data;
             let mut reader = Reader::new(&bytes);
             let decoded = Component::read_1_21_1(kind, &mut reader).unwrap();
