@@ -2263,8 +2263,9 @@ mod tests {
 
     #[test]
     fn protocol_767_block_predicate_components_reject_truncated_payloads() {
+        let truncated = [1, 1];
         for kind in [10, 11] {
-            let mut reader = Reader::new(&[1, 1]);
+            let mut reader = Reader::new(&truncated);
             assert!(Component::read_1_21_1(kind, &mut reader).is_err());
         }
     }
