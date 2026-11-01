@@ -52,9 +52,13 @@ fn validate() -> Result<(), Box<dyn std::error::Error>> {
     let behaviours: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("block-behaviours.json"))?)?;
     if behaviours["blocks"].as_array().map(Vec::len)
-        != manifest["block_behaviour_block_count"].as_u64().map(|n| n as usize)
+        != manifest["block_behaviour_block_count"]
+            .as_u64()
+            .map(|n| n as usize)
         || behaviours["states"].as_array().map(Vec::len)
-            != manifest["block_behaviour_state_count"].as_u64().map(|n| n as usize)
+            != manifest["block_behaviour_state_count"]
+                .as_u64()
+                .map(|n| n as usize)
         || behaviours["states"].as_array().map(Vec::len) != Some(assets.registry.len())
     {
         return Err("block behaviour facts do not match the 1.21.1 block registry".into());
