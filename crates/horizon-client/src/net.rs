@@ -258,7 +258,15 @@ impl Session {
         let status = cfg::ResourcePackResponse { id, action };
         let mut writer = self.writer.lock().unwrap();
         let body = if self.configuring.load(Ordering::Relaxed) {
-            cfg::Serverbound::ResourcePack(status).encode()
+            match encode_configuration_serverbound(cfg::Serverbound::ResourcePack(status)) {
+                Ok(body) => body,
+                Err(error) => {
+                    if self.debug {
+                        eprintln!("[net] configuration resource-pack response not sent: {error}");
+                    }
+                    return;
+                }
+            }
         } else {
             match encode_play_serverbound(play::Serverbound::ResourcePack(status)) {
                 Ok(body) => body,
@@ -285,7 +293,15 @@ impl Session {
         };
         let mut writer = self.writer.lock().unwrap();
         let body = if self.configuring.load(Ordering::Relaxed) {
-            cfg::Serverbound::CustomClickAction(click).encode()
+            match encode_configuration_serverbound(cfg::Serverbound::CustomClickAction(click)) {
+                Ok(body) => body,
+                Err(error) => {
+                    if self.debug {
+                        eprintln!("[net] configuration dialog answer not sent: {error}");
+                    }
+                    return;
+                }
+            }
         } else {
             match encode_play_serverbound(play::Serverbound::CustomClickAction(click)) {
                 Ok(body) => body,
@@ -449,6 +465,17 @@ fn connection_lost(e: horizon_protocol::Error, lang: &Language) -> String {
             lang,
         )
     }
+}
+
+#[cfg(feature = "minecraft-1-21-1")]
+fn encode_configuration_serverbound(packet: cfg::Serverbound) -> Result<Vec<u8>, String> {
+    horizon_protocol::packets::v1_21_1::encode_configuration_serverbound_1_21_1(packet)
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(not(feature = "minecraft-1-21-1"))]
+fn encode_configuration_serverbound(packet: cfg::Serverbound) -> Result<Vec<u8>, String> {
+    Ok(packet.encode())
 }
 
 #[cfg(feature = "minecraft-1-21-1")]
@@ -771,8 +798,10 @@ fn run(
     };
 
     status(send, "Joining world...");
-    c.send(&cfg::Serverbound::ClientInformation(info).encode())
-        .map_err(map_error)?;
+    let client_information = encode_configuration_serverbound(
+        cfg::Serverbound::ClientInformation(info),
+    )?;
+    c.send(&client_information).map_err(map_error)?;
     c.send(
         &cfg::Serverbound::CustomPayload(cfg::CustomPayload {
             channel: "minecraft:brand".into(),
@@ -824,9 +853,10 @@ fn configure_1_21_1(
 
     let mut registries = Dynamic::default();
     let reply = |packet: cfg::Serverbound| -> Result<(), String> {
+        let body = encode_configuration_serverbound(packet)?;
         match writer.lock().unwrap().as_mut() {
             Some(writer) => writer
-                .send(&packet.encode())
+                .send(&body)
                 .map_err(|error| connection_lost(error, lang)),
             None => Err("Disconnected".into()),
         }
