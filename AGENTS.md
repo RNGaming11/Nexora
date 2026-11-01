@@ -1,7 +1,7 @@
 # Nexora: agent guide
 
 Nexora is the product name. This repository is the Rust game client, launcher, server tools and port tooling.
-The active Minecraft 1.21.1 port branch is `nexora/1.21.1-port-baseline`.
+The active Minecraft 1.21.1 port branch is `nexora/master`.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and [ports/1.21.1/README.md](ports/1.21.1/README.md) before
 changing version or protocol code.
@@ -27,7 +27,7 @@ changing version or protocol code.
 - **Keep changes focused.** Preserve existing behavior unless the task explicitly changes it. Add
   regression tests for behavior changes, and do not hide compiler errors with broad allow attributes.
 - **Check the active branch and recent commits before editing.** Keep port changes on
-  `nexora/1.21.1-port-baseline`; do not force-push or rewrite its history.
+  `nexora/master`; do not force-push or rewrite its history.
 
 ## Workspace map
 
