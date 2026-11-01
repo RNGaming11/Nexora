@@ -1831,14 +1831,24 @@ mod tests {
     #[test]
     fn play_update_recipes_uses_the_target_serializer_registry() {
         let mut payload = Writer::new();
-        payload.varint(0);
+        payload.varint(1);
+        payload.string("minecraft:test");
+        payload.varint(2);
+        payload.varint(2);
+        let expected = UpdateRecipes {
+            recipes: vec![RecipeDefinition {
+                id: "minecraft:test".into(),
+                serializer: "minecraft:crafting_special_armordye".into(),
+                body: vec![2],
+            }],
+        };
         assert_eq!(
             decode_play_packet_1_21_1(
                 crate::packet_ids_1_21_1::play::clientbound::UPDATE_RECIPES,
                 &payload.data,
             )
             .unwrap(),
-            PlayPacket1211::UpdateRecipes(UpdateRecipes { recipes: vec![] })
+            PlayPacket1211::UpdateRecipes(expected)
         );
         payload.data.push(0);
         assert!(
