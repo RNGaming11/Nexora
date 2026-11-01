@@ -82,8 +82,30 @@ impl BlockRegistry {
     pub fn from_facts_json_with_flags(
         reader: impl io::Read,
     ) -> io::Result<(Self, Vec<(bool, bool)>)> {
+        Self::from_facts_json_with_data_version(reader, None)
+    }
+
+    /// Load the facts generated for a specific Minecraft world data version.
+    /// Unlike the compatibility loader above, this requires the file to carry
+    /// an explicit matching `data_version` field.
+    pub fn from_facts_json_with_data_version(
+        reader: impl io::Read,
+        data_version: i32,
+    ) -> io::Result<(Self, Vec<(bool, bool)>)> {
+        Self::from_facts_json_with_data_version_inner(reader, Some(data_version))
+    }
+
+    fn from_facts_json_with_data_version_inner(
+        reader: impl io::Read,
+        expected: Option<i32>,
+    ) -> io::Result<(Self, Vec<(bool, bool)>)> {
         let facts: facts::Facts = serde_json::from_reader(io::BufReader::new(reader))
             .map_err(|e| invalid(e.to_string()))?;
+        if let Some(expected) = expected {
+            if facts.data_version != Some(expected) {
+                return Err(invalid("block facts DataVersion mismatch"));
+            }
+        }
         let flags = facts.states.iter().map(|r| (r.air, r.fluid)).collect();
         let states = facts.states.into_iter().map(|r| r.state).collect();
         Ok((Self::from_states(states, facts.defaults)?, flags))
