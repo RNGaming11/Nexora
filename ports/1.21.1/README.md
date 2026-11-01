@@ -67,7 +67,7 @@ The complete machine-generated comparison contains 930 ranked work items and is 
    ```
 
 3. Expand the feature-gated protocol-767 live client path. The `minecraft-1-21-1` build selects the target version constants and uses separate handshake, login, configuration, play dispatch, chunk/light conversion, and item-slot codecs. It now routes container contents/slots, equipment, container clicks, and creative-slot updates through the target item-component IDs. This is still a partial play-state adapter: unsupported gameplay packets must be implemented or proven wire-compatible before normal server play is reliable.
-4. Implement the registry-aware built-in recipe serializers and validate registry loading against 1.21.1 wire fixtures.
+4. Bridge the decoded 1.21.1 recipe definitions into gameplay and the recipe-book UI; the live network path now safely decodes the target's recipe synchronization packet.
 5. Port gameplay systems in dependency order, using the mapped source diff and parity tests.
 6. Demonstrate the playable milestone by launching the Rust client and joining a local vanilla 1.21.1 server. A successful compile or packet-codec test alone is not proof of gameplay compatibility.
 
@@ -85,7 +85,7 @@ python tools/audit_packet_codec_coverage.py
 
 The audit distinguishes ID-aligned reuse candidates, version-specific codecs, and missing codec candidates. Matching packet names or IDs do not prove matching payload layouts; `payload_compatibility_verified_count` remains zero until codecs have been checked against target source and wire fixtures.
 
-Eighteen of the nineteen previously missing packet payloads have concrete codecs and round-trip tests. The remaining `update_recipes` payload is registry-dependent and uses an explicit `RecipeSerializer` interface. Do not guess its serializer body format: doing so can desynchronize the connection.
+All nineteen previously missing packet payloads now have target-specific codecs. The `update_recipes` play packet is decoded through the pinned 23-entry 1.21.1 serializer registry and consumed safely by the live network loop. Its definitions are not yet applied to the game's newer recipe-book UI, so recipe-book behavior remains a gameplay task. Unknown serializers or malformed recipe bodies fail closed rather than risking packet-stream desynchronization.
 
 ## Current status
 
