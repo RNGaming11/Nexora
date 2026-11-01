@@ -78,15 +78,17 @@ jobs:
           python3 tools/check_prepare_exporters.py --binary target/release/horizon-prepare
           version=$(python3 -c 'import json; print(json.load(open("research-lock.json"))["minecraft"]["version"])')
           cargo build --release --locked -p horizon-client --bin horizon-client
+          root="$PWD"
           home="$RUNNER_TEMP/horizon-smoke"
           rm -rf "$home" && mkdir -p "$home"
+          client="$root/target/release/horizon-client"
+          resources="$root/.local/horizon-client/$version"
           driver=$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)
           test -n "$driver" || { echo "::error::Mesa lavapipe Vulkan driver is missing"; exit 1; }
           (cd "$home" && xvfb-run -a env VK_DRIVER_FILES="$driver" HORIZON_HOME="$home" HORIZON_NO_AUDIO=1 \
-            "$PWD/target/release/horizon-client" --resources "$PWD/.local/horizon-client/$version" \
-            --offscreen --world smoke --seed 1 --render-distance 4 --world-frames 1500 \
-            --timeout-seconds 600 --smoke-report "$home/smoke.json" > "$home/client.log" 2>&1) \
-            || { tail -60 "$home/client.log"; exit 1; }
+            "$client" --resources "$resources" --offscreen --world smoke --seed 1 --render-distance 4 \
+            --world-frames 1500 --timeout-seconds 600 --smoke-report "$home/smoke.json" \
+            > "$home/client.log" 2>&1) || { tail -60 "$home/client.log"; exit 1; }
           python3 - "$home/smoke.json" <<'EOF'
           import json, sys
           report = json.load(open(sys.argv[1]))
