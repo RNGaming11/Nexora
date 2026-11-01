@@ -171,5 +171,9 @@ public final class Vanilla1211CollisionExporter {
             }
         }
     }
-    public static void main(String[] args) throws Exception { Path base=Path.of(args[1]); if(args[0].equals("generate"))generate(base);else verify(base,args[0]); }
+    public static void main(String[] args) throws Exception {
+        Path base = Path.of(args[0]);
+        generate(base);
+        write(occlusionDefinitions(), base.resolve("occlusion.nbt"));
+    }
 }
