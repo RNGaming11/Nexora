@@ -1227,6 +1227,9 @@ fn receive_play_1_21_1(
                             slots: packet.slots,
                         })
                     }
+                    target::inventory::Clientbound::MerchantOffers(packet) => {
+                        play::Clientbound::MerchantOffers(packet)
+                    }
                 };
                 if send.send(Event::Packet(Box::new(packet))).is_err() {
                     return Ok("Disconnected".into());
