@@ -29,9 +29,9 @@ The preparation work already present on this branch includes:
 - The generated `packet_ids.rs` inventory is imported by `horizon-protocol`; Rust tests compare every version-specific codec ID against the generated Mojang packet names so the hand-written dispatch table cannot silently drift.
 - Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
 - The 23 recipe serializer IDs are pinned in [`recipe-serializers.json`](recipe-serializers.json) from the official 1.21.1 `minecraft:recipe_serializer` registry, not a later-version packet enum. The preparation workflow regenerates this inventory from Mojang's report and checks it byte-for-byte. Vanilla serializer bodies are decoded and round-tripped for shaped, shapeless, special, cooking, stonecutting, and smithing recipes.
-- The 57 item data-component IDs are pinned in [`data-component-ids.json`](data-component-ids.json) and exposed through a protocol-767 lookup table. Recipe slots report the exact unsupported component rather than interpreting it with the incompatible 26.3 table.
+- The 57 item data-component IDs are pinned in [`data-component-ids.json`](data-component-ids.json) and exposed through a protocol-767 lookup table. Dedicated 1.21.1 item-stack, template, and delimited-slot codecs use those IDs and only the payload formats explicitly supported by the version adapter; unsupported component types fail with their target registry name.
 - The world block registry now has `BlockRegistry::from_nbt_with_data_version`, so a 1.21.1 caller can validate DataVersion 3955 without changing the active 26.3 constant (5023).
-- Recipe slot data-component patches are explicitly rejected until their 1.21.1-specific codecs are implemented; the 26.3 component ID table is never reused.
+- Recipe slot decoding now uses the 1.21.1 item-stack codec. Supported component patches are parsed with target IDs, component removals are validated against the target registry, and unsupported component payloads fail closed. The 26.3 ID table is never used for these slots.
 - Built-in registry report parsing rejects duplicate IDs, gaps, negative/missing IDs, and IDs outside the contiguous range instead of silently constructing invalid lookup tables.
 
 Large downloaded and generated artifacts intentionally stay outside Git. By default, the preparation cache is under `~/code/horizon-parity/versions/1.21.1/`; set `HORIZON_VERSIONS` to select another location.
@@ -91,13 +91,14 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [x] Target facts and official artifact/mapping hash pins.
 - [x] Mapping-aware preparation and class indexing.
 - [x] Verified client/server artifacts and vanilla data-generator reports.
-- [x] Version-isolated codecs for the previously missing packet payloads, including protocol-767 login/configuration and recipe dispatch (23 vanilla recipe serializer IDs; component-free recipe slots).
+- [x] Version-isolated codecs for the previously missing packet payloads, including protocol-767 login/configuration and recipe dispatch (23 vanilla recipe serializer IDs; recipe slots use the version-scoped item codec).
 - [x] Isolated 1.21.1 version constants, checked against the pinned target metadata.
 - [x] Pinned all 57 target data-component IDs and verified them against Mojang's data-generator report.
+- [x] Added version-scoped 1.21.1 item-stack, template, and delimited-slot codecs for the currently supported component payload subset; recipe slots use this adapter.
 - [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
 - [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
 - [ ] Generate and integrate all 1.21.1 runtime registries and resource data.
-- [ ] Complete 1.21.1 item data-component payload codecs for recipe slots and inventory packets.
+- [ ] Complete the remaining 1.21.1 item data-component payload codecs, including nested container/tool/food/map components, then connect the slot adapter to the live inventory packet dispatch.
 - [ ] Protocol-767 play-state integration in the live client.
 - [ ] Gameplay parity.
 - [ ] Playable client/server milestone.
