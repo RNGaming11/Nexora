@@ -934,7 +934,7 @@ mod tests {
             PlayPacket1211::StartConfiguration(Empty)
         );
         assert!(decode_play_packet_1_21_1(
-            ids::play_clientbound::LEVEL_CHUNK_WITH_LIGHT,
+            crate::packet_ids_1_21_1::play::clientbound::LEVEL_CHUNK_WITH_LIGHT,
             &[]
         )
         .is_err());
