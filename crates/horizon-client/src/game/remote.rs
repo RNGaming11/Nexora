@@ -915,6 +915,22 @@ impl Game<'_> {
 
     pub(super) fn send(&self, packet: S) {
         if let Some(r) = &self.remote {
+            #[cfg(feature = "minecraft-1-21-1")]
+            match packet {
+                S::PlaceRecipe(packet) => {
+                    if let Some(recipe) =
+                        world_stations!(self).recipe_index.recipe_of_display(packet.recipe)
+                    {
+                        r.session.send_place_recipe_1_21_1(
+                            packet.container,
+                            recipe,
+                            packet.use_max,
+                        );
+                    }
+                }
+                packet => r.session.send(packet),
+            }
+            #[cfg(not(feature = "minecraft-1-21-1"))]
             r.session.send(packet);
         }
     }
