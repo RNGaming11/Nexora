@@ -46,6 +46,14 @@ class RuntimeResources1211Tests(unittest.TestCase):
         (biomes / "plains.json").write_text('{"temperature":0.8}', encoding="utf-8")
         return reports
 
+    def _heightmap(self) -> dict:
+        return {
+            "data_version": 3955,
+            "states": 5,
+            "motion": [False, True, True, True, True],
+            "no_leaves": [False, True, True, True, True],
+        }
+
     def test_builds_bundle_with_inventory_data_and_base_assets(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -54,7 +62,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
             self._jar(client)
             self._jar(server)
             reports = self._reports(root)
-            manifest = build(client, server, reports, output)
+            manifest = build(client, server, reports, output, self._heightmap())
             self.assertEqual(
                 (manifest["minecraft_version"], manifest["data_version"], manifest["protocol_version"]),
                 ("1.21.1", 3955, 767),
@@ -63,7 +71,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
                 "assets/minecraft/models/block/stone.json",
                 "data/minecraft/tags/block/blocks_motion.json",
                 "builtin-registry-ids.json", "registries.json", "commands.json",
-                "facts.json", "model-states.json", "items.json",
+                "facts.json", "heightmap-predicates.json", "model-states.json", "items.json",
                 "biome-parameters/plains.json", "horizon-resources.json",
             ):
                 self.assertTrue((output / name).is_file(), name)
@@ -74,7 +82,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
                 model_states["minecraft:oak_log"]["schema"],
                 {"axis": {"named": ["y", "x", "z"]}},
             )
-            rebuilt = build(client, server, reports, output)
+            rebuilt = build(client, server, reports, output, self._heightmap())
             self.assertEqual(rebuilt["client_jar_sha1"], manifest["client_jar_sha1"])
 
     def test_accepts_target_version_without_later_item_and_biome_reports(self):
@@ -93,7 +101,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
             (reports / "biome_parameters").rmdir()
             (reports / "items.json").write_text('{"minecraft:stone":{"max_stack_size":64}}', encoding="utf-8")
 
-            manifest = build(client, server, reports, output)
+            manifest = build(client, server, reports, output, self._heightmap())
             self.assertEqual(manifest["item_component_item_count"], 0)
             self.assertEqual(manifest["biome_parameter_file_count"], 0)
             self.assertTrue((output / "items-report.json").is_file())
