@@ -1571,6 +1571,92 @@ mod tests {
     }
 
     #[test]
+    fn protocol_767_component_payloads_match_target_wire_fixtures() {
+        let mut unbreakable = Reader::new(&[1]);
+        assert_eq!(
+            Component::read_1_21_1(4, &mut unbreakable).unwrap(),
+            Component::Bool(true)
+        );
+
+        let mut model_data = Reader::new(&[7]);
+        assert_eq!(
+            Component::read_1_21_1(13, &mut model_data).unwrap(),
+            Component::Int(7)
+        );
+
+        let mut map_color = Writer::new();
+        map_color.i32(0x12345678);
+        let map_color_bytes = map_color.data;
+        let decoded =
+            Component::read_1_21_1(25, &mut Reader::new(&map_color_bytes)).unwrap();
+        assert_eq!(decoded, Component::Int(0x12345678));
+        let mut encoded = Writer::new();
+        decoded.write_1_21_1(25, &mut encoded).unwrap();
+        assert_eq!(encoded.data, map_color_bytes);
+
+        let mut enchantments = Writer::new();
+        enchantments.varint(1);
+        enchantments.varint(4);
+        enchantments.varint(3);
+        enchantments.bool(false);
+        let bytes = enchantments.data;
+        let decoded = Component::read_1_21_1(9, &mut Reader::new(&bytes)).unwrap();
+        assert_eq!(decoded, Component::Raw(bytes.clone()));
+        let mut encoded = Writer::new();
+        decoded.write_1_21_1(9, &mut encoded).unwrap();
+        assert_eq!(encoded.data, bytes);
+
+        let mut dyed = Writer::new();
+        dyed.i32(0x00aabbcc);
+        dyed.bool(true);
+        let bytes = dyed.data;
+        let decoded = Component::read_1_21_1(24, &mut Reader::new(&bytes)).unwrap();
+        assert_eq!(decoded, Component::Raw(bytes.clone()));
+        let mut encoded = Writer::new();
+        decoded.write_1_21_1(24, &mut encoded).unwrap();
+        assert_eq!(encoded.data, bytes);
+    }
+
+    #[test]
+    fn protocol_767_item_slots_round_trip_common_target_components() {
+        let mut slot = Writer::new();
+        slot.varint(1);
+        slot.varint(5);
+        slot.varint(3);
+        slot.varint(0);
+        slot.varint(4);
+        slot.bool(true);
+        slot.varint(13);
+        slot.varint(7);
+        slot.varint(19);
+        slot.nbt(&Tag::compound([("foo", Tag::Int(1))]));
+        let bytes = slot.data;
+        let decoded = Slot1211::read(&mut Reader::new(&bytes)).unwrap().unwrap();
+        assert_eq!(decoded.added[0], (4, Component::Bool(true)));
+        assert_eq!(decoded.added[1], (13, Component::Int(7)));
+        assert!(matches!(decoded.added[2].1, Component::Nbt(_)));
+        let mut encoded = Writer::new();
+        Slot1211::write(&Some(decoded), &mut encoded);
+        assert_eq!(encoded.data, bytes);
+    }
+
+    #[test]
+    fn protocol_767_delimited_slots_preserve_unsupported_known_components() {
+        let mut encoded_slot = Writer::new();
+        encoded_slot.varint(1);
+        encoded_slot.varint(5);
+        encoded_slot.varint(1);
+        encoded_slot.varint(0);
+        encoded_slot.varint(10);
+        encoded_slot.byte_array(&[0, 0]);
+        let bytes = encoded_slot.data;
+        let decoded = DelimitedSlot1211::read(&mut Reader::new(&bytes)).unwrap();
+        let mut output = Writer::new();
+        DelimitedSlot1211::write(&decoded, &mut output);
+        assert_eq!(output.data, bytes);
+    }
+
+    #[test]
     fn protocol_767_component_decoder_rejects_unverified_formats() {
         let mut patch = Writer::new();
         patch.varint(1);
