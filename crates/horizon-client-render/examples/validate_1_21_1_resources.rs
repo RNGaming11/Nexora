@@ -72,6 +72,13 @@ fn validate() -> Result<(), Box<dyn std::error::Error>> {
         return Err("entity type facts do not match the 1.21.1 entity registry".into());
     }
 
+    for name in ["cached-collision.nbt", "occlusion.nbt"] {
+        let metadata = fs::metadata(root.join(name))?;
+        if metadata.len() < 16 {
+            return Err(format!("1.21.1 runtime table is missing or incomplete: {name}").into());
+        }
+    }
+
     let render = assets.reload(&root)?;
     if render.sprite_layers.is_empty() {
         return Err("block models did not resolve any sprite layers".into());
