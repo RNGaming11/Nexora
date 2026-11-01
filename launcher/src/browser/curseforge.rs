@@ -83,7 +83,7 @@ pub(super) fn search_url(query: &Query) -> String {
     if let Some(v) = &query.filters.game_version {
         url.push_str(&format!("&gameVersion={}", encode(v)));
     } else if !query.everything && matches!(query.kind, Kind::ResourcePack | Kind::Mod) {
-        url.push_str(&format!("&gameVersion={GAME}"));
+        url.push_str(&format!("&gameVersion={}", encode(&query.game_version)));
     }
     if !query.text.is_empty() {
         url.push_str("&searchFilter=");
