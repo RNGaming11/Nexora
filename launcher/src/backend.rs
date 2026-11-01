@@ -10,9 +10,9 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 pub const REPO: &str = "RNGaming11/Nexora";
-pub const README_URL: &str = "https://github.com/RNGaming11/Nexora/blob/main/launcher/README.md";
+pub const README_URL: &str = "https://github.com/RNGaming11/Nexora/blob/nexora/master/launcher/README.md";
 /// The players' page on connecting an AI agent (the website's docs/agents.md).
-pub const AGENT_DOCS_URL: &str = "https://github.com/RNGaming11/Nexora/blob/main/docs/agent-control.md";
+pub const AGENT_DOCS_URL: &str = "https://github.com/RNGaming11/Nexora/blob/nexora/master/docs/agent-control.md";
 /// This launcher's version: the release workflow sets `NEXORA_LAUNCHER_VERSION` from the
 /// tag it builds (no version-bump commits); other builds say Cargo.toml's.
 pub const VERSION: &str = version_or(option_env!("NEXORA_LAUNCHER_VERSION"));
@@ -531,7 +531,7 @@ impl Links {
 
 /// The links from main, or the built-in ones when offline.
 pub fn links() -> Links {
-    let url = format!("https://raw.githubusercontent.com/{REPO}/main/launcher/links.json");
+    let url = format!("https://raw.githubusercontent.com/{REPO}/nexora/master/launcher/links.json");
     get(&url)
         .ok()
         .and_then(|r| r.into_string().ok())
