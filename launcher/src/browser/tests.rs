@@ -37,6 +37,10 @@ fn support_by_kind() {
         ),
         Support::Works
     );
+    assert_eq!(
+        support_for(Kind::ResourcePack, &v(&["1.21.1"]), &v(&["minecraft"]), "1.21.1"),
+        Support::Works
+    );
     let old = support(
         Kind::ResourcePack,
         &v(&["1.20.1", "1.21.10", "1.21.9", "26.4-snapshot-1"]),
@@ -81,6 +85,7 @@ fn data_packs_are_their_own_kind() {
         version("old", &["1.21.4"], &["datapack"]),
     ];
     assert_eq!(pick(Kind::DataPack, &versions, false).unwrap().id, "pack");
+    assert_eq!(pick_for(Kind::DataPack, &versions, false, "1.21.1").unwrap().id, "old");
     assert!(pick(Kind::DataPack, &versions[2..], false).is_none());
     assert_eq!(
         pick(Kind::DataPack, &versions[2..], true).unwrap().id,
@@ -100,6 +105,10 @@ fn data_packs_are_their_own_kind() {
     assert_eq!(
         modrinth::facets(&Query::new("", Kind::DataPack)),
         r#"[["project_type:datapack"],["versions:26.3"]]"#
+    );
+    assert_eq!(
+        modrinth::facets(&Query::new_for("1.21.1", "", Kind::DataPack)),
+        r#"[["project_type:datapack"],["versions:1.21.1"]]"#
     );
     // A data pack's hit says `mod`: the search for data packs marks it.
     let hit = serde_json::json!({
@@ -144,6 +153,11 @@ fn file_names_must_be_plain() {
 fn modrinth_search_asks_for_what_runs() {
     let q = Query::new("  faithful ", Kind::ResourcePack);
     assert_eq!(q.text, "faithful");
+    let target = Query::new_for("1.21.1", "faithful", Kind::ResourcePack);
+    assert_eq!(
+        modrinth::facets(&target),
+        r#"[["project_type:resourcepack"],["versions:1.21.1"]]"#
+    );
     assert_eq!(
         modrinth::facets(&q),
         r#"[["project_type:resourcepack"],["versions:26.3"]]"#
@@ -292,6 +306,8 @@ fn curseforge_answers() {
         url.contains("&gameVersion=26.3") && url.ends_with("&searchFilter=faithful"),
         "{url}"
     );
+    let target = Query::new_for("1.21.1", "faithful", Kind::ResourcePack);
+    assert!(curseforge::search_url(&target).contains("&gameVersion=1.21.1"));
 
     let m = json!({
         "id": 238222, "classId": 6, "slug": "jei", "name": "Just Enough Items",
