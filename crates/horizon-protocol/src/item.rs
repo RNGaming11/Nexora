@@ -519,8 +519,7 @@ impl Component {
             50 => BASE_COLOR,
             4 | 14 | 15 | 17 | 19 | 21 => return Ok(Self::Unit),
             other => {
-                let name = crate::packets::v1_21_1::component_ids::name(other)
-                    .unwrap_or("unknown");
+                let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
                 return Err(crate::Error::new(format!(
                     "unsupported protocol-767 item component {name} (id {other})"
                 )));
@@ -560,8 +559,7 @@ impl Component {
             50 => BASE_COLOR,
             4 | 14 | 15 | 17 | 19 | 21 if matches!(self, Self::Unit) => return Ok(()),
             other => {
-                let name = crate::packets::v1_21_1::component_ids::name(other)
-                    .unwrap_or("unknown");
+                let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
                 return Err(crate::Error::new(format!(
                     "unsupported protocol-767 item component {name} (id {other})"
                 )));
@@ -586,8 +584,7 @@ impl Component {
             _ => matches!(self, Self::Int(_) | Self::Raw(_)),
         };
         if !valid {
-            let name = crate::packets::v1_21_1::component_ids::name(kind)
-                .unwrap_or("unknown");
+            let name = crate::packets::v1_21_1::component_ids::name(kind).unwrap_or("unknown");
             return Err(crate::Error::new(format!(
                 "protocol-767 component {name} has an incompatible in-memory value"
             )));
@@ -807,8 +804,7 @@ impl WirePatch {
             let mut value_reader = Reader::new(r.bytes(len)?);
             let value = Component::read_1_21_1(kind, &mut value_reader)?;
             if value_reader.remaining() != 0 {
-                let name = crate::packets::v1_21_1::component_ids::name(kind)
-                    .unwrap_or("unknown");
+                let name = crate::packets::v1_21_1::component_ids::name(kind).unwrap_or("unknown");
                 return Err(crate::Error::new(format!(
                     "protocol-767 component {name} left {} unread bytes",
                     value_reader.remaining()
@@ -995,8 +991,7 @@ fn read_component_patch_1_21_1(
             let mut value_reader = Reader::new(bytes);
             let value = Component::read_1_21_1(kind, &mut value_reader)?;
             if value_reader.remaining() != 0 {
-                let name = crate::packets::v1_21_1::component_ids::name(kind)
-                    .unwrap_or("unknown");
+                let name = crate::packets::v1_21_1::component_ids::name(kind).unwrap_or("unknown");
                 return Err(crate::Error::new(format!(
                     "protocol-767 component {name} left {} unread bytes",
                     value_reader.remaining()
@@ -1034,14 +1029,18 @@ fn read_component_patch_1_21_1(
 fn read_stack_1_21_1(r: &mut Reader, delimited: bool) -> Result<Option<Stack>> {
     let count = r.varint()?;
     if count < 0 {
-        return Err(crate::Error::new("negative item count in protocol-767 slot"));
+        return Err(crate::Error::new(
+            "negative item count in protocol-767 slot",
+        ));
     }
     if count == 0 {
         return Ok(None);
     }
     let item = r.varint()?;
     if item < 0 {
-        return Err(crate::Error::new("negative item registry id in protocol-767 slot"));
+        return Err(crate::Error::new(
+            "negative item registry id in protocol-767 slot",
+        ));
     }
     let (added, removed, wire) = read_component_patch_1_21_1(r, delimited)?;
     Ok(Some(Stack {
@@ -1151,7 +1150,9 @@ impl Codec<Stack> for Template1211 {
         let item = r.varint()?;
         let count = r.varint()?;
         if item < 0 || count < 0 {
-            return Err(crate::Error::new("negative item or count in protocol-767 template"));
+            return Err(crate::Error::new(
+                "negative item or count in protocol-767 template",
+            ));
         }
         let (added, removed, wire) = read_component_patch_1_21_1(r, false)?;
         Ok(Stack {
@@ -1325,13 +1326,9 @@ mod tests {
     #[test]
     fn protocol_767_component_encoder_rejects_mismatched_values() {
         let mut encoded = Writer::new();
-        assert!(Component::Bool(true)
-            .write_1_21_1(1, &mut encoded)
-            .is_err());
+        assert!(Component::Bool(true).write_1_21_1(1, &mut encoded).is_err());
         assert!(encoded.data.is_empty());
-        assert!(Component::Unit
-            .write_1_21_1(4, &mut encoded)
-            .is_ok());
+        assert!(Component::Unit.write_1_21_1(4, &mut encoded).is_ok());
         assert!(encoded.data.is_empty());
     }
 
