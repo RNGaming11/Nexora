@@ -46,6 +46,12 @@ jobs:
         run: cargo check --workspace
       - name: Minecraft 1.21.1 client profile compile check
         run: cargo check -p horizon-client --features minecraft-1-21-1
+      - name: Minecraft 1.21.1 legacy resource compatibility tests
+        shell: pwsh
+        run: |
+          cargo test -p horizon-client-render --features minecraft-1-21-1 --lib legacy_target_without_day_timeline_uses_vanilla_cycle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test -p horizon-client-render --features minecraft-1-21-1 --lib target_without_dry_foliage_colormap_reuses_foliage_map
       - name: Separately named 1.21.1 executable compile check
         run: cargo check -p horizon-client --bin horizon-client-1-21-1 --features minecraft-1-21-1
       - name: Packet codec coverage audit
