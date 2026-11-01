@@ -202,6 +202,40 @@ fn read_1211_id_set(reader: &mut Reader) -> Result<()> {
     }
 }
 
+fn read_1211_optional_string(reader: &mut Reader) -> Result<()> {
+    if reader.bool()? {
+        reader.string(32767)?;
+    }
+    Ok(())
+}
+
+fn read_1211_state_predicate(reader: &mut Reader) -> Result<()> {
+    let properties = reader.count(1024)?;
+    for _ in 0..properties {
+        reader.string(32767)?;
+        if reader.bool()? {
+            reader.string(32767)?;
+        } else {
+            read_1211_optional_string(reader)?;
+            read_1211_optional_string(reader)?;
+        }
+    }
+    Ok(())
+}
+
+fn read_1211_block_predicate(reader: &mut Reader) -> Result<()> {
+    if reader.bool()? {
+        read_1211_id_set(reader)?;
+    }
+    if reader.bool()? {
+        read_1211_state_predicate(reader)?;
+    }
+    if reader.bool()? {
+        reader.nbt()?;
+    }
+    Ok(())
+}
+
 /// `FireworkExplosion.STREAM_CODEC`: shape id, colors, fade colors, trail
 /// and twinkle (FireworkExplosion.Shape's BY_ID order).
 #[derive(Clone, Debug, PartialEq)]
@@ -559,7 +593,13 @@ impl Component {
                 }
                 r.bool().map(drop)
             }),
-            10 | 11 => Err(unsupported_1211_component(kind)),
+            10 | 11 => capture_component(r, |r| {
+                let predicates = r.count(1024)?;
+                for _ in 0..predicates {
+                    read_1211_block_predicate(r)?;
+                }
+                r.bool().map(drop)
+            }),
             12 => capture_component(r, |r| {
                 let n = r.count(r.remaining())?;
                 for _ in 0..n {
@@ -2180,5 +2220,52 @@ mod tests {
             Slot::write(&stack, &mut w);
             assert_eq!(w.data, bytes);
         }
+    }    
+    #[test]
+    fn protocol_767_can_place_on_and_can_break_components_round_trip() {
+        let mut wire = Writer::new();
+        wire.varint(1);
+        wire.bool(true);
+        wire.varint(3);
+        wire.varint(5);
+        wire.varint(8);
+        wire.bool(true);
+        wire.varint(2);
+        wire.string("facing");
+        wire.bool(true);
+        wire.string("north");
+        wire.string("age");
+        wire.bool(false);
+        wire.bool(true);
+        wire.string("2");
+        wire.bool(true);
+        wire.string("4");
+        wire.bool(true);
+        wire.nbt(&horizon_world::nbt::Tag::compound([(
+            "id",
+            horizon_world::nbt::Tag::String("minecraft:chest".into()),
+        )]));
+        wire.bool(true);
+        let bytes = wire.data;
+
+        for kind in [10, 11] {
+            let mut reader = Reader::new(&bytes);
+            let decoded = Component::read_1_21_1(kind, &mut reader).unwrap();
+            assert_eq!(decoded, Component::Raw(bytes.clone()));
+            assert_eq!(reader.remaining(), 0);
+
+            let mut encoded = Writer::new();
+            decoded.write_1_21_1(kind, &mut encoded).unwrap();
+            assert_eq!(encoded.data, bytes);
+        }
     }
+
+    #[test]
+    fn protocol_767_block_predicate_components_reject_truncated_payloads() {
+        for kind in [10, 11] {
+            let mut reader = Reader::new(&[1, 1]);
+            assert!(Component::read_1_21_1(kind, &mut reader).is_err());
+        }
+    }
+
 }
