@@ -1310,10 +1310,41 @@ pub fn decode_configuration_packet_1_21_1(
 
 pub fn encode_configuration_serverbound_1_21_1(
     packet: cfg::Serverbound,
-) -> Vec<u8> {
-    // The eight 1.21.1 serverbound configuration packets have the same
-    // packet IDs and payload codecs as protocol 777.
-    packet.encode()
+) -> Result<Vec<u8>> {
+    match packet {
+        cfg::Serverbound::ClientInformation(info) => {
+            let mut writer = Writer::new();
+            writer.varint(ids::configuration_serverbound::CLIENT_INFORMATION);
+            writer.string(&info.language);
+            writer.i8(info.view_distance);
+            writer.varint(info.chat_visibility);
+            writer.bool(info.chat_colors);
+            writer.u8(info.model_customisation);
+            writer.varint(info.main_hand);
+            writer.bool(info.text_filtering);
+            writer.bool(info.allows_listing);
+            Ok(writer.data)
+        }
+        cfg::Serverbound::CookieResponse(_)
+        | cfg::Serverbound::CustomPayload(_)
+        | cfg::Serverbound::FinishConfiguration(_)
+        | cfg::Serverbound::KeepAlive(_)
+        | cfg::Serverbound::Pong(_)
+        | cfg::Serverbound::ResourcePack(_)
+        | cfg::Serverbound::SelectKnownPacks(_) => {
+            let id = packet.id();
+            if !(0..=7).contains(&id) {
+                return Err(Error::new(format!(
+                    "unsupported protocol-767 configuration packet id {id}"
+                )));
+            }
+            Ok(packet.encode())
+        }
+        other => Err(Error::new(format!(
+            "protocol-767 configuration packet has no adapter: {}",
+            other.id()
+        ))),
+    }
 }
 
 pub fn decode_configuration_clientbound(id: i32, payload: &[u8]) -> Result<CustomReportDetails> {
@@ -1552,6 +1583,47 @@ mod tests {
             .unwrap(),
             LoginPacket1211::GameProfile(profile)
         );
+    }
+
+    #[test]
+    fn protocol_767_client_information_omits_the_newer_particle_status_field() {
+        let info = cfg::ClientInformation {
+            language: "nl_nl".into(),
+            view_distance: 12,
+            chat_visibility: 1,
+            chat_colors: true,
+            model_customisation: 0x7f,
+            main_hand: 1,
+            text_filtering: false,
+            allows_listing: true,
+            particle_status: 2,
+        };
+        let encoded = encode_configuration_serverbound_1_21_1(
+            cfg::Serverbound::ClientInformation(info),
+        )
+        .unwrap();
+        let mut expected = Writer::new();
+        expected.varint(ids::configuration_serverbound::CLIENT_INFORMATION);
+        expected.string("nl_nl");
+        expected.i8(12);
+        expected.varint(1);
+        expected.bool(true);
+        expected.u8(0x7f);
+        expected.varint(1);
+        expected.bool(false);
+        expected.bool(true);
+        assert_eq!(encoded, expected.data);
+        let mut decoded = Reader::new(&encoded);
+        assert_eq!(decoded.varint().unwrap(), 0);
+        assert_eq!(decoded.string(16).unwrap(), "nl_nl");
+        assert_eq!(decoded.i8().unwrap(), 12);
+        assert_eq!(decoded.varint().unwrap(), 1);
+        assert!(decoded.bool().unwrap());
+        assert_eq!(decoded.u8().unwrap(), 0x7f);
+        assert_eq!(decoded.varint().unwrap(), 1);
+        assert!(!decoded.bool().unwrap());
+        assert!(decoded.bool().unwrap());
+        assert_eq!(decoded.remaining(), 0);
     }
 
     #[test]
