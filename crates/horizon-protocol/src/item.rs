@@ -173,8 +173,11 @@ fn read_1211_id_set(reader: &mut Reader) -> Result<()> {
     match reader.varint()? {
         0 => reader.string(32767).map(drop),
         size => {
-            let count = usize::try_from(size - 1)
-                .map_err(|_| crate::Error::new("negative protocol-767 ID set size"))?;
+            let count = usize::try_from(
+                size.checked_sub(1)
+                    .ok_or_else(|| crate::Error::new("invalid protocol-767 ID set size"))?,
+            )
+            .map_err(|_| crate::Error::new("negative protocol-767 ID set size"))?;
             if count > reader.remaining() {
                 return Err(crate::Error::new("protocol-767 ID set exceeds remaining payload"));
             }
@@ -1188,15 +1191,16 @@ fn read_component_patch_1_21_1(
         let (component, bytes) = if delimited {
             let len = r.count(r.remaining())?;
             let bytes = r.bytes(len)?;
-            let mut value_reader = Reader::new(bytes);
-            let value = Component::read_1_21_1(kind, &mut value_reader)?;
-            if value_reader.remaining() != 0 {
-                let name = crate::packets::v1_21_1::component_ids::name(kind).unwrap_or("unknown");
+            if crate::packets::v1_21_1::component_ids::name(kind).is_none() {
                 return Err(crate::Error::new(format!(
-                    "protocol-767 component {name} left {} unread bytes",
-                    value_reader.remaining()
+                    "unknown protocol-767 item component id {kind}"
                 )));
             }
+            let mut value_reader = Reader::new(bytes);
+            let value = match Component::read_1_21_1(kind, &mut value_reader) {
+                Ok(value) if value_reader.remaining() == 0 => value,
+                Ok(_) | Err(_) => Component::Raw(bytes.to_vec()),
+            };
             (value, bytes.to_vec())
         } else {
             let start = r.position();
@@ -1261,6 +1265,11 @@ fn write_component_patch_1_21_1(
     w.varint(added.len() as i32);
     w.varint(removed.len() as i32);
     for (kind, value) in added {
+        if crate::packets::v1_21_1::component_ids::name(*kind).is_none() {
+            return Err(crate::Error::new(format!(
+                "unknown protocol-767 added item component id {kind}"
+            )));
+        }
         w.varint(*kind);
         value.write_1_21_1(*kind, w)?;
     }
@@ -1313,9 +1322,11 @@ impl Codec<Option<Stack>> for Slot1211 {
         let mut encoded = Writer::new();
         encoded.varint(stack.count);
         encoded.varint(stack.item);
-        write_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded)
-            .expect("invalid protocol-767 item component value");
-        w.bytes(&encoded.data);
+        if write_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded).is_ok() {
+            w.bytes(&encoded.data);
+        } else {
+            w.varint(0);
+        }
     }
 }
 
@@ -1333,9 +1344,11 @@ impl Codec<Option<Stack>> for DelimitedSlot1211 {
         let mut encoded = Writer::new();
         encoded.varint(stack.count);
         encoded.varint(stack.item);
-        write_delimited_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded)
-            .expect("invalid protocol-767 item component value");
-        w.bytes(&encoded.data);
+        if write_delimited_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded).is_ok() {
+            w.bytes(&encoded.data);
+        } else {
+            w.varint(0);
+        }
     }
 }
 
@@ -1363,9 +1376,12 @@ impl Codec<Stack> for Template1211 {
         let mut encoded = Writer::new();
         encoded.varint(stack.item);
         encoded.varint(stack.count);
-        write_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded)
-            .expect("invalid protocol-767 item component value");
-        w.bytes(&encoded.data);
+        if write_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded).is_ok() {
+            w.bytes(&encoded.data);
+        } else {
+            w.varint(stack.item);
+            w.varint(0);
+        }
     }
 }
 
