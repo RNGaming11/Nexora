@@ -763,7 +763,9 @@ fn run(
             }
             target::LoginPacket1211::Shared(login::Clientbound::Unknown(_, _)) => {}
             target::LoginPacket1211::Shared(login::Clientbound::LoginFinished(_)) => {
-                return Err("Unexpected protocol-777 login-success packet in protocol-767 session".into());
+                return Err(
+                    "Unexpected protocol-777 login-success packet in protocol-767 session".into(),
+                );
             }
         }
     };
@@ -823,13 +825,17 @@ fn configure_1_21_1(
     let mut registries = Dynamic::default();
     let reply = |packet: cfg::Serverbound| -> Result<(), String> {
         match writer.lock().unwrap().as_mut() {
-            Some(writer) => writer.send(&packet.encode()).map_err(|error| connection_lost(error, lang)),
+            Some(writer) => writer
+                .send(&packet.encode())
+                .map_err(|error| connection_lost(error, lang)),
             None => Err("Disconnected".into()),
         }
     };
 
     loop {
-        let (id, payload) = reader.recv().map_err(|error| connection_lost(error, lang))?;
+        let (id, payload) = reader
+            .recv()
+            .map_err(|error| connection_lost(error, lang))?;
         match target::decode_configuration_packet_1_21_1(id, &payload)
             .map_err(|error| connection_lost(error, lang))?
         {
@@ -972,7 +978,9 @@ fn receive_play_1_21_1(
     };
 
     loop {
-        let (id, payload) = reader.recv().map_err(|error| connection_lost(error, lang))?;
+        let (id, payload) = reader
+            .recv()
+            .map_err(|error| connection_lost(error, lang))?;
         let packet = match target::decode_play_packet_1_21_1(id, &payload) {
             Ok(packet) => packet,
             Err(error) => {
@@ -993,17 +1001,30 @@ fn receive_play_1_21_1(
             target::PlayPacket1211::BundleDelimiter(_) => {}
             target::PlayPacket1211::Login(packet) => {
                 let packet = active_login_from_1_21_1(packet, online_mode);
-                if send.send(Event::Packet(Box::new(play::Clientbound::Login(packet)))).is_err() {
+                if send
+                    .send(Event::Packet(Box::new(play::Clientbound::Login(packet))))
+                    .is_err()
+                {
                     return Ok("Disconnected".into());
                 }
             }
             target::PlayPacket1211::LevelChunkWithLight(packet) => {
-                if send.send(Event::Packet(Box::new(play::Clientbound::LevelChunkWithLight(packet)))).is_err() {
+                if send
+                    .send(Event::Packet(Box::new(
+                        play::Clientbound::LevelChunkWithLight(packet),
+                    )))
+                    .is_err()
+                {
                     return Ok("Disconnected".into());
                 }
             }
             target::PlayPacket1211::LightUpdate(packet) => {
-                if send.send(Event::Packet(Box::new(play::Clientbound::LightUpdate(packet)))).is_err() {
+                if send
+                    .send(Event::Packet(Box::new(play::Clientbound::LightUpdate(
+                        packet,
+                    ))))
+                    .is_err()
+                {
                     return Ok("Disconnected".into());
                 }
             }
@@ -1017,7 +1038,9 @@ fn receive_play_1_21_1(
                 let _ = send.send(Event::Reconfiguring);
                 if let Some(writer) = shared_writer.lock().unwrap().as_mut() {
                     writer
-                        .send(&encode_play_serverbound(play::Serverbound::ConfigurationAcknowledged(Empty))?)
+                        .send(&encode_play_serverbound(
+                            play::Serverbound::ConfigurationAcknowledged(Empty),
+                        )?)
                         .map_err(|error| error.to_string())?;
                     configuring.store(true, Ordering::Relaxed);
                 }
@@ -1055,7 +1078,9 @@ fn receive_play_1_21_1(
             target::PlayPacket1211::Disconnect(packet) => {
                 return Ok(plain(&packet.reason, lang));
             }
-            target::PlayPacket1211::CustomPayload(packet) if packet.channel == "minecraft:brand" => {
+            target::PlayPacket1211::CustomPayload(packet)
+                if packet.channel == "minecraft:brand" =>
+            {
                 receive_brand(&packet, send);
             }
             target::PlayPacket1211::CustomPayload(packet) => receive_brand(&packet, send),
