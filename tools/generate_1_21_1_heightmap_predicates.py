@@ -109,9 +109,13 @@ def export(
         ),
     }
 
-    java = Path(version_port.java_command(21))
-    java_home = Path(os.environ.get("JAVA_HOME", java.parent))
-    javac = java_home / "bin" / ("javac.exe" if os.name == "nt" else "javac")
+    java = Path(version_port.java_command(21)).resolve()
+    if os.environ.get("JAVA_HOME"):
+        javac = Path(os.environ["JAVA_HOME"]) / "bin" / (
+            "javac.exe" if os.name == "nt" else "javac"
+        )
+    else:
+        javac = java.with_name("javac.exe" if os.name == "nt" else "javac")
     if not javac.is_file():
         raise SystemExit(f"JDK compiler not found: {javac}")
 
