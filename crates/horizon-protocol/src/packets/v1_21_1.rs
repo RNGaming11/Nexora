@@ -1093,7 +1093,6 @@ fn decode_compatible_play_packet_1_21_1(
             | "set_projectile_power"
             | "ping"
             | "player_abilities"
-            | "ping"
     ) {
         return Err(Error::new(format!(
             "protocol-767 packet {name} has no verified compatible payload adapter"
@@ -1712,7 +1711,7 @@ mod tests {
 
         let finish = cfg::Serverbound::FinishConfiguration(Empty);
         assert_eq!(
-            encode_configuration_serverbound_1_21_1(finish.clone()),
+            encode_configuration_serverbound_1_21_1(finish.clone()).unwrap(),
             finish.encode()
         );
     }
