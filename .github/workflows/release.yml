@@ -64,6 +64,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASES_PAUSED: ${{ vars.RELEASES_PAUSED }}
           NEXORA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          NEXORA_REQUIRE_PARITY_MAIN: ${{ vars.NEXORA_REQUIRE_PARITY_MAIN || '0' }}
           # The commit whose checks or parity-main just passed; a dry run builds the branch it was started on;
           # otherwise main's newest commit with green checks and parity-main.
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || (steps.mode.outputs.dry_run == 'true' && github.sha) || '' }}
