@@ -1,10 +1,4 @@
-use std::{
-    collections::BTreeSet,
-    env,
-    fs,
-    path::PathBuf,
-    process,
-};
+use std::{collections::BTreeSet, env, fs, path::PathBuf, process};
 
 use horizon_client_render::{models::StateModels, sprites::Sprites};
 use horizon_protocol::registry::Builtin;
@@ -73,11 +67,8 @@ fn validate() -> Result<(), Box<dyn std::error::Error>> {
             text.as_str().ok_or("block tag value is not JSON text")?,
         )?;
     }
-    let built = definitions.build(|name, _| {
-        registry
-            .default_state(name)
-            .map(|_| name.to_owned())
-    })?;
+    let built =
+        definitions.build(|name, _| registry.default_state(name).map(|_| name.to_owned()))?;
     if !built.missing.is_empty() {
         return Err(format!("unresolved vanilla block tags: {:?}", built.missing).into());
     }
