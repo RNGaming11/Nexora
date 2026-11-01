@@ -46,22 +46,25 @@ const INFO_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 
 /// Brings `version`'s Horizon.app up to date and returns the game's program inside it. A program
 /// replaced in the version folder (a reinstall, a build copied over) is linked again.
-pub fn ensure(version: &Path) -> io::Result<PathBuf> {
+pub fn ensure(version: &Path, client: &str) -> io::Result<PathBuf> {
     let contents = version.join(APP).join("Contents");
     let programs = contents.join("MacOS");
     fs::create_dir_all(&programs)?;
     fs::create_dir_all(contents.join("Resources"))?;
     write_if_changed(&contents.join("Info.plist"), INFO_PLIST.as_bytes())?;
     write_if_changed(&contents.join("Resources/horizon.icns"), ICON)?;
-    for (i, name) in PROGRAMS.into_iter().enumerate() {
-        let (from, to) = (version.join(name), programs.join(name));
-        // Releases before horizon-ctl shipped have only the game.
-        if i > 0 && !from.exists() {
-            continue;
-        }
-        if !same_file(&from, &to) {
-            let _ = fs::remove_file(&to);
-            fs::hard_link(&from, &to)?;
+    let game = programs.join(PROGRAMS[0]);
+    let source = version.join(client);
+    if !same_file(&source, &game) {
+        let _ = fs::remove_file(&game);
+        fs::hard_link(source, &game)?;
+    }
+    let ctl = version.join("horizon-ctl");
+    if ctl.exists() {
+        let target = programs.join("horizon-ctl");
+        if !same_file(&ctl, &target) {
+            let _ = fs::remove_file(&target);
+            fs::hard_link(ctl, target)?;
         }
     }
     Ok(programs.join(PROGRAMS[0]))
@@ -93,7 +96,7 @@ mod tests {
         fs::write(version.join("horizon-client"), "game 1").unwrap();
         fs::write(version.join("horizon-ctl"), "ctl").unwrap();
 
-        let program = ensure(&version).unwrap();
+        let program = ensure(&version, "horizon-client").unwrap();
         assert_eq!(
             program,
             version.join("Horizon.app/Contents/MacOS/horizon-client")
@@ -121,6 +124,17 @@ mod tests {
     }
 
     #[test]
+    fn the_bundle_can_run_the_version_specific_client_binary() {
+        let version = std::env::temp_dir().join(format!("horizon-game-app-target-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&version);
+        fs::create_dir_all(&version).unwrap();
+        fs::write(version.join("horizon-client-1-21-1"), "game 1.21.1").unwrap();
+        let program = ensure(&version, "horizon-client-1-21-1").unwrap();
+        assert_eq!(fs::read_to_string(program).unwrap(), "game 1.21.1");
+        fs::remove_dir_all(&version).unwrap();
+    }
+
+    #[test]
     fn a_version_without_horizon_ctl_still_gets_its_bundle() {
         let version =
             std::env::temp_dir().join(format!("horizon-game-app-old-{}", std::process::id()));
@@ -140,7 +154,7 @@ mod tests {
             std::env::temp_dir().join(format!("horizon-game-app-none-{}", std::process::id()));
         let _ = fs::remove_dir_all(&version);
         fs::create_dir_all(&version).unwrap();
-        assert!(ensure(&version).is_err());
+        assert!(ensure(&version, "horizon-client").is_err());
         fs::remove_dir_all(&version).unwrap();
     }
 }
