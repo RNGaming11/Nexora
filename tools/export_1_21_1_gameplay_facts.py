@@ -67,7 +67,32 @@ def validate(path: Path, block_report: Path) -> dict:
         "sound",
         "outline",
         "outline_edges",
+        "outline_offset",
+        "map_color",
         "offset",
+    }
+    boolean_fields = {
+        "skylight_down",
+        "shape_occlusion",
+        "can_occlude",
+        "solid_render",
+        "requires_tool",
+        "replaceable",
+        "random_ticks",
+        "block_entity",
+        "liquid",
+        "ignited_by_lava",
+        "full_collision",
+        "outline_offset",
+        "offset",
+    }
+    numeric_fields = {
+        "emission",
+        "dampening",
+        "hardness",
+        "friction",
+        "explosion_resistance",
+        "map_color",
     }
     for index, entry in enumerate(states):
         if not isinstance(entry, dict) or entry.get("id") != index:
@@ -75,9 +100,29 @@ def validate(path: Path, block_report: Path) -> dict:
         missing = sorted(required - entry.keys())
         if missing:
             raise ValueError(f"Gameplay facts state {index} lacks fields: {missing}")
+        if any(type(entry[field]) is not bool for field in boolean_fields):
+            raise ValueError(f"Gameplay facts state {index} has invalid boolean fields")
+        if any(not isinstance(entry[field], (int, float)) for field in numeric_fields):
+            raise ValueError(f"Gameplay facts state {index} has invalid numeric fields")
         for field in ("outline", "outline_edges"):
-            if not isinstance(entry[field], list):
+            geometry = entry[field]
+            if not isinstance(geometry, list) or any(
+                not isinstance(box, list) or len(box) != 6
+                or any(not isinstance(value, (int, float)) for value in box)
+                for box in geometry
+            ):
                 raise ValueError(f"Gameplay facts state {index} has invalid {field}")
+        sound = entry["sound"]
+        if not isinstance(sound, dict) or not all(
+            isinstance(sound.get(key), dict)
+            and isinstance(sound[key].get("id"), str)
+            for key in ("break", "step", "place", "hit", "fall")
+        ):
+            raise ValueError(f"Gameplay facts state {index} has invalid sound IDs")
+        if not isinstance(sound.get("volume"), (int, float)) or not isinstance(
+            sound.get("pitch"), (int, float)
+        ):
+            raise ValueError(f"Gameplay facts state {index} has invalid sound volume or pitch")
     return {"states": len(states), "bytes": path.stat().st_size}
 
 
