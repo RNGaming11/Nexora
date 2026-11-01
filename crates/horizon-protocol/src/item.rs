@@ -1647,7 +1647,10 @@ mod tests {
     #[test]
     fn protocol_767_unit_lore_and_jukebox_components_use_1211_layouts() {
         let mut empty = Reader::new(&[]);
-        assert_eq!(Component::read_1_21_1(19, &mut empty).unwrap(), Component::Unit);
+        assert_eq!(
+            Component::read_1_21_1(19, &mut empty).unwrap(),
+            Component::Unit
+        );
         let mut encoded = Writer::new();
         Component::Unit.write_1_21_1(19, &mut encoded).unwrap();
         assert!(encoded.data.is_empty());
