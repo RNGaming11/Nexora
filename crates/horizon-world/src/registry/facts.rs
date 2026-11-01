@@ -90,6 +90,27 @@ mod tests {
     use std::path::Path;
 
     #[test]
+    fn versioned_facts_require_and_validate_the_declared_data_version() {
+        let facts = br#"{
+            "data_version": 3955,
+            "defaults": {"minecraft:air": 0},
+            "states": [["minecraft:air", true, false, "Block{minecraft:air}", "minecraft:air"]]
+        }"#;
+        let (registry, flags) =
+            BlockRegistry::from_facts_json_with_data_version(&facts[..], 3955).unwrap();
+        assert_eq!(registry.len(), 1);
+        assert_eq!(flags, [(true, false)]);
+        assert!(BlockRegistry::from_facts_json_with_data_version(&facts[..], DATA_VERSION).is_err());
+
+        let legacy = br#"{
+            "defaults": {"minecraft:air": 0},
+            "states": [["minecraft:air", true, false, "Block{minecraft:air}", "minecraft:air"]]
+        }"#;
+        assert!(BlockRegistry::from_facts_json_with_data_version(&legacy[..], 3955).is_err());
+        assert!(BlockRegistry::from_facts_json_with_flags(&legacy[..]).is_ok());
+    }
+
+    #[test]
     fn reads_states_and_defaults() {
         let json = br#"{"defaults": {"minecraft:air": 0, "minecraft:oak_slab": 2},
             "states": [
