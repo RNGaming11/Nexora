@@ -575,7 +575,18 @@ impl Component {
         use component::{BANNER_PATTERNS, TRIM, WRITABLE_BOOK_CONTENT};
         match kind {
             0 | 27 | 36 | 38 | 43 | 55 | 56 => Ok(Self::Nbt(r.nbt()?)),
-            1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50 => Ok(Self::Int(r.varint()?)),
+            1 | 2 | 3 | 8 | 16 | 26 | 28 | 41 | 50 => Ok(Self::Int(r.varint()?)),
+            13 => {
+                let n = r.count(r.remaining())?;
+                let floats = (0..n).map(|_| r.f32()).collect::<Result<_>>()?;
+                let n = r.count(r.remaining())?;
+                let flags = (0..n).map(|_| r.bool()).collect::<Result<_>>()?;
+                let n = r.count(r.remaining())?;
+                let strings = (0..n).map(|_| r.string(32767)).collect::<Result<_>>()?;
+                let n = r.count(r.remaining())?;
+                let colors = (0..n).map(|_| r.i32()).collect::<Result<_>>()?;
+                Ok(Self::CustomModelData { floats, flags, strings, colors })
+            },
             4 | 18 => Ok(Self::Bool(r.bool()?)),
             5 | 6 => Ok(Self::Text(r.nbt()?)),
             7 => capture_component(r, |r| {
@@ -793,7 +804,17 @@ impl Component {
             (4 | 18, Self::Bool(value)) => w.bool(*value),
             (0 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56, Self::Nbt(value))
             | (5 | 6, Self::Text(value)) => w.nbt(value),
-            (1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50, Self::Int(value)) => w.varint(*value),
+            (1 | 2 | 3 | 8 | 16 | 26 | 28 | 41 | 50, Self::Int(value)) => w.varint(*value),
+            (13, Self::CustomModelData { floats, flags, strings, colors }) => {
+                w.varint(floats.len() as i32);
+                floats.iter().for_each(|value| w.f32(*value));
+                w.varint(flags.len() as i32);
+                flags.iter().for_each(|value| w.bool(*value));
+                w.varint(strings.len() as i32);
+                strings.iter().for_each(|value| w.string(value));
+                w.varint(colors.len() as i32);
+                colors.iter().for_each(|value| w.i32(*value));
+            },
             (25, Self::Int(value)) => w.i32(*value),
             (48, Self::Ident(value)) => w.string(value),
             (14 | 15 | 17 | 19 | 21, Self::Unit) => {}
@@ -1579,28 +1600,51 @@ mod tests {
     #[test]
     fn protocol_767_component_ids_use_verified_1211_codecs() {
         let mut patch = Writer::new();
-        patch.varint(4);
+        patch.varint(5);
         patch.varint(1);
         patch.varint(1);
         patch.byte_array(&[7]);
         patch.varint(4);
-        patch.byte_array(&[]);
+        patch.byte_array(&[1]);
         patch.varint(18);
         patch.byte_array(&[1]);
-        patch.varint(24);
-        patch.byte_array(&[0, 0, 0, 42]);
+        let mut model_data = Writer::new();
+        model_data.varint(1);
+        model_data.f32(1.5);
+        model_data.varint(1);
+        model_data.bool(true);
+        model_data.varint(1);
+        model_data.string("variant");
+        model_data.varint(1);
+        model_data.i32(42);
+        patch.varint(13);
+        patch.byte_array(&model_data.data);
+        patch.varint(25);
+        patch.byte_array(&42i32.to_be_bytes());
         patch.varint(21);
         let (added, removed) = WirePatch::decode_1_21_1(&patch.data).unwrap();
         assert_eq!(added[0], (1, Component::Int(7)));
-        assert_eq!(added[1], (4, Component::Unit));
+        assert_eq!(added[1], (4, Component::Bool(true)));
         assert_eq!(added[2], (18, Component::Bool(true)));
-        assert_eq!(added[3], (24, Component::Int(42)));
+        assert_eq!(added[3], (13, Component::CustomModelData {
+            floats: vec![1.5],
+            flags: vec![true],
+            strings: vec!["variant".into()],
+            colors: vec![42],
+        }));
+        assert_eq!(added[4], (25, Component::Int(42)));
         assert_eq!(removed, vec![21]);
         let mut encoded = Writer::new();
         for (id, value) in &added {
             value.write_1_21_1(*id, &mut encoded).unwrap();
         }
-        assert_eq!(encoded.data, [7, 1, 0, 0, 0, 42]);
+        let mut expected = Writer::new();
+        expected.varint(7);
+        expected.bool(true);
+        expected.bool(true);
+        expected.bytes(&model_data.data);
+        expected.i32(42);
+        assert_eq!(encoded.data, expected.data);
     }
 
     #[test]
@@ -1608,18 +1652,22 @@ mod tests {
         let mut encoded = Writer::new();
         assert!(Component::Bool(true).write_1_21_1(1, &mut encoded).is_err());
         assert!(encoded.data.is_empty());
-        assert!(Component::Unit.write_1_21_1(4, &mut encoded).is_ok());
+        assert!(Component::Unit.write_1_21_1(14, &mut encoded).is_ok());
+        assert!(encoded.data.is_empty());
+        assert!(Component::Int(7).write_1_21_1(13, &mut encoded).is_err());
         assert!(encoded.data.is_empty());
     }
 
     #[test]
-    fn protocol_767_delimited_component_decoder_rejects_trailing_value_bytes() {
+    fn protocol_767_delimited_component_decoder_preserves_unparsed_value_bytes() {
         let mut patch = Writer::new();
         patch.varint(1);
         patch.varint(0);
         patch.varint(1);
         patch.byte_array(&[7, 8]);
-        assert!(WirePatch::decode_1_21_1(&patch.data).is_err());
+        let (added, removed) = WirePatch::decode_1_21_1(&patch.data).unwrap();
+        assert_eq!(added, vec![(1, Component::Raw(vec![7, 8]))]);
+        assert!(removed.is_empty());
     }
 
     #[test]
@@ -1630,11 +1678,26 @@ mod tests {
             Component::Bool(true)
         );
 
-        let mut model_data = Reader::new(&[7]);
-        assert_eq!(
-            Component::read_1_21_1(13, &mut model_data).unwrap(),
-            Component::Int(7)
-        );
+        let mut model_data = Writer::new();
+        model_data.varint(1);
+        model_data.f32(1.25);
+        model_data.varint(1);
+        model_data.bool(true);
+        model_data.varint(1);
+        model_data.string("item");
+        model_data.varint(1);
+        model_data.i32(0x12345678);
+        let model_data_bytes = model_data.data;
+        let decoded = Component::read_1_21_1(13, &mut Reader::new(&model_data_bytes)).unwrap();
+        assert_eq!(decoded, Component::CustomModelData {
+            floats: vec![1.25],
+            flags: vec![true],
+            strings: vec!["item".into()],
+            colors: vec![0x12345678],
+        });
+        let mut encoded = Writer::new();
+        decoded.write_1_21_1(13, &mut encoded).unwrap();
+        assert_eq!(encoded.data, model_data_bytes);
 
         let mut map_color = Writer::new();
         map_color.i32(0x12345678);
@@ -1678,13 +1741,22 @@ mod tests {
         slot.varint(4);
         slot.bool(true);
         slot.varint(13);
-        slot.varint(7);
+        slot.varint(1);
+        slot.f32(1.5);
+        slot.varint(0);
+        slot.varint(0);
+        slot.varint(0);
         slot.varint(0);
         slot.nbt(&Tag::compound([("foo", Tag::Int(1))]));
         let bytes = slot.data;
         let decoded = Slot1211::read(&mut Reader::new(&bytes)).unwrap().unwrap();
         assert_eq!(decoded.added[0], (4, Component::Bool(true)));
-        assert_eq!(decoded.added[1], (13, Component::Int(7)));
+        assert_eq!(decoded.added[1], (13, Component::CustomModelData {
+            floats: vec![1.5],
+            flags: vec![],
+            strings: vec![],
+            colors: vec![],
+        }));
         assert!(matches!(decoded.added[2].1, Component::Nbt(_)));
         let mut encoded = Writer::new();
         Slot1211::write(&Some(decoded), &mut encoded);
@@ -1842,13 +1914,15 @@ mod tests {
     }
 
     #[test]
-    fn protocol_767_component_decoder_rejects_unverified_formats() {
+    fn protocol_767_component_decoder_preserves_malformed_known_payloads() {
         let mut patch = Writer::new();
         patch.varint(1);
         patch.varint(0);
         patch.varint(13);
         patch.byte_array(&[1, 2, 3, 4]);
-        assert!(WirePatch::decode_1_21_1(&patch.data).is_err());
+        let (added, removed) = WirePatch::decode_1_21_1(&patch.data).unwrap();
+        assert_eq!(added, vec![(13, Component::Raw(vec![1, 2, 3, 4]))]);
+        assert!(removed.is_empty());
     }
 
     #[test]
