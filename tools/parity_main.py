@@ -20,7 +20,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = os.environ.get("GITHUB_REPOSITORY", "horizon-rust/horizon")
+REPO = os.environ.get("GITHUB_REPOSITORY", "RNGaming11/Nexora")
+DEFAULT_BRANCH = os.environ.get("NEXORA_DEFAULT_BRANCH", "main")
 LAST_RUN = ROOT / ".local" / "parity-runner" / "last-run.json"
 
 
@@ -33,7 +34,7 @@ def git(*arguments, check=True):
 
 def green_runs():
     """Head commits of main's passing parity-main runs, newest first."""
-    result = subprocess.run(["gh", "run", "list", "--repo", REPO, "--workflow", "parity-main", "--branch", "main",
+    result = subprocess.run(["gh", "run", "list", "--repo", REPO, "--workflow", "parity-main", "--branch", DEFAULT_BRANCH,
                              "--status", "success", "--limit", "30", "--json", "headSha"], capture_output=True, text=True)
     if result.returncode:
         print(f"note: no parity-main history ({result.stderr.strip()})", file=sys.stderr)
