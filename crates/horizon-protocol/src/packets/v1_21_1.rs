@@ -7,6 +7,9 @@
 use crate::{
     Error, Result,
     buf::{Codec, Reader, Writer, pack_block_pos, unpack_block_pos},
+    chunk::{
+        ChunkData as ActiveChunkData, LightData as ActiveLightData, Paletted, Section, Strategy,
+    },
     packets::{
         Empty,
         configuration as cfg,
@@ -472,6 +475,8 @@ pub enum PlayPacket1211 {
     Transfer(cfg::Transfer),
     Missing(MissingPacket),
     Compatible(play_packets::Clientbound),
+    LevelChunkWithLight(play_packets::LevelChunkWithLight),
+    LightUpdate(play_packets::LightUpdate),
 }
 
 /// Decode the 1.21.1 play packets whose payloads have target-verified codecs.
@@ -492,6 +497,13 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
             shared(|r| cfg::Disconnect::read(r).map(PlayPacket1211::Disconnect)),
         ids::play_clientbound::KEEP_ALIVE =>
             shared(|r| cfg::KeepAlive::read(r).map(PlayPacket1211::KeepAlive)),
+        crate::packet_ids_1_21_1::play::clientbound::LEVEL_CHUNK_WITH_LIGHT => {
+            decode_level_chunk_with_light_1_21_1(payload)
+                .map(PlayPacket1211::LevelChunkWithLight)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::LIGHT_UPDATE => {
+            decode_light_update_1_21_1(payload).map(PlayPacket1211::LightUpdate)
+        }
         ids::play_clientbound::LOGIN =>
             shared(|r| Login1211::read(r).map(PlayPacket1211::Login)),
         ids::play_clientbound::RESOURCE_PACK_POP =>
@@ -512,6 +524,192 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
             .map(PlayPacket1211::Compatible),
 
     }
+}
+
+/// The 1.21.1 chunk packet stores heightmaps as anonymous NBT, uses a
+/// single block-count short per section, 15-bit global block states, 6-bit
+/// global biomes, and 64-bit light masks. This codec converts the section
+/// storage to the active renderer's 26.3-compatible in-memory representation.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LevelChunkWithLight1211 {
+    pub x: i32,
+    pub z: i32,
+    pub heightmaps: Tag,
+    pub chunk_data: Vec<u8>,
+    pub block_entities: Vec<crate::chunk::BlockEntityInfo>,
+    pub light: ActiveLightData,
+}
+
+fn read_target_light(r: &mut Reader) -> Result<ActiveLightData> {
+    let read_mask = |r: &mut Reader| -> Result<Vec<u8>> {
+        let count = r.count(r.remaining() / 8)?;
+        let mut bytes = Vec::with_capacity(count * 8);
+        for _ in 0..count {
+            bytes.extend_from_slice(&r.i64()?.to_le_bytes());
+        }
+        Ok(bytes)
+    };
+    let read_layers = |r: &mut Reader| -> Result<Vec<Vec<u8>>> {
+        let count = r.count(r.remaining())?;
+        (0..count).map(|_| r.byte_array(2048)).collect()
+    };
+    Ok(ActiveLightData {
+        sky_mask: read_mask(r)?,
+        block_mask: read_mask(r)?,
+        empty_sky_mask: read_mask(r)?,
+        empty_block_mask: read_mask(r)?,
+        sky: read_layers(r)?,
+        block: read_layers(r)?,
+    })
+}
+
+impl Codec<LevelChunkWithLight1211> for LevelChunkWithLight1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        let x = r.i32()?;
+        let z = r.i32()?;
+        let heightmaps = r.nbt()?;
+        if !matches!(heightmaps, Tag::Compound(_)) {
+            return Err(Error::new("protocol-767 chunk heightmaps were not a compound"));
+        }
+        let chunk_data = r.byte_array(16 * 1024 * 1024)?;
+        let entity_count = r.count(r.remaining())?;
+        let block_entities = (0..entity_count)
+            .map(|_| crate::chunk::BlockEntityInfo::read(r))
+            .collect::<Result<Vec<_>>>()?;
+        let light = read_target_light(r)?;
+        Ok(Self {
+            x,
+            z,
+            heightmaps,
+            chunk_data,
+            block_entities,
+            light,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.i32(value.x);
+        w.i32(value.z);
+        w.nbt(&value.heightmaps);
+        w.byte_array(&value.chunk_data);
+        w.varint(value.block_entities.len() as i32);
+        for entity in &value.block_entities {
+            crate::chunk::BlockEntityInfo::write(entity, w);
+        }
+        write_target_light(&value.light, w);
+    }
+}
+
+fn write_target_light(light: &ActiveLightData, w: &mut Writer) {
+    let write_mask = |mask: &[u8], w: &mut Writer| {
+        let mut bytes = mask.to_vec();
+        bytes.resize(bytes.len().div_ceil(8) * 8, 0);
+        w.varint((bytes.len() / 8) as i32);
+        for word in bytes.chunks_exact(8) {
+            w.i64(i64::from_le_bytes(word.try_into().unwrap()));
+        }
+    };
+    let write_layers = |layers: &[Vec<u8>], w: &mut Writer| {
+        w.varint(layers.len() as i32);
+        for layer in layers {
+            w.byte_array(layer);
+        }
+    };
+    write_mask(&light.sky_mask, w);
+    write_mask(&light.block_mask, w);
+    write_mask(&light.empty_sky_mask, w);
+    write_mask(&light.empty_block_mask, w);
+    write_layers(&light.sky, w);
+    write_layers(&light.block, w);
+}
+
+fn promote_target_chunk_sections(data: &[u8]) -> Result<Vec<u8>> {
+    let mut r = Reader::new(data);
+    let mut sections = Vec::new();
+    while r.remaining() > 0 {
+        if sections.len() >= 1024 {
+            return Err(Error::new("protocol-767 chunk contains too many sections"));
+        }
+        let non_empty = r.i16()?;
+        let wire_blocks = Paletted::read(&mut r, Strategy::Blocks, 15)?;
+        let wire_biomes = Paletted::read(&mut r, Strategy::Biomes, 6)?;
+        let block_values = (0..crate::chunk::BLOCKS)
+            .map(|index| wire_blocks.get(index))
+            .collect::<Vec<_>>();
+        let biome_values = (0..crate::chunk::BIOMES)
+            .map(|index| wire_biomes.get(index))
+            .collect::<Vec<_>>();
+        sections.push(Section {
+            non_empty,
+            fluids: 0,
+            states: Paletted::from_values(&block_values, Strategy::Blocks, 16),
+            biomes: Paletted::from_values(&biome_values, Strategy::Biomes, 7),
+        });
+    }
+    Ok(ActiveChunkData::from_sections(&sections))
+}
+
+pub fn decode_level_chunk_with_light_1_21_1(
+    payload: &[u8],
+) -> Result<play_packets::LevelChunkWithLight> {
+    let mut r = Reader::new(payload);
+    let value = LevelChunkWithLight1211::read(&mut r)?;
+    if r.remaining() != 0 {
+        return Err(Error::new(format!(
+            "protocol-767 chunk packet has {} trailing bytes",
+            r.remaining()
+        )));
+    }
+    let buffer = promote_target_chunk_sections(&value.chunk_data)?;
+    Ok(play_packets::LevelChunkWithLight {
+        x: value.x,
+        z: value.z,
+        chunk: ActiveChunkData {
+            heightmaps: Vec::new(),
+            buffer,
+            block_entities: value.block_entities,
+        },
+        light: value.light,
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LightUpdate1211 {
+    pub x: i32,
+    pub z: i32,
+    pub light: ActiveLightData,
+}
+
+impl Codec<LightUpdate1211> for LightUpdate1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            x: r.varint()?,
+            z: r.varint()?,
+            light: read_target_light(r)?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.varint(value.x);
+        w.varint(value.z);
+        write_target_light(&value.light, w);
+    }
+}
+
+pub fn decode_light_update_1_21_1(payload: &[u8]) -> Result<play_packets::LightUpdate> {
+    let mut r = Reader::new(payload);
+    let value = LightUpdate1211::read(&mut r)?;
+    if r.remaining() != 0 {
+        return Err(Error::new(format!(
+            "protocol-767 light packet has {} trailing bytes",
+            r.remaining()
+        )));
+    }
+    Ok(play_packets::LightUpdate {
+        x: value.x,
+        z: value.z,
+        light: value.light,
+    })
 }
 
 fn decode_compatible_play_packet_1_21_1(
