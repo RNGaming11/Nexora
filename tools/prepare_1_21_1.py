@@ -9,9 +9,10 @@ import sys
 import zipfile
 
 try:
-    from . import export_1_21_1_block_behaviours, export_1_21_1_entity_types, export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
+    from . import export_1_21_1_block_behaviours, export_1_21_1_collision, export_1_21_1_entity_types, export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
 except ImportError:
     import export_1_21_1_block_behaviours
+    import export_1_21_1_collision
     import export_1_21_1_entity_types
     import export_1_21_1_gameplay_facts
     import generate_1_21_1_heightmap_predicates
@@ -179,6 +180,16 @@ def main():
     )
     artifacts["entity_types"] = entity_types
 
+    collision_dir = directory / "collision"
+    print("Backporting the vanilla collision and occlusion exporter to 1.21.1", flush=True)
+    collision_summary = export_1_21_1_collision.export(
+        Path(gameplay_summary["named_server_jar"]),
+        artifacts["server_libraries"],
+        collision_dir,
+    )
+    artifacts["cached_collision"] = collision_dir / "cached-collision.nbt"
+    artifacts["occlusion"] = collision_dir / "occlusion.nbt"
+
     runtime_resources = directory / "runtime-resources"
     print("Building local Minecraft 1.21.1 runtime resources", flush=True)
     runtime_summary = build_1_21_1_runtime_resources.build(
@@ -190,6 +201,8 @@ def main():
         gameplay_facts,
         block_behaviours,
         entity_types,
+        artifacts["cached_collision"],
+        artifacts["occlusion"],
     )
 
     print("Indexing raw obfuscated class names for provenance", flush=True)
@@ -315,6 +328,7 @@ def main():
         "gameplay_fact_summary": gameplay_summary,
         "block_behaviour_summary": block_behaviour_summary,
         "entity_types_summary": entity_types_summary,
+        "collision_summary": collision_summary,
         "next_required_step": "Runtime resources and version-pinned built-in registries are prepared locally; gameplay packet integration and parity remain incomplete.",
     }
     lab.write_json(directory / "facts.json", facts)
@@ -334,6 +348,7 @@ def main():
         "gameplay_fact_summary": gameplay_summary,
         "block_behaviour_summary": block_behaviour_summary,
         "entity_types_summary": entity_types_summary,
+        "collision_summary": collision_summary,
         "reports": str(reports.resolve()),
         "mapped_class_index": str(mapped_classes_path.resolve()),
         "client_server_diff": client_server_summary,
