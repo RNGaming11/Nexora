@@ -141,6 +141,6 @@ From the repository root on Windows PowerShell:
 .\tools\verify_1_21_1.ps1
 ```
 
-The script fast-forwards the current branch, runs the Python mapping, packet-audit, and version-port tests, checks Rust formatting, runs core version, protocol, and world registry tests, and checks the workspace build. If the prepared packet report is found at the default cache path or through `NEXORA_1_21_1_REPORT`, it also regenerates and audits the target packet inventory. Full output is saved to `target/1.21.1-verification.log`.
+The script uses the current local checkout, runs the Python mapping, packet-audit, and version-port tests, checks Rust formatting, runs core version, protocol, and world registry tests, and checks the workspace build. If the prepared packet report is found at the default cache path or through `NEXORA_1_21_1_REPORT`, it regenerates and audits the target packet inventory locally. It does not pull, commit, or push. Full output is saved to `target/1.21.1-verification.log`.
 
-GitHub Actions runs the same core Python tests, formatting check, protocol tests, and workspace compile check on pushes and pull requests to `nexora/master`. The verification script's local results and GitHub Actions results must be checked before calling a build verified.
+The repository's GitHub Actions workflows are currently disabled to prevent any metered runner usage. Verification must therefore be run locally on Windows; do not re-enable Actions or dispatch a workflow as part of this $0-only development process.
