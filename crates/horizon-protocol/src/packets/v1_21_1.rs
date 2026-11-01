@@ -480,6 +480,8 @@ pub enum PlayPacket1211 {
     PlayerPosition(play_packets::PlayerPosition),
     ChangeDifficulty(play_packets::ChangeDifficulty),
     SpawnPosition(SpawnPosition1211),
+    EntityMotion(play_packets::SetEntityMotion),
+    TeleportEntity(play_packets::TeleportEntity),
 }
 
 /// Decode the 1.21.1 play packets whose payloads have target-verified codecs.
@@ -515,6 +517,12 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
         }
         crate::packet_ids_1_21_1::play::clientbound::SET_DEFAULT_SPAWN_POSITION => {
             decode_spawn_position_1_21_1(payload).map(PlayPacket1211::SpawnPosition)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::SET_ENTITY_MOTION => {
+            decode_entity_motion_1_21_1(payload).map(PlayPacket1211::EntityMotion)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::TELEPORT_ENTITY => {
+            decode_teleport_entity_1_21_1(payload).map(PlayPacket1211::TeleportEntity)
         }
         ids::play_clientbound::LOGIN =>
             shared(|r| Login1211::read(r).map(PlayPacket1211::Login)),
@@ -825,6 +833,85 @@ pub fn decode_spawn_position_1_21_1(
     decode_exact(payload, SpawnPosition1211::read)
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct EntityMotion1211 {
+    pub entity_id: i32,
+    pub velocity: [i16; 3],
+}
+
+impl Codec<EntityMotion1211> for EntityMotion1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            entity_id: r.varint()?,
+            velocity: [r.i16()?, r.i16()?, r.i16()?],
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.varint(value.entity_id);
+        for component in value.velocity {
+            w.i16(component);
+        }
+    }
+}
+
+pub fn decode_entity_motion_1_21_1(
+    payload: &[u8],
+) -> Result<play_packets::SetEntityMotion> {
+    let value = decode_exact(payload, EntityMotion1211::read)?;
+    Ok(play_packets::SetEntityMotion {
+        id: value.entity_id,
+        velocity: value.velocity.map(|component| f64::from(component) / 8000.0),
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TeleportEntity1211 {
+    pub entity_id: i32,
+    pub position: [f64; 3],
+    pub yaw: i8,
+    pub pitch: i8,
+    pub on_ground: bool,
+}
+
+impl Codec<TeleportEntity1211> for TeleportEntity1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            entity_id: r.varint()?,
+            position: [r.f64()?, r.f64()?, r.f64()?],
+            yaw: r.i8()?,
+            pitch: r.i8()?,
+            on_ground: r.bool()?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.varint(value.entity_id);
+        for coordinate in value.position {
+            w.f64(coordinate);
+        }
+        w.i8(value.yaw);
+        w.i8(value.pitch);
+        w.bool(value.on_ground);
+    }
+}
+
+pub fn decode_teleport_entity_1_21_1(
+    payload: &[u8],
+) -> Result<play_packets::TeleportEntity> {
+    let value = decode_exact(payload, TeleportEntity1211::read)?;
+    let angle = |byte: i8| f32::from(byte) * (360.0 / 256.0);
+    Ok(play_packets::TeleportEntity {
+        id: value.entity_id,
+        position: value.position,
+        delta: [0.0; 3],
+        yaw: angle(value.yaw),
+        pitch: angle(value.pitch),
+        relatives: 0,
+        on_ground: value.on_ground,
+    })
+}
+
 fn decode_compatible_play_packet_1_21_1(
     target_id: i32,
     payload: &[u8],
@@ -844,9 +931,6 @@ fn decode_compatible_play_packet_1_21_1(
             | "game_event"
             | "hurt_animation"
             | "level_event"
-            | "move_entity_pos"
-            | "move_entity_pos_rot"
-            | "move_entity_rot"
             | "move_vehicle"
             | "pong_response"
             | "remove_mob_effect"
@@ -862,12 +946,10 @@ fn decode_compatible_play_packet_1_21_1(
             | "set_chunk_cache_radius"
             | "set_display_objective"
             | "set_entity_link"
-            | "set_entity_motion"
             | "set_experience"
             | "set_health"
             | "set_objective"
             | "set_passengers"
-            | "set_score"
             | "set_simulation_distance"
             | "set_subtitle_text"
             | "set_title_text"
@@ -875,7 +957,6 @@ fn decode_compatible_play_packet_1_21_1(
             | "system_chat"
             | "tab_list"
             | "take_item_entity"
-            | "teleport_entity"
             | "set_projectile_power"
             | "ping"
             | "player_abilities"
@@ -1467,6 +1548,45 @@ mod tests {
         let mut truncated = packet.data;
         truncated.pop();
         assert!(decode_level_chunk_with_light_1_21_1(&truncated).is_err());
+    }
+
+    #[test]
+    fn protocol_767_entity_velocity_and_teleport_use_target_payloads() {
+        let velocity = EntityMotion1211 {
+            entity_id: 9,
+            velocity: [800, -1600, 4000],
+        };
+        let mut wire = Writer::new();
+        EntityMotion1211::write(&velocity, &mut wire);
+        assert_eq!(
+            decode_entity_motion_1_21_1(&wire.data).unwrap(),
+            play_packets::SetEntityMotion {
+                id: 9,
+                velocity: [0.1, -0.2, 0.5],
+            }
+        );
+
+        let teleport = TeleportEntity1211 {
+            entity_id: 17,
+            position: [12.5, 70.0, -3.25],
+            yaw: 64,
+            pitch: -32,
+            on_ground: true,
+        };
+        let mut wire = Writer::new();
+        TeleportEntity1211::write(&teleport, &mut wire);
+        assert_eq!(
+            decode_teleport_entity_1_21_1(&wire.data).unwrap(),
+            play_packets::TeleportEntity {
+                id: 17,
+                position: [12.5, 70.0, -3.25],
+                delta: [0.0; 3],
+                yaw: 90.0,
+                pitch: -45.0,
+                relatives: 0,
+                on_ground: true,
+            }
+        );
     }
 
     #[test]
