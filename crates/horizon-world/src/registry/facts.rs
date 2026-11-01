@@ -106,7 +106,9 @@ mod tests {
             "defaults": {"minecraft:air": 0},
             "states": [["minecraft:air", true, false, "Block{minecraft:air}", "minecraft:air"]]
         }"#;
-        assert!(BlockRegistry::from_facts_json_with_data_version(&legacy[..], 3955).is_err());
+        assert!(
+            BlockRegistry::from_facts_json_with_data_version(&legacy[..], 3955).is_err()
+        );
         assert!(BlockRegistry::from_facts_json_with_flags(&legacy[..]).is_ok());
     }
 
