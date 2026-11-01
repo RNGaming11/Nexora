@@ -1942,11 +1942,11 @@ pub fn prepare_in_process(
     .map(|_| ())
 }
 
-/// Where the game keeps saves and options.txt: `HORIZON_HOME`, else `horizon` in the platform's
+/// Where the game keeps saves and options.txt: `NEXORA_HOME` (or legacy `HORIZON_HOME`), else the existing `horizon` data folder.
 /// data folder (~/.local/share/horizon on Linux, as the release folders' horizon.sh uses). It is
 /// never inside a version folder, so installing, updating or removing a version keeps the saves.
 pub fn game_home() -> PathBuf {
-    if let Some(home) = std::env::var_os("HORIZON_HOME").filter(|h| !h.is_empty()) {
+    if let Some(home) = std::env::var_os("NEXORA_HOME").or_else(|| std::env::var_os("HORIZON_HOME")).filter(|h| !h.is_empty()) {
         return PathBuf::from(home);
     }
     dirs::data_dir()
