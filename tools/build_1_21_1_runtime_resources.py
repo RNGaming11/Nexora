@@ -213,7 +213,7 @@ def build(\n    client_jar: Path,\n    server_game_jar: Path,\n    reports: Path
         write_json(stage / "builtin-registry-ids.json", inventory)
 
         block_facts = generate_1_21_1_block_facts.build(
-            reports / "blocks.json", DATA_VERSION, heightmap_predicates
+            reports / "blocks.json", DATA_VERSION
         )
         if heightmap_predicates is None:
             raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
