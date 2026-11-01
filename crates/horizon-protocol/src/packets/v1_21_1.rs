@@ -731,6 +731,91 @@ mod tests {
     }
 
     #[test]
+    fn protocol_767_login_dispatch_uses_target_profile_payload() {
+        let hello = login_packets::Hello {
+            server_id: "server".into(),
+            public_key: vec![1, 2, 3],
+            challenge: vec![4, 5, 6],
+            should_authenticate: true,
+        };
+        let mut hello_payload = Writer::new();
+        login_packets::Hello::write(&hello, &mut hello_payload);
+        assert_eq!(
+            decode_login_packet_1_21_1(1, &hello_payload.data).unwrap(),
+            LoginPacket1211::Shared(login_packets::Clientbound::Hello(hello))
+        );
+
+        let profile = GameProfilePacket {
+            profile: GameProfile {
+                uuid: 0x1234,
+                name: "Nexora".into(),
+                properties: vec![],
+            },
+            strict_error_handling: true,
+        };
+        let mut profile_payload = Writer::new();
+        GameProfilePacket::write(&profile, &mut profile_payload);
+        assert_eq!(
+            decode_login_packet_1_21_1(
+                ids::login_clientbound::GAME_PROFILE,
+                &profile_payload.data
+            )
+            .unwrap(),
+            LoginPacket1211::GameProfile(profile)
+        );
+    }
+
+    #[test]
+    fn protocol_767_configuration_dispatch_remaps_shifted_packet_ids() {
+        let keep_alive = cfg::KeepAlive { id: 42 };
+        let mut keep_alive_payload = Writer::new();
+        cfg::KeepAlive::write(&keep_alive, &mut keep_alive_payload);
+        assert_eq!(
+            decode_configuration_packet_1_21_1(
+                ids::configuration_clientbound::KEEP_ALIVE,
+                &keep_alive_payload.data
+            )
+            .unwrap(),
+            ConfigurationPacket1211::Shared(cfg::Clientbound::KeepAlive(keep_alive))
+        );
+
+        let cookie = cfg::StoreCookie {
+            key: "proxy:state".into(),
+            payload: vec![1, 2, 3],
+        };
+        let mut cookie_payload = Writer::new();
+        cfg::StoreCookie::write(&cookie, &mut cookie_payload);
+        assert_eq!(
+            decode_configuration_packet_1_21_1(
+                ids::configuration_clientbound::STORE_COOKIE,
+                &cookie_payload.data
+            )
+            .unwrap(),
+            ConfigurationPacket1211::Shared(cfg::Clientbound::StoreCookie(cookie))
+        );
+
+        let details = CustomReportDetails {
+            details: vec![("server".into(), "1.21.1".into())],
+        };
+        let mut details_payload = Writer::new();
+        CustomReportDetails::write(&details, &mut details_payload);
+        assert_eq!(
+            decode_configuration_packet_1_21_1(
+                ids::configuration_clientbound::CUSTOM_REPORT_DETAILS,
+                &details_payload.data
+            )
+            .unwrap(),
+            ConfigurationPacket1211::CustomReportDetails(details)
+        );
+
+        let finish = cfg::Serverbound::FinishConfiguration(Empty);
+        assert_eq!(
+            encode_configuration_serverbound_1_21_1(finish.clone()),
+            finish.encode()
+        );
+    }
+
+    #[test]
     fn simple_missing_packets_round_trip() {
         round_trip(AddExperienceOrb { entity_id: 9, x: 1.25, y: 64.0, z: -3.5, value: 7 });
         round_trip(DebugSample { samples: vec![1, -2, i64::MAX], sample_type: 2 });
