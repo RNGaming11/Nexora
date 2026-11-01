@@ -15,10 +15,10 @@ except ImportError:
     import version_port
 
 
-EXPORTER = "dev.horizonlab.parity.VanillaGameplayFactsExporter"
+EXPORTER = "dev.horizonlab.parity.Vanilla1211GameplayFactsExporter"
 SOURCE = (
     Path(__file__).resolve().parents[1]
-    / "mods/horizon/src/test/java/dev/horizonlab/parity/VanillaGameplayFactsExporter.java"
+    / "tools/java/dev/horizonlab/parity/Vanilla1211GameplayFactsExporter.java"
 )
 
 
@@ -171,7 +171,7 @@ def export(
         )
         if compile_result.returncode:
             raise SystemExit(
-                "The existing vanilla gameplay exporter does not compile against the "
+                "The 1.21.1-specific vanilla gameplay exporter does not compile against the "
                 "officially remapped 1.21.1 server API:\n"
                 + (compile_result.stdout + compile_result.stderr)[-10000:]
             )
