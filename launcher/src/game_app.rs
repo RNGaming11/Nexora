@@ -117,7 +117,7 @@ mod tests {
         fs::remove_file(version.join("horizon-client")).unwrap();
         fs::write(version.join("horizon-client"), "game 2").unwrap();
         assert_eq!(
-            fs::read_to_string(ensure(&version).unwrap()).unwrap(),
+            fs::read_to_string(ensure(&version, "horizon-client").unwrap()).unwrap(),
             "game 2"
         );
         fs::remove_dir_all(&version).unwrap();
@@ -141,7 +141,7 @@ mod tests {
         let _ = fs::remove_dir_all(&version);
         fs::create_dir_all(&version).unwrap();
         fs::write(version.join("horizon-client"), "game").unwrap();
-        assert!(ensure(&version).unwrap().exists());
+        assert!(ensure(&version, "horizon-client").unwrap().exists());
         assert!(!version
             .join("Horizon.app/Contents/MacOS/horizon-ctl")
             .exists());
