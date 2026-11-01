@@ -6,7 +6,7 @@
 //! explicit serializer registry because their payloads are registry-driven.
 use crate::{
     Error, Result,
-    buf::{Codec, Reader, Writer},
+    buf::{Codec, Reader, Writer, pack_block_pos, unpack_block_pos},
     packets::{Empty, login::GameProfile, recipes::RecipeBookSettings},
 };
 use horizon_world::nbt::Tag;
@@ -55,6 +55,137 @@ impl Codec<GameProfilePacket> for GameProfilePacket {
         GameProfile::write(&v.profile, w);
         w.bool(v.strict_error_handling);
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlobalPos1211 {
+    pub dimension: String,
+    pub position: [i32; 3],
+}
+
+impl Codec<GlobalPos1211> for GlobalPos1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            dimension: r.string(32767)?,
+            position: unpack_block_pos(r.i64()?),
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.string(&value.dimension);
+        w.i64(pack_block_pos(value.position));
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SpawnInfo1211 {
+    pub dimension_type: i32,
+    pub dimension: String,
+    pub seed: i64,
+    pub game_type: i32,
+    pub previous_game_type: Option<i32>,
+    pub debug: bool,
+    pub flat: bool,
+    pub last_death: Option<GlobalPos1211>,
+    pub portal_cooldown: i32,
+}
+
+impl Codec<SpawnInfo1211> for SpawnInfo1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        let dimension_type = r.varint()?;
+        let dimension = r.string(32767)?;
+        let seed = r.i64()?;
+        let game_type = r.varint()?;
+        let previous_game_type = {
+            let value = r.byte()?;
+            (value != -1).then_some(i32::from(value))
+        };
+        let debug = r.bool()?;
+        let flat = r.bool()?;
+        let last_death = if r.bool()? {
+            Some(GlobalPos1211::read(r)?)
+        } else {
+            None
+        };
+        let portal_cooldown = r.varint()?;
+        Ok(Self {
+            dimension_type,
+            dimension,
+            seed,
+            game_type,
+            previous_game_type,
+            debug,
+            flat,
+            last_death,
+            portal_cooldown,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.varint(value.dimension_type);
+        w.string(&value.dimension);
+        w.i64(value.seed);
+        w.varint(value.game_type);
+        w.byte(value.previous_game_type.map_or(-1, |v| v as i8) as u8);
+        w.bool(value.debug);
+        w.bool(value.flat);
+        w.bool(value.last_death.is_some());
+        if let Some(position) = &value.last_death {
+            GlobalPos1211::write(position, w);
+        }
+        w.varint(value.portal_cooldown);
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Login1211 {
+    pub player_id: i32,
+    pub hardcore: bool,
+    pub levels: Vec<String>,
+    pub max_players: i32,
+    pub chunk_radius: i32,
+    pub simulation_distance: i32,
+    pub reduced_debug_info: bool,
+    pub show_death_screen: bool,
+    pub limited_crafting: bool,
+    pub spawn: SpawnInfo1211,
+    pub enforces_secure_chat: bool,
+}
+
+impl Codec<Login1211> for Login1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            player_id: r.i32()?,
+            hardcore: r.bool()?,
+            levels: read_string_list(r, 4096, 32767)?,
+            max_players: r.varint()?,
+            chunk_radius: r.varint()?,
+            simulation_distance: r.varint()?,
+            reduced_debug_info: r.bool()?,
+            show_death_screen: r.bool()?,
+            limited_crafting: r.bool()?,
+            spawn: SpawnInfo1211::read(r)?,
+            enforces_secure_chat: r.bool()?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.i32(value.player_id);
+        w.bool(value.hardcore);
+        write_string_list(&value.levels, w);
+        w.varint(value.max_players);
+        w.varint(value.chunk_radius);
+        w.varint(value.simulation_distance);
+        w.bool(value.reduced_debug_info);
+        w.bool(value.show_death_screen);
+        w.bool(value.limited_crafting);
+        SpawnInfo1211::write(&value.spawn, w);
+        w.bool(value.enforces_secure_chat);
+    }
+}
+
+pub fn decode_play_login(payload: &[u8]) -> Result<Login1211> {
+    decode_exact(payload, Login1211::read)
 }
 
 crate::packet!(AddExperienceOrb {
@@ -259,6 +390,7 @@ pub mod ids {
     }
     pub mod login_clientbound { pub const GAME_PROFILE: i32 = 2; }
     pub mod play_clientbound {
+        pub const LOGIN: i32 = 43;
         pub const ADD_EXPERIENCE_ORB: i32 = 2;
         pub const COMMAND_SUGGESTIONS: i32 = 16;
         pub const CUSTOM_REPORT_DETAILS: i32 = 122;
@@ -455,6 +587,7 @@ mod tests {
             assert_eq!(generated::name(State::Play, Direction::Serverbound, id), Some(name));
         }
 
+        assert_eq!(generated::play::clientbound::LOGIN, ids::play_clientbound::LOGIN);
         assert_eq!(generated::play::clientbound::NAMES.len(), 124);
         assert_eq!(generated::play::serverbound::NAMES.len(), 58);
     }
@@ -500,6 +633,42 @@ mod tests {
         expected.varint(2);
         assert_eq!(encoded, expected.data);
         assert_eq!(decode_update_recipes(&encoded[1..], &serializers).unwrap(), packet);
+    }
+
+    #[test]
+    fn protocol_767_play_login_matches_the_1_21_1_wire_layout() {
+        let packet = Login1211 {
+            player_id: 42,
+            hardcore: true,
+            levels: vec!["minecraft:overworld".into(), "minecraft:the_nether".into()],
+            max_players: 20,
+            chunk_radius: 12,
+            simulation_distance: 8,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            limited_crafting: false,
+            spawn: SpawnInfo1211 {
+                dimension_type: 0,
+                dimension: "minecraft:overworld".into(),
+                seed: 123456,
+                game_type: 1,
+                previous_game_type: Some(0),
+                debug: false,
+                flat: false,
+                last_death: Some(GlobalPos1211 {
+                    dimension: "minecraft:overworld".into(),
+                    position: [10, 64, -3],
+                }),
+                portal_cooldown: 0,
+            },
+            enforces_secure_chat: true,
+        };
+        let mut encoded = Writer::new();
+        Login1211::write(&packet, &mut encoded);
+        assert_eq!(decode_play_login(&encoded.data).unwrap(), packet);
+        let mut trailing = encoded.data;
+        trailing.push(0);
+        assert!(decode_play_login(&trailing).is_err());
     }
 
     #[test]
