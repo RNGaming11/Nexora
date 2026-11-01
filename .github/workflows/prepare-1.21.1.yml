@@ -15,10 +15,14 @@ on:
       - "tools/build_1_21_1_runtime_resources.py"
       - "tools/generate_1_21_1_heightmap_predicates.py"
       - "tools/export_1_21_1_gameplay_facts.py"
+      - "tools/export_1_21_1_block_behaviours.py"
+      - "tools/java/dev/horizonlab/parity/Vanilla1211BlockBehaviourExporter.java"
       - "tools/test_1_21_1_gameplay_facts.py"
+      - "tools/test_1_21_1_runtime_resources.py"
       - "tools/remap_proguard_jar.py"
       - "tools/java/ProguardJarRemapper.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211GameplayFactsExporter.java"
+      - "tools/java/dev/horizonlab/parity/Vanilla1211BlockBehaviourExporter.java"
       - "tools/export_1_21_1_gameplay_facts.py"
       - "mods/horizon/src/test/java/dev/horizonlab/parity/VanillaGameplayFactsExporter.java"
       - "tools/java/Vanilla1211HeightmapPredicates.java"
@@ -148,6 +152,7 @@ jobs:
             .port-cache/versions/1.21.1/datagen/reports/commands.json
             .port-cache/versions/1.21.1/heightmap-predicates.json
             .port-cache/versions/1.21.1/gameplay-facts.json
+            .port-cache/versions/1.21.1/block-behaviours.json
             .port-cache/versions/1.21.1/runtime-resources/
             target/1.21.1/packet_ids.rs
             target/1.21.1/recipe-serializers.json
