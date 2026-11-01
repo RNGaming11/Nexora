@@ -567,6 +567,31 @@ impl Component {
                 )));
             }
         };
+        let valid = match kind {
+            0 => matches!(self, Self::Nbt(_) | Self::Raw(_)),
+            5 | 6 => matches!(self, Self::Text(_) | Self::Raw(_)),
+            7 => matches!(self, Self::Lore(_) | Self::Raw(_)),
+            9 | 23 => matches!(self, Self::Enchantments(_) | Self::Raw(_)),
+            18 => matches!(self, Self::Bool(_) | Self::Raw(_)),
+            32 => matches!(self, Self::StewEffects(_) | Self::Raw(_)),
+            33 => matches!(self, Self::WritableBook { .. } | Self::Raw(_)),
+            34 => matches!(self, Self::WrittenBook(_) | Self::Raw(_)),
+            35 => matches!(self, Self::Trim { .. } | Self::Raw(_)),
+            40 => matches!(self, Self::Instrument(_) | Self::Raw(_)),
+            44 => matches!(self, Self::LodestoneTracker { .. } | Self::Raw(_)),
+            45 => matches!(self, Self::FireworkExplosion(_) | Self::Raw(_)),
+            46 => matches!(self, Self::Fireworks { .. } | Self::Raw(_)),
+            49 => matches!(self, Self::BannerPatterns(_) | Self::Raw(_)),
+            4 | 14 | 15 | 17 | 19 | 21 => matches!(self, Self::Unit),
+            _ => matches!(self, Self::Int(_) | Self::Raw(_)),
+        };
+        if !valid {
+            let name = crate::packets::v1_21_1::component_ids::name(kind)
+                .unwrap_or("unknown");
+            return Err(crate::Error::new(format!(
+                "protocol-767 component {name} has an incompatible in-memory value"
+            )));
+        }
         self.write(codec, w);
         Ok(())
     }
@@ -779,10 +804,17 @@ impl WirePatch {
         for _ in 0..positive {
             let kind = r.varint()?;
             let len = r.count(r.remaining())?;
-            added.push((
-                kind,
-                Component::read_1_21_1(kind, &mut Reader::new(r.bytes(len)?))?,
-            ));
+            let mut value_reader = Reader::new(r.bytes(len)?);
+            let value = Component::read_1_21_1(kind, &mut value_reader)?;
+            if value_reader.remaining() != 0 {
+                let name = crate::packets::v1_21_1::component_ids::name(kind)
+                    .unwrap_or("unknown");
+                return Err(crate::Error::new(format!(
+                    "protocol-767 component {name} left {} unread bytes",
+                    value_reader.remaining()
+                )));
+            }
+            added.push((kind, value));
         }
         let removed = (0..negative).map(|_| r.varint()).collect::<Result<_>>()?;
         if r.remaining() != 0 {
@@ -1093,6 +1125,29 @@ mod tests {
             value.write_1_21_1(*id, &mut encoded).unwrap();
         }
         assert_eq!(encoded.data, [7, 1, 0, 0, 0, 42]);
+    }
+
+    #[test]
+    fn protocol_767_component_encoder_rejects_mismatched_values() {
+        let mut encoded = Writer::new();
+        assert!(Component::Bool(true)
+            .write_1_21_1(1, &mut encoded)
+            .is_err());
+        assert!(encoded.data.is_empty());
+        assert!(Component::Unit
+            .write_1_21_1(4, &mut encoded)
+            .is_ok());
+        assert!(encoded.data.is_empty());
+    }
+
+    #[test]
+    fn protocol_767_delimited_component_decoder_rejects_trailing_value_bytes() {
+        let mut patch = Writer::new();
+        patch.varint(1);
+        patch.varint(0);
+        patch.varint(1);
+        patch.byte_array(&[7, 8]);
+        assert!(WirePatch::decode_1_21_1(&patch.data).is_err());
     }
 
     #[test]
