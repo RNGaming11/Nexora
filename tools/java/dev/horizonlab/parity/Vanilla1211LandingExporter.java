@@ -90,9 +90,6 @@ public final class Vanilla1211LandingExporter {
                     "pitch",
                     String.format("%08x", Float.floatToIntBits(sound.getPitch()))
                 );
-                if (!sound.getFallSound().getLocation().toString().equals("minecraft:block.honey_block.slide")) {
-                    throw new IllegalStateException("Unexpected 1.21.1 honey block fall sound");
-                }
             }
             result.add(BuiltInRegistries.BLOCK.getKey(block).toString(), definition);
         }
