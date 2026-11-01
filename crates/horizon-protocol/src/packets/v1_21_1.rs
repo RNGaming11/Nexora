@@ -956,33 +956,92 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
         .get(usize::try_from(active_id).map_err(|_| Error::new("negative active play packet id"))?)
         .copied()
         .ok_or_else(|| Error::new(format!("unknown active play packet id {active_id}")))?;
-    if !matches!(
-        name,
-        "accept_teleportation"
-            | "configuration_acknowledged"
-            | "cookie_response"
-            | "custom_payload"
-            | "keep_alive"
-            | "move_player_pos"
-            | "move_player_pos_rot"
-            | "move_player_rot"
-            | "move_player_status_only"
-            | "player_command"
-            | "player_input"
-            | "pong"
-            | "resource_pack"
-    ) {
-        return Err(Error::new(format!(
-            "protocol-767 serverbound packet {name} has no verified payload adapter"
-        )));
-    }
+    let target_name = match name {
+        "move_player_pos" => "position",
+        "move_player_pos_rot" => "position_look",
+        "move_player_rot" => "look",
+        "move_player_status_only" => "flying",
+        "move_vehicle" => "vehicle_move",
+        "player_action" => "block_dig",
+        "player_command" => "entity_action",
+        "resource_pack" => "resource_pack_receive",
+        "use_item_on" => "block_place",
+        other => other,
+    };
     let target_id = crate::packet_ids_1_21_1::play::serverbound::NAMES
         .iter()
-        .position(|target_name| *target_name == name)
-        .ok_or_else(|| Error::new(format!("protocol-767 has no serverbound packet {name}")))?;
+        .position(|candidate| *candidate == target_name)
+        .ok_or_else(|| {
+            Error::new(format!(
+                "protocol-767 has no serverbound packet adapter for {name}"
+            ))
+        })?;
+
+    let mut body = Writer::new();
+    match name {
+        "move_player_pos" => {
+            body.f64(reader.f64()?);
+            body.f64(reader.f64()?);
+            body.f64(reader.f64()?);
+            let flags = reader.u8()?;
+            body.bool(flags & 1 != 0);
+        }
+        "move_player_pos_rot" => {
+            body.f64(reader.f64()?);
+            body.f64(reader.f64()?);
+            body.f64(reader.f64()?);
+            body.f32(reader.f32()?);
+            body.f32(reader.f32()?);
+            let flags = reader.u8()?;
+            body.bool(flags & 1 != 0);
+        }
+        "move_player_rot" => {
+            body.f32(reader.f32()?);
+            body.f32(reader.f32()?);
+            let flags = reader.u8()?;
+            body.bool(flags & 1 != 0);
+        }
+        "move_player_status_only" => {
+            let flags = reader.u8()?;
+            body.bool(flags & 1 != 0);
+        }
+        "move_vehicle" => {
+            body.f64(reader.f64()?);
+            body.f64(reader.f64()?);
+            body.f64(reader.f64()?);
+            body.f32(reader.f32()?);
+            body.f32(reader.f32()?);
+            let _on_ground = reader.bool()?;
+        }
+        "use_item_on" => {
+            body.varint(reader.varint()?);
+            body.i64(reader.i64()?);
+            body.varint(reader.varint()?);
+            body.f32(reader.f32()?);
+            body.f32(reader.f32()?);
+            body.f32(reader.f32()?);
+            body.bool(reader.bool()?);
+            let _world_border = reader.bool()?;
+            body.varint(reader.varint()?);
+        }
+        "player_action" => {
+            body.varint(reader.varint()?);
+            body.i64(reader.i64()?);
+            body.u8(reader.u8()?);
+            body.varint(reader.varint()?);
+        }
+        _ => body.bytes(reader.rest()),
+    }
+    if reader.remaining() != 0 {
+        return Err(Error::new(format!(
+            "protocol-767 serverbound adapter for {name} left {} payload bytes",
+            reader.remaining()
+        )));
+    }
+
     let mut out = Writer::new();
     out.varint(target_id as i32);
-    out.bytes(reader.rest());
+    out.bytes(&body.data);
     Ok(out.data)
 }
 
