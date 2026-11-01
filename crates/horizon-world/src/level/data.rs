@@ -638,6 +638,7 @@ pub fn load_registry_with_data_version(
         File::open(root.join("facts.json"))?,
         data_version,
     )
+    .map(|(registry, _flags)| registry)
 }
 
 pub(super) fn load(registry: &BlockRegistry, root: &Path) -> io::Result<Behaviours> {
