@@ -66,7 +66,7 @@ The complete machine-generated comparison contains 930 ranked work items and is 
    python tools/version_port.py report 26.3 1.21.1
    ```
 
-3. Complete protocol-767 play-state dispatch and connect version selection to the live network state machine. The current client still sends protocol 777 and uses 26.3 packet enums; the 1.21.1 codecs are not yet live.
+3. Expand the feature-gated protocol-767 live client path. The `minecraft-1-21-1` build selects the target version constants and uses separate handshake, login, configuration, play dispatch, chunk/light conversion, and item-slot codecs. It now routes container contents/slots, equipment, container clicks, and creative-slot updates through the target item-component IDs. This is still a partial play-state adapter: unsupported gameplay packets must be implemented or proven wire-compatible before normal server play is reliable.
 4. Implement the registry-aware built-in recipe serializers and validate registry loading against 1.21.1 wire fixtures.
 5. Port gameplay systems in dependency order, using the mapped source diff and parity tests.
 6. Demonstrate the playable milestone by launching the Rust client and joining a local vanilla 1.21.1 server. A successful compile or packet-codec test alone is not proof of gameplay compatibility.
@@ -100,8 +100,11 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
 - [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
 - [ ] Generate and integrate all 1.21.1 runtime registries and resource data.
-- [ ] Connect the 1.21.1 slot and component codecs to the live inventory packet dispatch and implement gameplay-level handling for the preserved raw component values.
-- [ ] Protocol-767 play-state integration in the live client.
+- [x] Connect protocol-767 container content/slot/equipment decoding and container-click/creative-slot encoding to the live client path using the 1.21.1 item-slot codecs.
+- [x] Add live hotbar selection and horse-inventory packet adaptation into existing gameplay handlers.
+- [x] Add a feature-gated protocol-767 connection state machine with version-specific handshake, login, configuration, chunk/light conversion, and play dispatch.
+- [ ] Expand remaining play-state packet coverage; several target packets are still explicitly reported as requiring gameplay integration.
+- [ ] Implement gameplay-level handling for preserved raw component values and verify the target component data against live server fixtures.
 - [ ] Gameplay parity.
 - [ ] Playable client/server milestone.
 
