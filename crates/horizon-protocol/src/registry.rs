@@ -119,13 +119,19 @@ impl Builtin {
         if json.get("schema").and_then(serde_json::Value::as_u64) != Some(1) {
             return Err(Error::new("unsupported built-in registry inventory schema"));
         }
-        if json.get("minecraft_version").and_then(serde_json::Value::as_str) != Some(version) {
+        if json
+            .get("minecraft_version")
+            .and_then(serde_json::Value::as_str)
+            != Some(version)
+        {
             return Err(Error::new("built-in registry inventory version mismatch"));
         }
         if json.get("data_version").and_then(serde_json::Value::as_i64)
             != Some(i64::from(data_version))
         {
-            return Err(Error::new("built-in registry inventory DataVersion mismatch"));
+            return Err(Error::new(
+                "built-in registry inventory DataVersion mismatch",
+            ));
         }
         let entries = json
             .get("registries")
