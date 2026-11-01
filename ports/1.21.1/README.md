@@ -109,7 +109,8 @@ All nineteen previously missing packet payloads now have target-specific codecs.
 - [x] Verify serverbound recipe-book settings and villager trade selection against the target packet IDs and payload layouts.
 - [x] Add live hotbar selection and horse-inventory packet adaptation into existing gameplay handlers.
 - [x] Add a separately named `horizon-client-1-21-1` binary target; the normal `horizon-client` target still uses the 26.3 profile.
-- [ ] Package and select that target binary plus its matching runtime resources from the launcher.
+- [x] Build and package the separate 1.21.1 executable beside the 26.3 executable; the launcher selects the executable from the installed build's `research-lock.json`.
+- [ ] Ship a 1.21.1-specific research lock and preparer/runtime-resource pipeline through the launcher so it can prepare and launch that target without relying on prebuilt local resources.
 - [x] Add a feature-gated protocol-767 connection state machine with version-specific handshake, login, configuration, chunk/light conversion, and play dispatch.
 - [ ] Expand remaining play-state packet coverage; several target packets are still explicitly reported as requiring gameplay integration.
 - [ ] Implement gameplay-level handling for preserved raw component values and verify the target component data against live server fixtures.
