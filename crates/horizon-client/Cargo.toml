@@ -86,6 +86,10 @@ wgpu = { version = "30.0.1", default-features = false, features = ["gles"] }
 winresource = "0.1"
 
 [[bin]]
+name = "horizon-client"
+path = "src/main.rs"
+
+[[bin]]
 name = "horizon-client-1-21-1"
 path = "src/main.rs"
 required-features = ["minecraft-1-21-1"]
