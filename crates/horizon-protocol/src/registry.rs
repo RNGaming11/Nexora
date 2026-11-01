@@ -61,7 +61,25 @@ impl Builtin {
     pub fn load(path: &Path) -> Result<Self> {
         let text = std::fs::read_to_string(path)
             .map_err(|e| Error::new(format!("{}: {e}", path.display())))?;
-        Self::parse(&text)
+        let json: serde_json::Value = serde_json::from_str(&text)
+            .map_err(|e| Error::new(format!("registry data: {e}")))?;
+        if json.get("schema").is_none() && json.get("minecraft_version").is_none() {
+            return Self::parse(&text);
+        }
+        let inventory = Self::parse_inventory(
+            &text,
+            horizon_core::version::VANILLA_VERSION,
+            horizon_core::version::DATA_VERSION,
+        )?;
+        let Some(report_path) = path.parent()
+            .map(|parent| parent.join("registries.json"))
+            .filter(|candidate| candidate.is_file())
+        else {
+            return Ok(inventory);
+        };
+        let report_text = std::fs::read_to_string(&report_path)
+            .map_err(|e| Error::new(format!("{}: {e}", report_path.display())))?;
+        Self::merge_report(inventory, Self::parse(&report_text)?)
     }
     pub fn parse(text: &str) -> Result<Self> {
         let json: serde_json::Value = serde_json::from_str(text)
@@ -162,13 +180,32 @@ impl Builtin {
         Ok(Self { registries })
     }
 
+    /// Merge a full report over the pinned vanilla inventory. The vanilla
+    /// prefix must retain its exact IDs; content registries may append entries.
+    fn merge_report(mut inventory: Self, report: Self) -> Result<Self> {
+        for (name, reported) in report.registries {
+            if let Some(vanilla) = inventory.registries.get(&name) {
+                if reported.names.len() < vanilla.names.len()
+                    || reported.names[..vanilla.names.len()] != vanilla.names[..]
+                {
+                    return Err(Error::new(format!(
+                        "{name}: full registry report does not preserve the pinned vanilla ID prefix"
+                    )));
+                }
+            }
+            inventory.registries.insert(name, reported);
+        }
+        Ok(inventory)
+    }
+
     pub fn get(&self, registry: &str) -> Option<&Ids> {
         self.registries.get(registry)
     }
-    /// Look for the report next to prepared resources, then in the data
-    /// generator output of a development checkout.
+    /// Prefer the compact version-pinned inventory; keep a full report beside
+    /// it so content registries can append their IDs.
     pub fn find(resources: &Path) -> Option<std::path::PathBuf> {
         let candidates = [
+            resources.join("builtin-registry-ids.json"),
             resources.join("registries.json"),
             resources.join("../../datagen/out/reports/registries.json"),
             resources.join("../datagen/out/reports/registries.json"),
@@ -352,6 +389,62 @@ mod tests {
         }"#;
         assert!(Builtin::parse_inventory(inventory, "26.3", 5023).is_err());
         assert!(Builtin::parse_inventory(inventory, "1.21.1", 5023).is_err());
+    }
+
+    #[test]
+    fn loads_profile_inventory_and_preserves_appended_registry_ids() {
+        let directory = std::env::temp_dir().join(format!(
+            "nexora-registry-inventory-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let version = horizon_core::version::VANILLA_VERSION;
+        let data_version = horizon_core::version::DATA_VERSION;
+        let inventory = format!(
+            r#"{{"schema":1,"minecraft_version":"{version}","data_version":{data_version},"registries":{{"minecraft:item":["minecraft:air","minecraft:stone"],"minecraft:mob_effect":["minecraft:speed"]}}}}"#
+        );
+        let report = r#"{
+            "minecraft:item":{"entries":{
+                "minecraft:air":{"protocol_id":0},
+                "minecraft:stone":{"protocol_id":1},
+                "test:custom_item":{"protocol_id":2}
+            }},
+            "minecraft:mob_effect":{"entries":{"minecraft:speed":{"protocol_id":0}}},
+            "test:custom_registry":{"entries":{"test:first":{"protocol_id":0}}}
+        }"#;
+        std::fs::write(directory.join("builtin-registry-ids.json"), inventory).unwrap();
+        std::fs::write(directory.join("registries.json"), report).unwrap();
+        let path = Builtin::find(&directory).unwrap();
+        assert!(path.ends_with("builtin-registry-ids.json"));
+        let loaded = Builtin::load(&path).unwrap();
+        assert_eq!(loaded.get("minecraft:item").unwrap().name(2), Some("test:custom_item"));
+        assert_eq!(loaded.get("test:custom_registry").unwrap().name(0), Some("test:first"));
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn rejects_full_report_that_changes_a_pinned_vanilla_id() {
+        let directory = std::env::temp_dir().join(format!(
+            "nexora-registry-mismatch-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        let version = horizon_core::version::VANILLA_VERSION;
+        let data_version = horizon_core::version::DATA_VERSION;
+        let inventory = format!(
+            r#"{{"schema":1,"minecraft_version":"{version}","data_version":{data_version},"registries":{{"minecraft:item":["minecraft:air","minecraft:stone"]}}}}"#
+        );
+        let report = r#"{"minecraft:item":{"entries":{
+            "minecraft:stone":{"protocol_id":0},
+            "minecraft:air":{"protocol_id":1}
+        }}}"#;
+        std::fs::write(directory.join("builtin-registry-ids.json"), inventory).unwrap();
+        std::fs::write(directory.join("registries.json"), report).unwrap();
+        let error = Builtin::load(&Builtin::find(&directory).unwrap()).unwrap_err();
+        assert!(error.to_string().contains("does not preserve the pinned vanilla ID prefix"));
+        let _ = std::fs::remove_dir_all(directory);
     }
 
     #[test]
