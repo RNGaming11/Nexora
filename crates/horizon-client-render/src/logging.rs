@@ -51,7 +51,7 @@ pub fn data_dir() -> PathBuf {
     std::env::temp_dir()
 }
 
-/// `--home DIR`, set once at start; it wins over `HORIZON_HOME`.
+/// `--home DIR`, set once at start; it wins over `NEXORA_HOME` and legacy `HORIZON_HOME`.
 static HOME: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 
 /// Makes `game_home` return `home` for the rest of the run (`--home`).
@@ -59,13 +59,13 @@ pub fn set_game_home(home: PathBuf) {
     let _ = HOME.set(home);
 }
 
-/// Where the launcher runs the game and keeps its saves: `--home`, else `HORIZON_HOME`, else
+/// Where the launcher runs the game and keeps its saves: `--home`, else `NEXORA_HOME` / legacy `HORIZON_HOME`, else
 /// `horizon` in the platform data folder (launcher/src/backend.rs `game_home`).
 pub fn game_home() -> PathBuf {
     if let Some(home) = HOME.get() {
         return home.clone();
     }
-    match std::env::var_os("HORIZON_HOME").filter(|h| !h.is_empty()) {
+    match std::env::var_os("NEXORA_HOME").or_else(|| std::env::var_os("HORIZON_HOME")).filter(|h| !h.is_empty()) {
         Some(h) => PathBuf::from(h),
         None => data_dir().join("horizon"),
     }
