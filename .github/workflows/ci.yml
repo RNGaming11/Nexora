@@ -173,7 +173,7 @@ jobs:
   # (.github/workflows/parity-main.yml; releases wait for it). A pull request still runs them itself when it changes
   # a harness, an oracle, a probe or the runner, or carries the run-parity label (run-parity.yml, when it is added).
   parity-scope:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && vars.NEXORA_RUN_VANILLA_PARITY == '1'
     runs-on: ubuntu-latest
     outputs:
       run: ${{ steps.scope.outputs.run }}
