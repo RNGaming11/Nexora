@@ -9,8 +9,9 @@ import sys
 import zipfile
 
 try:
-    from . import generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
+    from . import export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
 except ImportError:
+    import export_1_21_1_gameplay_facts
     import generate_1_21_1_heightmap_predicates
     import build_1_21_1_runtime_resources
     import class_index
@@ -145,6 +146,16 @@ def main():
         heightmap_predicates,
     )
 
+    gameplay_facts = directory / "gameplay-facts.json"
+    print("Remapping the official 1.21.1 server and exporting gameplay facts", flush=True)
+    gameplay_summary = export_1_21_1_gameplay_facts.export(
+        artifacts["server_game"],
+        artifacts["server_mappings"],
+        artifacts["server_libraries"],
+        reports / "blocks.json",
+        gameplay_facts,
+    )
+
     runtime_resources = directory / "runtime-resources"
     print("Building local Minecraft 1.21.1 runtime resources", flush=True)
     runtime_summary = build_1_21_1_runtime_resources.build(
@@ -153,6 +164,7 @@ def main():
         reports,
         runtime_resources,
         heightmap_data,
+        gameplay_facts,
     )
 
     print("Indexing raw obfuscated class names for provenance", flush=True)
