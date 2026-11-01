@@ -109,6 +109,13 @@ class RuntimeResources1211Tests(unittest.TestCase):
         )
         return path
 
+    def _collision_files(self, root: Path) -> tuple[Path, Path]:
+        collision = root / "cached-collision.nbt"
+        occlusion = root / "occlusion.nbt"
+        collision.write_bytes(b"test collision nbt")
+        occlusion.write_bytes(b"test occlusion nbt")
+        return collision, occlusion
+
     def test_builds_bundle_with_inventory_data_and_base_assets(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -117,7 +124,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
             self._jar(client)
             self._jar(server)
             reports = self._reports(root)
-            manifest = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root))
+            manifest = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root), *self._collision_files(root))
             self.assertEqual(
                 (manifest["minecraft_version"], manifest["data_version"], manifest["protocol_version"]),
                 ("1.21.1", 3955, 767),
@@ -126,7 +133,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
                 "assets/minecraft/models/block/stone.json",
                 "data/minecraft/tags/block/blocks_motion.json",
                 "builtin-registry-ids.json", "registries.json", "commands.json",
-                "facts.json", "heightmap-predicates.json", "gameplay-facts.json", "block-behaviours.json", "entity-types.json", "model-states.json", "items.json",
+                "facts.json", "heightmap-predicates.json", "gameplay-facts.json", "block-behaviours.json", "entity-types.json", "cached-collision.nbt", "occlusion.nbt", "model-states.json", "items.json",
                 "biome-parameters/plains.json", "horizon-resources.json",
             ):
                 self.assertTrue((output / name).is_file(), name)
@@ -137,7 +144,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
                 model_states["minecraft:oak_log"]["schema"],
                 {"axis": {"named": ["y", "x", "z"]}},
             )
-            rebuilt = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root))
+            rebuilt = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root), *self._collision_files(root))
             self.assertEqual(rebuilt["client_jar_sha1"], manifest["client_jar_sha1"])
 
     def test_accepts_target_version_without_later_item_and_biome_reports(self):
@@ -156,16 +163,20 @@ class RuntimeResources1211Tests(unittest.TestCase):
             (reports / "biome_parameters").rmdir()
             (reports / "items.json").write_text('{"minecraft:stone":{"max_stack_size":64}}', encoding="utf-8")
 
-            manifest = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root))
+            manifest = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root), *self._collision_files(root))
             self.assertEqual(manifest["item_component_item_count"], 0)
             self.assertEqual(manifest["biome_parameter_file_count"], 0)
             self.assertEqual(manifest["gameplay_fact_state_count"], 5)
             self.assertEqual(manifest["block_behaviour_block_count"], 3)
             self.assertEqual(manifest["block_behaviour_state_count"], 5)
             self.assertEqual(manifest["entity_type_count"], 3)
+            self.assertGreater(manifest["collision_table_bytes"], 0)
+            self.assertGreater(manifest["occlusion_table_bytes"], 0)
             self.assertTrue((output / "gameplay-facts.json").is_file())
             self.assertTrue((output / "block-behaviours.json").is_file())
             self.assertTrue((output / "entity-types.json").is_file())
+            self.assertTrue((output / "cached-collision.nbt").is_file())
+            self.assertTrue((output / "occlusion.nbt").is_file())
             self.assertTrue((output / "items-report.json").is_file())
             self.assertFalse((output / "items.json").exists())
             self.assertTrue((output / "data/minecraft/worldgen/biome/plains.json").is_file())
@@ -188,6 +199,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
                     self._gameplay(root),
                     self._behaviours(root),
                     self._entity_types(root),
+                    *self._collision_files(root),
                 )
 
 
