@@ -38,6 +38,9 @@ jobs:
     # Clean hosted Linux machine; download only the pinned Mojang inputs required by the preparer.
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    env:
+      HORIZON_VERSION: ${{ inputs.version }}
+      HORIZON_NIGHTLY: ${{ inputs.nightly }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,6 +55,8 @@ jobs:
         with:
           python-version: '3.13'
       - uses: dtolnay/rust-toolchain@stable
+      - name: Linux graphics and audio build dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev libvulkan1 mesa-vulkan-drivers xvfb
       - name: Download pinned Mojang inputs
         run: python3 tools/ci/download_pinned_minecraft.py
       - name: Prepare resources and compile original exporters
@@ -72,17 +77,35 @@ jobs:
           [ -z "$stray" ] || { echo "::error::not one of our classes: $stray"; exit 1; }
           python3 tools/check_prepare_exporters.py --binary target/release/horizon-prepare
           version=$(python3 -c 'import json; print(json.load(open("research-lock.json"))["minecraft"]["version"])')
-          echo "minecraft_version=$version" >> "$GITHUB_OUTPUT"
+          cargo build --release --locked -p horizon-client --bin horizon-client
+          home="$RUNNER_TEMP/horizon-smoke"
+          rm -rf "$home" && mkdir -p "$home"
+          driver=$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)
+          test -n "$driver" || { echo "::error::Mesa lavapipe Vulkan driver is missing"; exit 1; }
+          (cd "$home" && xvfb-run -a env VK_DRIVER_FILES="$driver" HORIZON_HOME="$home" HORIZON_NO_AUDIO=1 \
+            "$PWD/target/release/horizon-client" --resources "$PWD/.local/horizon-client/$version" \
+            --offscreen --world smoke --seed 1 --render-distance 4 --world-frames 1500 \
+            --timeout-seconds 600 --smoke-report "$home/smoke.json" > "$home/client.log" 2>&1) \
+            || { tail -60 "$home/client.log"; exit 1; }
+          python3 - "$home/smoke.json" <<'EOF'
+          import json, sys
+          report = json.load(open(sys.argv[1]))
+          print(json.dumps(report))
+          if report.get("error") is not None or report.get("frames", 0) < 1500 or not report.get("chunks") \
+                  or not report.get("meshed_sections") or not report.get("player"):
+              sys.exit("the smoke run did not draw a world")
+          EOF
+          cp "$home/smoke.json" "$RUNNER_TEMP/smoke-test.json"
       - uses: actions/upload-artifact@v4
         with:
-          name: original-exporters
-          path: exporters/
+          name: smoke-test.json
+          path: ${{ runner.temp }}/smoke-test.json
           if-no-files-found: error
           retention-days: 3
       - uses: actions/upload-artifact@v4
         with:
-          name: prepared-resources
-          path: .local/horizon-client/${{ steps.prepared.outputs.minecraft_version }}
+          name: original-exporters
+          path: exporters/
           if-no-files-found: error
           retention-days: 3
 
@@ -138,9 +161,9 @@ jobs:
           # A release restores only what a release saved: an untrusted build has its own key and saves nothing.
           shared-key: ${{ inputs.trusted && 'release' || 'nightly' }}-${{ matrix.name }}
           save-if: ${{ inputs.trusted }}
-      - name: ALSA, udev and software Vulkan
+      - name: ALSA and udev headers
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev libvulkan1 mesa-vulkan-drivers xvfb
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
       - name: Build the 26.3 client, horizon-ctl, horizon-prepare and horizon-server
         run: cargo build --release --locked -p horizon-client --bin horizon-client --bin horizon-ctl -p horizon-prepare --bin horizon-prepare -p horizon-server --bin horizon-server
       - name: Build the Minecraft 1.21.1 client
@@ -193,48 +216,6 @@ jobs:
             echo "$out"
             [[ "$out" == "$binary $HORIZON_VERSION" ]] || { echo "::error::expected $binary $HORIZON_VERSION"; exit 1; }
           done
-      - name: Read pinned Minecraft version
-        id: minecraft
-        if: matrix.name == 'linux'
-        run: |
-          version=$(python3 -c 'import json; print(json.load(open("research-lock.json"))["minecraft"]["version"])')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/download-artifact@v4
-        if: matrix.name == 'linux'
-        with:
-          name: prepared-resources
-          path: .local/horizon-client/${{ steps.minecraft.outputs.version }}
-      - name: The game runs (offscreen, a new world, 1500 frames)
-        if: matrix.name == 'linux'
-        run: |
-          set -euo pipefail
-          home="$RUNNER_TEMP/horizon-smoke"
-          rm -rf "$home" && mkdir -p "$home"
-          version="${{ steps.minecraft.outputs.version }}"
-          client="$PWD/target/release/horizon-client"
-          resources="$PWD/.local/horizon-client/$version"
-          driver=$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)
-          test -n "$driver" || { echo "::error::Mesa lavapipe Vulkan driver is missing"; exit 1; }
-          (cd "$home" && xvfb-run -a env VK_DRIVER_FILES="$driver" HORIZON_HOME="$home" HORIZON_NO_AUDIO=1 \
-            "$client" --resources "$resources" --offscreen --world smoke --seed 1 --render-distance 4 \
-            --world-frames 1500 --timeout-seconds 600 --smoke-report "$home/smoke.json" \
-            > "$home/client.log" 2>&1) || { tail -60 "$home/client.log"; exit 1; }
-          python3 - "$home/smoke.json" <<'EOF'
-          import json, sys
-          report = json.load(open(sys.argv[1]))
-          print(json.dumps(report))
-          if report.get("error") is not None or report.get("frames", 0) < 1500 or not report.get("chunks") \
-                  or not report.get("meshed_sections") or not report.get("player"):
-              sys.exit("the smoke run did not draw a world")
-          EOF
-          cp "$home/smoke.json" "$RUNNER_TEMP/smoke-test.json"
-      - uses: actions/upload-artifact@v4
-        if: matrix.name == 'linux'
-        with:
-          name: smoke-test.json
-          path: ${{ runner.temp }}/smoke-test.json
-          if-no-files-found: error
-          retention-days: 3
       - uses: actions/download-artifact@v4
         with:
           name: original-exporters
