@@ -238,8 +238,17 @@ impl Session {
         if self.configuring.load(Ordering::Relaxed) {
             return;
         }
+        let body = match encode_play_serverbound(packet) {
+            Ok(body) => body,
+            Err(error) => {
+                if self.debug {
+                    eprintln!("[net] packet not sent: {error}");
+                }
+                return;
+            }
+        };
         if let Some(w) = writer.as_mut()
-            && w.send(&packet.encode()).is_err()
+            && w.send(&body).is_err()
         {
             w.shutdown();
         }
@@ -251,7 +260,15 @@ impl Session {
         let body = if self.configuring.load(Ordering::Relaxed) {
             cfg::Serverbound::ResourcePack(status).encode()
         } else {
-            play::Serverbound::ResourcePack(status).encode()
+            match encode_play_serverbound(play::Serverbound::ResourcePack(status)) {
+                Ok(body) => body,
+                Err(error) => {
+                    if self.debug {
+                        eprintln!("[net] resource-pack response not sent: {error}");
+                    }
+                    return;
+                }
+            }
         };
         if let Some(w) = writer.as_mut()
             && w.send(&body).is_err()
@@ -270,7 +287,15 @@ impl Session {
         let body = if self.configuring.load(Ordering::Relaxed) {
             cfg::Serverbound::CustomClickAction(click).encode()
         } else {
-            play::Serverbound::CustomClickAction(click).encode()
+            match encode_play_serverbound(play::Serverbound::CustomClickAction(click)) {
+                Ok(body) => body,
+                Err(error) => {
+                    if self.debug {
+                        eprintln!("[net] custom dialog answer not sent: {error}");
+                    }
+                    return;
+                }
+            }
         };
         if let Some(w) = writer.as_mut()
             && w.send(&body).is_err()
@@ -281,6 +306,7 @@ impl Session {
     /// ServerboundAcceptCodeOfConductPacket, sent in configuration.
     pub fn accept_code_of_conduct(&self) {
         let mut writer = self.writer.lock().unwrap();
+        #[cfg(not(feature = "minecraft-1-21-1"))]
         if let Some(w) = writer.as_mut()
             && w.send(&cfg::Serverbound::AcceptCodeOfConduct(Empty).encode())
                 .is_err()
@@ -425,8 +451,20 @@ fn connection_lost(e: horizon_protocol::Error, lang: &Language) -> String {
     }
 }
 
+#[cfg(feature = "minecraft-1-21-1")]
+fn encode_play_serverbound(packet: play::Serverbound) -> Result<Vec<u8>, String> {
+    horizon_protocol::packets::v1_21_1::encode_play_serverbound_1_21_1(packet)
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(not(feature = "minecraft-1-21-1"))]
+fn encode_play_serverbound(packet: play::Serverbound) -> Result<Vec<u8>, String> {
+    Ok(packet.encode())
+}
+
 /// The whole connection. Ok: why it ended for good (the server's reason, or
 /// a refusal no retry fixes); Err: the connection failed.
+#[cfg(not(feature = "minecraft-1-21-1"))]
 fn run(
     local: Option<horizon_protocol::connection::Pipe>,
     address: &str,
