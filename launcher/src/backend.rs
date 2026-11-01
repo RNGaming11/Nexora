@@ -828,6 +828,33 @@ pub fn is_prepared(tag: &str) -> bool {
     resources(tag).join(RESOURCES_MANIFEST).exists()
 }
 
+/// Checks the target-specific files before starting a 1.21.1 session. Other game versions keep
+/// their existing launch path unchanged.
+pub fn client_preflight(tag: &str) -> Result<(), String> {
+    let dir = version_dir(tag);
+    if game_version_at(&dir) != "1.21.1" {
+        return Ok(());
+    }
+
+    let binary = dir.join(client_binary_name_at(&dir));
+    if !binary.is_file() {
+        return Err(format!(
+            "Minecraft 1.21.1 cannot start: its Nexora client is missing ({}). Reinstall this Nexora version.",
+            binary.display()
+        ));
+    }
+
+    let manifest = resources(tag).join(RESOURCES_MANIFEST);
+    if !manifest.is_file() {
+        return Err(format!(
+            "Minecraft 1.21.1 cannot start: its prepared runtime resources are missing ({}). Prepare this Nexora version again.",
+            manifest.display()
+        ));
+    }
+
+    Ok(())
+}
+
 /// Whether a version's resources hold Minecraft's sounds, which `sounds` copies from the player's own
 /// install beside the preparation. A version prepared while that copy failed (Mojang's republished 26.3
 /// asset index, #1076), or one that reused such a version's resources, plays no sound at all (#1035).
