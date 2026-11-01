@@ -1526,6 +1526,8 @@ mod tests {
         std::fs::write(recipes.join("b.json"), recipe).unwrap();
         let index = RecipeIndex::load(&root, &horizon_world::loot::PackOverlay::NONE);
         let mut book = ClientBook::default();
+        book.add(99);
+        book.highlight.insert(99);
 
         assert!(apply_legacy_recipe_packet(
             &mut book,
