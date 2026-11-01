@@ -33,6 +33,62 @@ def java_tools() -> tuple[Path, Path]:
     return java, javac
 
 
+def run_exporter(
+    named_jar: Path,
+    server_libraries: list[Path],
+    source: Path,
+    main_class: str,
+    arguments: list[str],
+    output_directory: Path,
+    label: str,
+    heap: str = "1G",
+) -> None:
+    java, javac = java_tools()
+    classpath = os.pathsep.join(
+        [str(named_jar.resolve()), *(str(path.resolve()) for path in server_libraries)]
+    )
+    with tempfile.TemporaryDirectory(
+        prefix=f"nexora-{label}-1211-", dir=output_directory
+    ) as temp:
+        classes = Path(temp) / "classes"
+        classes.mkdir()
+        compile_result = subprocess.run(
+            [
+                str(javac),
+                "--release",
+                "21",
+                "-proc:none",
+                "-cp",
+                classpath,
+                "-d",
+                str(classes),
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if compile_result.returncode:
+            raise SystemExit(
+                f"The 1.21.1-specific {label} exporter does not compile against the "
+                "officially remapped 1.21.1 server API:\\n"
+                + (compile_result.stdout + compile_result.stderr)[-10000:]
+            )
+
+        runtime_classpath = os.pathsep.join([str(classes), classpath])
+        result = subprocess.run(
+            [str(java), f"-Xmx{heap}", "-cp", runtime_classpath, main_class, *arguments],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if result.returncode:
+            raise SystemExit(
+                f"The official 1.21.1 {label} export failed:\\n"
+                + (result.stdout + result.stderr)[-10000:]
+            )
+
+
 def validate(path: Path, block_report: Path) -> dict:
     value = json.loads(path.read_text(encoding="utf-8"))
     states = value.get("states") if isinstance(value, dict) else None
@@ -146,49 +202,15 @@ def export(
         named_jar,
     )
 
-    java, javac = java_tools()
-    classpath = os.pathsep.join(
-        [str(named_jar), *(str(path.resolve()) for path in server_libraries)]
+    run_exporter(
+        named_jar,
+        server_libraries,
+        SOURCE,
+        EXPORTER,
+        [str(output)],
+        output.parent,
+        "gameplay-facts",
     )
-    with tempfile.TemporaryDirectory(prefix="nexora-gameplay-1211-", dir=output.parent) as temp:
-        classes = Path(temp) / "classes"
-        classes.mkdir()
-        compile_result = subprocess.run(
-            [
-                str(javac),
-                "--release",
-                "21",
-                "-proc:none",
-                "-cp",
-                classpath,
-                "-d",
-                str(classes),
-                str(SOURCE),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=180,
-        )
-        if compile_result.returncode:
-            raise SystemExit(
-                "The 1.21.1-specific vanilla gameplay exporter does not compile against the "
-                "officially remapped 1.21.1 server API:\n"
-                + (compile_result.stdout + compile_result.stderr)[-10000:]
-            )
-
-        runtime_classpath = os.pathsep.join([str(classes), classpath])
-        result = subprocess.run(
-            [str(java), "-Xmx1G", "-cp", runtime_classpath, EXPORTER, str(output)],
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if result.returncode:
-            output.unlink(missing_ok=True)
-            raise SystemExit(
-                "The official 1.21.1 gameplay fact export failed:\n"
-                + (result.stdout + result.stderr)[-10000:]
-            )
 
     summary = validate(output, block_report)
     summary["named_server_jar"] = str(named_jar)
