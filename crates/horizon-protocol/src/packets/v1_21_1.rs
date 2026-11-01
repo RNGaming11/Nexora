@@ -512,6 +512,12 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
                 | crate::packet_ids_1_21_1::play::clientbound::CONTAINER_SET_SLOT
                 | crate::packet_ids_1_21_1::play::clientbound::SET_EQUIPMENT
         ) => inventory::decode_clientbound(id, payload).map(PlayPacket1211::Inventory),
+        crate::packet_ids_1_21_1::play::clientbound::PLAYER_INFO_UPDATE => {
+            decode_player_info_update_1_21_1(payload).map(PlayPacket1211::Compatible)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::PLAYER_CHAT => {
+            decode_player_chat_1_21_1(payload).map(PlayPacket1211::Compatible)
+        }
         crate::packet_ids_1_21_1::play::clientbound::LEVEL_CHUNK_WITH_LIGHT => {
             decode_level_chunk_with_light_1_21_1(payload)
                 .map(PlayPacket1211::LevelChunkWithLight)
@@ -1045,6 +1051,110 @@ pub fn decode_move_entity_rot_1_21_1(payload: &[u8]) -> Result<play_packets::Mov
     }))
 }
 
+fn decode_player_info_update_1_21_1(
+    payload: &[u8],
+) -> Result<play_packets::Clientbound> {
+    decode_exact(payload, |reader| {
+        let actions = reader.u8()?;
+        if actions & !0x3f != 0 {
+            return Err(Error::new(format!(
+                "protocol-767 player-info update has unsupported action bits {:#04x}",
+                actions & !0x3f
+            )));
+        }
+        let count = reader.count(reader.remaining())?;
+        let mut entries = Vec::with_capacity(count.min(256));
+        for _ in 0..count {
+            let mut entry = play_packets::PlayerInfo {
+                uuid: reader.uuid()?,
+                ..play_packets::PlayerInfo::default()
+            };
+            if actions & 1 != 0 {
+                entry.name = Some(reader.string(16)?);
+                let properties = reader.count(16)?;
+                entry.properties = (0..properties)
+                    .map(|_| login_packets::Property::read(reader))
+                    .collect::<Result<_>>()?;
+            }
+            if actions & 2 != 0 && reader.bool()? {
+                entry.chat_session = Some((
+                    reader.uuid()?,
+                    reader.i64()?,
+                    reader.byte_array(512)?,
+                    reader.byte_array(4096)?,
+                ));
+            }
+            if actions & 4 != 0 {
+                entry.game_mode = Some(reader.varint()?);
+            }
+            if actions & 8 != 0 {
+                entry.listed = Some(reader.bool()?);
+            }
+            if actions & 16 != 0 {
+                entry.latency = Some(reader.varint()?);
+            }
+            if actions & 32 != 0 {
+                entry.display_name = Some(if reader.bool()? {
+                    Some(reader.nbt()?)
+                } else {
+                    None
+                });
+            }
+            entries.push(entry);
+        }
+        Ok(play_packets::Clientbound::PlayerInfoUpdate(
+            play_packets::PlayerInfoUpdate { actions, entries },
+        ))
+    })
+}
+
+fn decode_player_chat_1_21_1(
+    payload: &[u8],
+) -> Result<play_packets::Clientbound> {
+    decode_exact(payload, |reader| {
+        let sender = reader.uuid()?;
+        let index = reader.varint()?;
+        let signature = if reader.bool()? {
+            Some(play_packets::Signature::read(reader)?)
+        } else {
+            None
+        };
+        let content = reader.string(256)?;
+        let timestamp = reader.i64()?;
+        let salt = reader.i64()?;
+        let message_count = reader.count(20)?;
+        let mut last_seen = Vec::with_capacity(message_count);
+        for _ in 0..message_count {
+            last_seen.push(play_packets::PackedSignature::read(reader)?);
+        }
+        let unsigned_content = if reader.bool()? {
+            Some(reader.nbt()?)
+        } else {
+            None
+        };
+        let filter_kind = reader.varint()?;
+        let filter = (filter_kind, if filter_kind == 2 {
+            reader.long_array()?
+        } else {
+            Vec::new()
+        });
+        let chat_type = play_packets::ChatTypeBound::read(reader)?;
+        Ok(play_packets::Clientbound::PlayerChat(play_packets::PlayerChat {
+            global_index: 0,
+            sender,
+            index,
+            signature,
+            content,
+            timestamp,
+            salt,
+            last_seen,
+            unsigned_content,
+            filter,
+            chat_type,
+        }))
+    })
+}
+
 fn decode_compatible_play_packet_1_21_1(
     target_id: i32,
     payload: &[u8],
@@ -1234,6 +1344,14 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
         play_packets::Serverbound::Chat(packet) => return encode_chat_1_21_1(packet),
         play_packets::Serverbound::ChatCommandSigned(packet) => {
             return encode_signed_chat_command_1_21_1(packet);
+        }
+        play_packets::Serverbound::Punch(_) => {
+            let mut payload = Writer::new();
+            payload.varint(0);
+            return Ok(frame_1_21_1_play_packet(
+                crate::packet_ids_1_21_1::play::serverbound::SWING,
+                &payload.data,
+            ));
         }
         play_packets::Serverbound::PlayerLoaded(_) => return Ok(Vec::new()),
         play_packets::Serverbound::ContainerClick(value) => {
