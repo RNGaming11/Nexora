@@ -13,6 +13,7 @@ on:
       - "tools/generate_1_21_1_block_facts.py"
       - "tools/generate_1_21_1_model_states.py"
       - "tools/build_1_21_1_runtime_resources.py"
+      - "crates/horizon-client-render/examples/validate_1_21_1_resources.rs"
       - "ports/1.21.1/recipe-serializers.json"
       - "ports/1.21.1/data-component-ids.json"
 
