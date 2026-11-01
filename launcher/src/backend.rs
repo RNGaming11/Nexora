@@ -79,10 +79,29 @@ const LAUNCHER_BINARY: &str = if cfg!(windows) {
 };
 
 pub(crate) const CLIENT: &str = if cfg!(windows) {
-    "nexora-client.exe"
+    "horizon-client.exe"
 } else {
-    "nexora-client"
+    "horizon-client"
 };
+
+const CLIENT_1_21_1: &str = if cfg!(windows) {
+    "horizon-client-1-21-1.exe"
+} else {
+    "horizon-client-1-21-1"
+};
+
+fn client_binary_name_for_version(version: &str) -> &'static str {
+    if version == "1.21.1" { CLIENT_1_21_1 } else { CLIENT }
+}
+
+fn client_binary_name_at(dir: &Path) -> &'static str {
+    client_binary_name_for_version(&game_version_at(dir))
+}
+
+fn client_binary(tag: &str) -> PathBuf {
+    let dir = version_dir(tag);
+    dir.join(client_binary_name_at(&dir))
+}
 
 /// The agent `url` is fetched with: the launcher's own user agent, through the player's proxy when
 /// one is set (`proxy`).
@@ -556,7 +575,7 @@ pub fn mod_api_level(tag: &str) -> u32 {
     if let Some(&(_, level)) = levels.iter().find(|(t, _)| t == tag) {
         return level;
     }
-    let level = program_mod_api_level(&version_dir(tag).join(CLIENT));
+    let level = program_mod_api_level(&client_binary(tag));
     levels.push((tag.to_owned(), level));
     level
 }
@@ -717,13 +736,18 @@ pub(crate) fn install_as(
         [only] if only.path().is_dir() => only.path(),
         _ => unpacked.clone(),
     };
-    if !top.join(CLIENT).exists() {
-        return Err(format!("The download has no {CLIENT}"));
+    let client = top.join(client_binary_name_at(&top));
+    if !client.exists() {
+        return Err(format!(
+            "The download targets Minecraft {} but has no {}",
+            game_version_at(&top),
+            client.file_name().unwrap_or_default().to_string_lossy()
+        ));
     }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(top.join(CLIENT), fs::Permissions::from_mode(0o755));
+        let _ = fs::set_permissions(&client, fs::Permissions::from_mode(0o755));
     }
     let target = version_dir(tag);
     let _ = fs::remove_dir_all(&target);
@@ -2169,12 +2193,13 @@ pub fn client_command(tag: &str) -> Command {
 /// show Nexora's name and icon (game_app.rs); the bare binary elsewhere, or if that fails.
 fn client_program(tag: &str) -> PathBuf {
     let dir = version_dir(tag);
+    let client = client_binary_name_at(&dir);
     #[cfg(target_os = "macos")]
-    match crate::game_app::ensure(&dir) {
+    match crate::game_app::ensure(&dir, client) {
         Ok(program) => return program,
         Err(e) => eprintln!("Starting the game outside {}: {e}", crate::game_app::APP),
     }
-    dir.join(CLIENT)
+    dir.join(client)
 }
 
 pub fn server_command(tag: &str, folder: &Path) -> Command {
@@ -3403,6 +3428,19 @@ pub fn {f}("
         let resolved = sources::resolve(&empty, &pins, &[], &linked, &fetch, &log);
         assert_eq!(assets_folder(resolved, &empty, "26.3", &log), empty);
         assert!(lines.borrow().last().unwrap().contains("will be silent"));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn launcher_selects_the_matching_client_binary_for_each_game_version() {
+        assert_eq!(client_binary_name_for_version("26.3"), CLIENT);
+        assert_eq!(client_binary_name_for_version("1.21.1"), CLIENT_1_21_1);
+        assert_eq!(client_binary_name_at(Path::new("missing-version")), CLIENT);
+        let dir = std::env::temp_dir().join(format!("nexora-client-target-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("research-lock.json"), r#"{"minecraft":{"version":"1.21.1"}}"#).unwrap();
+        assert_eq!(client_binary_name_at(&dir), CLIENT_1_21_1);
         fs::remove_dir_all(&dir).unwrap();
     }
 
