@@ -9,8 +9,9 @@ import sys
 import zipfile
 
 try:
-    from . import class_index, lab, version_port
+    from . import build_1_21_1_runtime_resources, class_index, lab, version_port
 except ImportError:
+    import build_1_21_1_runtime_resources
     import class_index
     import lab
     import version_port
@@ -126,9 +127,19 @@ def main():
         "server": mapping_stats(artifacts["server_mappings"]),
     }
 
-    if not reports.exists():
+    required_reports = ("registries.json", "commands.json", "blocks.json", "packets.json")
+    if args.force or any(not (reports / name).is_file() for name in required_reports):
         print("Running the official 1.21.1 server data generator with Java 21", flush=True)
         version_port.run_datagen(artifacts["server"], reports, EXPECTED["java_version"])
+    missing_reports = [name for name in required_reports if not (reports / name).is_file()]
+    if missing_reports:
+        raise ValueError(f"1.21.1 data generator did not produce required reports: {missing_reports}")
+
+    runtime_resources = directory / "runtime-resources"
+    print("Building local Minecraft 1.21.1 runtime resources", flush=True)
+    runtime_summary = build_1_21_1_runtime_resources.build(
+        artifacts["client"], artifacts["server_game"], reports, runtime_resources
+    )
 
     print("Indexing raw obfuscated class names for provenance", flush=True)
     classes = class_index.index_jars(
@@ -240,7 +251,9 @@ def main():
         "mapped_class_count": len(mapped_classes),
         "mapped_method_count": sum(len(item["methods"]) for item in mapped_classes.values()),
         "mapping_applied_to_class_index": True,
-        "next_required_step": "Compare the mapped inventory against the 1.21.1-specific candidate baseline; raw obfuscated inventory is retained for provenance.",
+        "runtime_resources": str(runtime_resources.resolve()),
+        "runtime_resource_summary": runtime_summary,
+        "next_required_step": "Runtime resources and version-pinned built-in registries are prepared locally; gameplay packet integration and parity remain incomplete.",
     }
     lab.write_json(directory / "facts.json", facts)
     lab.write_json(directory / "prepared.json", record)
@@ -254,6 +267,8 @@ def main():
         "mapped_class_count": record["mapped_class_count"],
         "mapped_method_count": record["mapped_method_count"],
         "prepared_directory": str(directory.resolve()),
+        "runtime_resources": str(runtime_resources.resolve()),
+        "runtime_resource_summary": runtime_summary,
         "reports": str(reports.resolve()),
         "mapped_class_index": str(mapped_classes_path.resolve()),
         "client_server_diff": client_server_summary,
