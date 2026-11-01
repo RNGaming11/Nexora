@@ -95,7 +95,7 @@ impl Codec<SpawnInfo1211> for SpawnInfo1211 {
         let dimension_type = r.varint()?;
         let dimension = r.string(32767)?;
         let seed = r.i64()?;
-        let game_type = i32::from(r.i8()?);
+        let game_type = i32::from(r.u8()?);
         let previous_game_type = {
             let value = r.i8()?;
             (value != -1).then_some(i32::from(value))
@@ -125,7 +125,7 @@ impl Codec<SpawnInfo1211> for SpawnInfo1211 {
         w.varint(value.dimension_type);
         w.string(&value.dimension);
         w.i64(value.seed);
-        w.i8(value.game_type as i8);
+        w.u8(value.game_type as u8);
         w.i8(value.previous_game_type.map_or(-1, |v| v as i8));
         w.bool(value.debug);
         w.bool(value.flat);
