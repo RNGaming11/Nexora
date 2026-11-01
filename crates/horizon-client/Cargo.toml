@@ -85,6 +85,11 @@ wgpu = { version = "30.0.1", default-features = false, features = ["gles"] }
 # The icon resource in the .exe (build.rs).
 winresource = "0.1"
 
+[[bin]]
+name = "horizon-client-1-21-1"
+path = "src/main.rs"
+required-features = ["minecraft-1-21-1"]
+
 [features]
 default = ["audio", "controllers"]
 # Build against the isolated protocol-767 and Minecraft 1.21.1 version adapters.
