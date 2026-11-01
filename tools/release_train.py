@@ -511,7 +511,7 @@ def main():
     parser.add_argument("--kind", choices=["game", "launcher"], required=True)
     parser.add_argument("--head", help="the commit to release (default: the newest commit on the default branch whose checks passed)")
     parser.add_argument("--tag", help="notes: the release's tag")
-    parser.add_argument("--force", action="store_true", help="release even without player-facing changes, before merges settle, while paused or before parity-main passed")
+    parser.add_argument("--force", action="store_true", help="release even without player-facing changes, before merges settle, while paused or before the optional parity gate passed")
     parser.add_argument("--out", type=Path, help="notes: write title.txt and body.md here")
     parser.add_argument("--now", help="the time to decide at (ISO 8601; default now)")
     parser.add_argument("--smoke", type=Path, help="gate: the release smoke test's report (smoke-test.json)")
@@ -530,7 +530,7 @@ def main():
                 summary.write(f"### {line}\n")
         return 1 if problem else 0
 
-    # Game releases ship only a commit the vanilla harnesses passed on (parity-main, docs/release-flow.md).
+    # Game releases use hosted checks; parity-main is an optional extra gate for forks with a dedicated runner.
     parity = args.kind == "game" and args.command == "decide" and not args.force and REQUIRE_PARITY_MAIN
     head = args.head or green_main_head(parity)
     if not head:
