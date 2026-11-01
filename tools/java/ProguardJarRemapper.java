@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -23,6 +25,7 @@ public final class ProguardJarRemapper {
         private final Map<String, String> classes = new HashMap<>();
         private final Map<String, String> fields = new HashMap<>();
         private final Map<String, String> methods = new HashMap<>();
+        private final Map<String, List<String>> parents = new HashMap<>();
 
         Names(Path path) throws IOException {
             try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
@@ -54,14 +57,48 @@ public final class ProguardJarRemapper {
             return classes.getOrDefault(internalName, internalName);
         }
 
+        void addHierarchy(ClassReader reader) {
+            List<String> ancestors = new ArrayList<>();
+            if (reader.getSuperName() != null) {
+                ancestors.add(reader.getSuperName());
+            }
+            ancestors.addAll(List.of(reader.getInterfaces()));
+            parents.put(reader.getClassName(), ancestors);
+        }
+
+        private String inherited(
+            Map<String, String> members,
+            String owner,
+            String name,
+            String descriptor,
+            Set<String> visited
+        ) {
+            if (!visited.add(owner)) {
+                return null;
+            }
+            String direct = members.get(key(owner, name, descriptor));
+            if (direct != null) {
+                return direct;
+            }
+            for (String parent : parents.getOrDefault(owner, List.of())) {
+                String mapped = inherited(members, parent, name, descriptor, visited);
+                if (mapped != null) {
+                    return mapped;
+                }
+            }
+            return null;
+        }
+
         @Override
         public String mapFieldName(String owner, String name, String descriptor) {
-            return fields.getOrDefault(key(owner, name, descriptor), name);
+            String mapped = inherited(fields, owner, name, descriptor, new HashSet<>());
+            return mapped == null ? name : mapped;
         }
 
         @Override
         public String mapMethodName(String owner, String name, String descriptor) {
-            return methods.getOrDefault(key(owner, name, descriptor), name);
+            String mapped = inherited(methods, owner, name, descriptor, new HashSet<>());
+            return mapped == null ? name : mapped;
         }
     }
 
@@ -136,6 +173,17 @@ public final class ProguardJarRemapper {
         long resources = 0;
         try (ZipFile source = new ZipFile(input.toFile());
              ZipOutputStream destination = new ZipOutputStream(Files.newOutputStream(output))) {
+            var hierarchyEntries = source.entries();
+            while (hierarchyEntries.hasMoreElements()) {
+                ZipEntry entry = hierarchyEntries.nextElement();
+                if (entry.isDirectory() || !entry.getName().endsWith(".class")) {
+                    continue;
+                }
+                try (var stream = source.getInputStream(entry)) {
+                    remapper.addHierarchy(new ClassReader(stream));
+                }
+            }
+
             var entries = source.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry entry = entries.nextElement();
