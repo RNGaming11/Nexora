@@ -488,6 +488,49 @@ impl Component {
             }
         })
     }
+    pub(crate) fn read_1_21_1(kind: i32, r: &mut Reader) -> Result<Self> {
+        use component::*;
+        let codec = match kind {
+            0 => CUSTOM_DATA, 1 => MAX_STACK_SIZE, 2 => MAX_DAMAGE, 3 => DAMAGE,
+            5 => CUSTOM_NAME, 6 => ITEM_NAME, 7 => LORE, 8 => RARITY,
+            9 => ENCHANTMENTS, 16 => REPAIR_COST, 18 => ENCHANTMENT_GLINT_OVERRIDE,
+            23 => STORED_ENCHANTMENTS, 24 => DYED_COLOR, 26 => MAP_ID,
+            28 => MAP_POST_PROCESSING, 32 => SUSPICIOUS_STEW_EFFECTS,
+            33 => WRITABLE_BOOK_CONTENT, 34 => WRITTEN_BOOK_CONTENT, 35 => TRIM,
+            40 => INSTRUMENT, 41 => OMINOUS_BOTTLE_AMPLIFIER,
+            44 => LODESTONE_TRACKER, 45 => FIREWORK_EXPLOSION, 46 => FIREWORKS,
+            49 => BANNER_PATTERNS, 50 => BASE_COLOR,
+            4 | 14 | 15 | 17 | 19 | 21 => return Ok(Self::Unit),
+            other => {
+                let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
+                return Err(crate::Error::new(format!("unsupported protocol-767 item component {name} (id {other})")));
+            }
+        };
+        Self::read(codec, r)
+    }
+
+    pub(crate) fn write_1_21_1(&self, kind: i32, w: &mut Writer) -> Result<()> {
+        use component::*;
+        let codec = match kind {
+            0 => CUSTOM_DATA, 1 => MAX_STACK_SIZE, 2 => MAX_DAMAGE, 3 => DAMAGE,
+            5 => CUSTOM_NAME, 6 => ITEM_NAME, 7 => LORE, 8 => RARITY,
+            9 => ENCHANTMENTS, 16 => REPAIR_COST, 18 => ENCHANTMENT_GLINT_OVERRIDE,
+            23 => STORED_ENCHANTMENTS, 24 => DYED_COLOR, 26 => MAP_ID,
+            28 => MAP_POST_PROCESSING, 32 => SUSPICIOUS_STEW_EFFECTS,
+            33 => WRITABLE_BOOK_CONTENT, 34 => WRITTEN_BOOK_CONTENT, 35 => TRIM,
+            40 => INSTRUMENT, 41 => OMINOUS_BOTTLE_AMPLIFIER,
+            44 => LODESTONE_TRACKER, 45 => FIREWORK_EXPLOSION, 46 => FIREWORKS,
+            49 => BANNER_PATTERNS, 50 => BASE_COLOR,
+            4 | 14 | 15 | 17 | 19 | 21 if matches!(self, Self::Unit) => return Ok(()),
+            other => {
+                let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
+                return Err(crate::Error::new(format!("unsupported protocol-767 item component {name} (id {other})")));
+            }
+        };
+        self.write(codec, w);
+        Ok(())
+    }
+
     /// The layers of encoded `BannerPatternLayers` whose patterns are all
     /// registry references (`None` when one is direct).
     fn banner_layers(bytes: &[u8]) -> Option<Vec<(i32, i32)>> {
@@ -688,6 +731,23 @@ impl WirePatch {
 impl WirePatch {
     /// The components and removals a patch in this form holds, read as
     /// [`DelimitedSlot`] does.
+    pub fn decode_1_21_1(patch: &[u8]) -> Result<(Vec<(i32, Component)>, Vec<i32>)> {
+        let mut r = Reader::new(patch);
+        let positive = r.count(65536)?;
+        let negative = r.count(65536)?;
+        let mut added = Vec::with_capacity(positive.min(64));
+        for _ in 0..positive {
+            let kind = r.varint()?;
+            let len = r.count(r.remaining())?;
+            added.push((kind, Component::read_1_21_1(kind, &mut Reader::new(r.bytes(len)?))?));
+        }
+        let removed = (0..negative).map(|_| r.varint()).collect::<Result<_>>()?;
+        if r.remaining() != 0 {
+            return Err(crate::Error::new("trailing bytes in protocol-767 component patch"));
+        }
+        Ok((added, removed))
+    }
+
     pub fn decode(patch: &[u8]) -> Result<(Vec<(i32, Component)>, Vec<i32>)> {
         let mut r = Reader::new(patch);
         let positive = r.count(65536)?;
@@ -961,6 +1021,34 @@ mod tests {
         assert!(WirePatch::adds(&w.data, component::CAN_BREAK));
         assert!(!WirePatch::adds(&w.data, component::ENCHANTMENTS));
         assert!(!WirePatch::adds(&[], component::CAN_BREAK));
+    }
+
+    #[test]
+    fn protocol_767_component_ids_use_verified_1211_codecs() {
+        let mut patch = Writer::new();
+        patch.varint(4); patch.varint(1);
+        patch.varint(1); patch.byte_array(&[7]);
+        patch.varint(4); patch.byte_array(&[]);
+        patch.varint(18); patch.byte_array(&[1]);
+        patch.varint(24); patch.byte_array(&[0, 0, 0, 42]);
+        patch.varint(21);
+        let (added, removed) = WirePatch::decode_1_21_1(&patch.data).unwrap();
+        assert_eq!(added[0], (1, Component::Int(7)));
+        assert_eq!(added[1], (4, Component::Unit));
+        assert_eq!(added[2], (18, Component::Bool(true)));
+        assert_eq!(added[3], (24, Component::Int(42)));
+        assert_eq!(removed, vec![21]);
+        let mut encoded = Writer::new();
+        for (id, value) in &added { value.write_1_21_1(*id, &mut encoded).unwrap(); }
+        assert_eq!(encoded.data, [7, 1, 0, 0, 0, 42]);
+    }
+
+    #[test]
+    fn protocol_767_component_decoder_rejects_unverified_formats() {
+        let mut patch = Writer::new();
+        patch.varint(1); patch.varint(0); patch.varint(13);
+        patch.byte_array(&[1, 2, 3, 4]);
+        assert!(WirePatch::decode_1_21_1(&patch.data).is_err());
     }
 
     #[test]
