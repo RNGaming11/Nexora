@@ -87,7 +87,7 @@ def main() -> None:
     facts = build(args.report, args.data_version)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(
-        json.dumps(facts, separators=(",", ":"), ensure_ascii=False) + "\\n",
+        json.dumps(facts, separators=(",", ":"), ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     print(
