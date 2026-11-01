@@ -12,8 +12,9 @@ The platform jobs then build the Linux, Windows and macOS packages. macOS packag
 fork owner separately configures an Apple Developer ID signing environment. The release checksum signature is a
 separate Ed25519 key and must be configured in this fork's `release` GitHub environment.
 
-The operational details below describe the inherited upstream Horizon infrastructure and should not be used to
-configure runners for this Nexora fork.
+The inherited upstream operational details below are historical reference only. In this fork, parity-main and PR
+vanilla parity are disabled by default. Set the repository variable `NEXORA_REQUIRE_PARITY_MAIN=1` only if you later
+configure a dedicated parity runner; the hosted release gate otherwise uses `checks` and the game smoke test.
 
 
 How a change gets from a pull request to players: the checks a pull request passes, how it merges, and the
