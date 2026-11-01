@@ -1,5 +1,5 @@
 //! Modrinth's public API (api.modrinth.com/v2): no key, files with SHA-512 and SHA-1.
-use super::{details, FileRef, Kind, Project, Query, Source, SourceId, Version, GAME};
+use super::{details, FileRef, Kind, Project, Query, Source, SourceId, Version};
 use serde_json::Value;
 
 const API: &str = "https://api.modrinth.com/v2";
@@ -37,7 +37,7 @@ pub(super) fn facets(query: &Query) -> String {
         None if !query.everything
             && matches!(query.kind, Kind::ResourcePack | Kind::Mod | Kind::DataPack) =>
         {
-            all.push(vec![format!("versions:{GAME}")])
+            all.push(vec![format!("versions:{}", query.game_version)])
         }
         None => {}
     }
