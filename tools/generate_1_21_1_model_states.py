@@ -40,12 +40,16 @@ def build(report_path: Path) -> dict:
 
         schema = {}
         for name in property_names:
-            values = {properties[name] for properties in state_properties}
+            values = []
+            for properties in state_properties:
+                value = properties[name]
+                if value not in values:
+                    values.append(value)
             if values and all(_INTEGER.fullmatch(value) for value in values):
                 numbers = [int(value) for value in values]
                 schema[name] = {"integer": [min(numbers), max(numbers)]}
             else:
-                schema[name] = {"named": sorted(values)}
+                schema[name] = {"named": values}
 
         output[block_name] = {"schema": schema, "states": state_properties}
     return output
