@@ -16,7 +16,7 @@ name: launcher
 
 on:
   push:
-    branches: [main, launcher, 'launcher-*', 'nexora/master', 'nexora/1.21.1-port-baseline']
+    branches: [nexora/master, launcher, 'launcher-*', 'nexora/1.21.1-port-baseline']
     paths:
       # Every crate the launcher builds in, as tools/release_train.py's LAUNCHER_PATHS.
       - 'launcher/**'
@@ -45,7 +45,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: launcher-${{ github.ref == 'refs/heads/main' && 'release' || github.ref }}
+  group: launcher-${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && 'release' || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -64,11 +64,12 @@ jobs:
           fetch-depth: 0
       - id: mode
         # Off main every run is a dry run (a launcher branch's push only builds).
-        run: echo "dry_run=${{ github.ref != 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.dry_run) }}" >> "$GITHUB_OUTPUT"
+        run: echo "dry_run=${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) || (github.event_name == 'workflow_dispatch' && inputs.dry_run) }}" >> "$GITHUB_OUTPUT"
       - id: decide
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASES_PAUSED: ${{ vars.RELEASES_PAUSED }}
+          NEXORA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           # A push or a run off main builds its own commit; otherwise main's newest commit with green checks.
           HEAD_SHA: ${{ (github.event_name == 'push' || steps.mode.outputs.dry_run == 'true') && github.sha || '' }}
           FORCE: ${{ inputs.force && 'yes' || '' }}
@@ -120,8 +121,8 @@ jobs:
       HORIZON_CURSEFORGE_API_KEY: ${{ secrets.HORIZON_CURSEFORGE_API_KEY }}
       # The release's version and tag, built in (launcher/src/backend.rs VERSION and own_tag: the tag says which
       # line it is on, docs/versioning.md); a launcher branch's build keeps Cargo.toml's.
-      NEXORA_LAUNCHER_VERSION: ${{ (github.event_name != 'push' || github.ref == 'refs/heads/main') && needs.decide.outputs.version || '' }}
-      NEXORA_LAUNCHER_TAG: ${{ (github.event_name != 'push' || github.ref == 'refs/heads/main') && needs.decide.outputs.tag || '' }}
+      NEXORA_LAUNCHER_VERSION: ${{ (github.event_name != 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) && needs.decide.outputs.version || '' }}
+      NEXORA_LAUNCHER_TAG: ${{ (github.event_name != 'push' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) && needs.decide.outputs.tag || '' }}
     defaults:
       run:
         working-directory: launcher
