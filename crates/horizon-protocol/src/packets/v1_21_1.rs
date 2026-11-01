@@ -1162,10 +1162,79 @@ pub fn decode_play_serverbound(id: i32, payload: &[u8]) -> Result<MissingPacket>
     Ok(packet)
 }
 
+fn frame_1_21_1_play_packet(id: i32, payload: &[u8]) -> Vec<u8> {
+    let mut out = Writer::new();
+    out.varint(id);
+    out.bytes(payload);
+    out.data
+}
+
+fn encode_chat_1_21_1(packet: play_packets::Chat) -> Result<Vec<u8>> {
+    let mut payload = Writer::new();
+    payload.string(&packet.message);
+    payload.i64(packet.timestamp);
+    payload.i64(packet.salt);
+    match packet.signature {
+        Some(signature) => {
+            if signature.len() != 256 {
+                return Err(Error::new(format!(
+                    "protocol-767 chat signature has {} bytes; expected 256",
+                    signature.len()
+                )));
+            }
+            payload.bool(true);
+            payload.bytes(&signature);
+        }
+        None => payload.bool(false),
+    }
+    payload.varint(packet.last_seen.offset);
+    payload.bytes(&packet.last_seen.acknowledged);
+    Ok(frame_1_21_1_play_packet(
+        crate::packet_ids_1_21_1::play::serverbound::CHAT,
+        &payload.data,
+    ))
+}
+
+fn encode_signed_chat_command_1_21_1(
+    packet: play_packets::ChatCommandSigned,
+) -> Result<Vec<u8>> {
+    if packet.arguments.len() > 8 {
+        return Err(Error::new(format!(
+            "protocol-767 signed command has {} argument signatures; maximum is 8",
+            packet.arguments.len()
+        )));
+    }
+    let mut payload = Writer::new();
+    payload.string(&packet.command);
+    payload.i64(packet.timestamp);
+    payload.i64(packet.salt);
+    payload.varint(packet.arguments.len() as i32);
+    for (name, signature) in packet.arguments {
+        if name.chars().count() > 16 || signature.len() != 256 {
+            return Err(Error::new(format!(
+                "invalid protocol-767 argument signature {name:?} ({} bytes)",
+                signature.len()
+            )));
+        }
+        payload.string(&name);
+        payload.bytes(&signature);
+    }
+    payload.varint(packet.last_seen.offset);
+    payload.bytes(&packet.last_seen.acknowledged);
+    Ok(frame_1_21_1_play_packet(
+        crate::packet_ids_1_21_1::play::serverbound::CHAT_COMMAND_SIGNED,
+        &payload.data,
+    ))
+}
+
 /// Re-encode a shared play packet with its protocol-767 packet ID. Only
 /// serverbound payloads whose layouts are verified for 1.21.1 are accepted.
 pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Result<Vec<u8>> {
     match packet {
+        play_packets::Serverbound::Chat(packet) => return encode_chat_1_21_1(packet),
+        play_packets::Serverbound::ChatCommandSigned(packet) => {
+            return encode_signed_chat_command_1_21_1(packet);
+        }
         play_packets::Serverbound::PlayerLoaded(_) => return Ok(Vec::new()),
         play_packets::Serverbound::ContainerClick(value) => {
             let click = inventory::ContainerClick {
@@ -1201,6 +1270,9 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
     if !matches!(
         name,
         "accept_teleportation"
+            | "chat_ack"
+            | "chat_command"
+            | "chat_session_update"
             | "chunk_batch_received"
             | "client_command"
             | "configuration_acknowledged"
