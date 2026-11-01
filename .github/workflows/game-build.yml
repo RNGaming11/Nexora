@@ -1,7 +1,7 @@
 name: game build
 # Builds packages on GitHub-hosted runners. Pinned Mojang files are downloaded to an ephemeral Linux exporter job
-# and SHA-1 checked against research-lock.json; only Nexora exporter classes and prepared resources are passed to
-# the platform builds. No maintainer-owned Mac or self-hosted runner is required.
+# and SHA-1 checked against research-lock.json. Only Nexora exporter classes leave that job; prepared resources
+# stay on the ephemeral runner for its smoke test. No maintainer-owned Mac or self-hosted runner is required.
 # Called by release.yml and nightly-build.yml. It holds no secrets: signing the checksums is the caller's job.
 on:
   workflow_call:
@@ -60,7 +60,6 @@ jobs:
       - name: Download pinned Mojang inputs
         run: python3 tools/ci/download_pinned_minecraft.py
       - name: Prepare resources and compile original exporters
-        id: prepared
         shell: bash
         run: |
           set -euo pipefail
