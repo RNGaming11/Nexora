@@ -1088,7 +1088,7 @@ fn decode_player_info_update_1_21_1(
                 entry.game_mode = Some(reader.varint()?);
             }
             if actions & 8 != 0 {
-                entry.listed = Some(reader.bool()?);
+                entry.listed = Some(reader.varint()? != 0);
             }
             if actions & 16 != 0 {
                 entry.latency = Some(reader.varint()?);
@@ -2642,7 +2642,7 @@ mod live_inventory_tests {
         payload.byte_array(&[1, 2, 3]);
         payload.byte_array(&[4, 5, 6]);
         payload.varint(1);
-        payload.bool(true);
+        payload.varint(1);
         payload.varint(55);
         payload.bool(true);
         payload.nbt(&Tag::String("Alex".into()));
