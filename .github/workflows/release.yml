@@ -13,7 +13,7 @@ name: release
 on:
   workflow_run:
     # A game release ships a commit both passed on (parity-main runs on batches: the newest commit it passed on).
-    workflows: [checks, parity-main]
+    workflows: [checks]
     types: [completed]
     branches: [nexora/master]
   schedule:
@@ -32,7 +32,7 @@ permissions:
   contents: read
   # The open release-blocker issues (decide).
   issues: read
-  # The checks, parity-main and nightly build runs (decide).
+  # The checks and nightly build runs (decide).
   actions: read
 concurrency:
   # One release at a time. A hand-started dry run publishes nothing, so it can't race a real release: it gets a
@@ -65,8 +65,7 @@ jobs:
           RELEASES_PAUSED: ${{ vars.RELEASES_PAUSED }}
           NEXORA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           NEXORA_REQUIRE_PARITY_MAIN: ${{ vars.NEXORA_REQUIRE_PARITY_MAIN || '0' }}
-          # The commit whose checks or parity-main just passed; a dry run builds the branch it was started on;
-          # otherwise main's newest commit with green checks and parity-main.
+          # The commit whose checks just passed; otherwise the default branch's newest green checks commit.
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || (steps.mode.outputs.dry_run == 'true' && github.sha) || '' }}
           FORCE: ${{ inputs.force && 'yes' || '' }}
         run: |
