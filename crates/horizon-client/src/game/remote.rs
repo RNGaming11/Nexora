@@ -45,6 +45,21 @@ use horizon_world::{
     registry::BlockStateId,
     stepped_interpolation::{Path, PosRot, Start, SteppedInterpolation},
 };
+fn experience_orb(id: i32, position: [f64; 3], value: i16) -> ExperienceOrb {
+    let at = Vec3::new(position[0], position[1], position[2]);
+    ExperienceOrb {
+        id: id as u32,
+        position: at,
+        previous: at,
+        velocity: Vec3::ZERO,
+        value: u32::try_from(value).unwrap_or(0),
+        age: 0,
+        on_ground: false,
+        count: 1,
+        ticks: 0,
+    }
+}
+
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -1494,6 +1509,10 @@ impl Game<'_> {
                     self.offer_reconnect(retry);
                     return Ok(());
                 }
+                Event::ExperienceOrb { id, position, value } => {
+                    self.orbs.retain(|orb| orb.id != id as u32);
+                    self.orbs.push(experience_orb(id, position, value));
+                }
                 Event::Packet(packet) => self.handle_packet(*packet)?,
             }
             chunks += started.map_or(Duration::ZERO, |t| t.elapsed());
@@ -1975,17 +1994,7 @@ impl Game<'_> {
         if kind == "minecraft:experience_orb" {
             // Its value (ExperienceOrb.DATA_VALUE) follows in SetEntityData.
             self.orbs.retain(|o| o.id != id as u32);
-            self.orbs.push(ExperienceOrb {
-                id: id as u32,
-                position: at,
-                previous: at,
-                velocity: Vec3::ZERO,
-                value: 1,
-                age: 0,
-                on_ground: false,
-                count: 1,
-                ticks: 0,
-            });
+            self.orbs.push(experience_orb(id, position, 1));
         }
         if let Some(t) = mob_type {
             let mut mob = Mob::new(id as u32, t, at, head);
@@ -8682,6 +8691,23 @@ fn client_millis() -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn protocol_767_experience_orb_spawn_preserves_server_value_and_position() {
+        let orb = experience_orb(42, [1.5, 64.0, -2.25], 7);
+        assert_eq!(orb.id, 42);
+        assert_eq!(orb.position, Vec3::new(1.5, 64.0, -2.25));
+        assert_eq!(orb.previous, orb.position);
+        assert_eq!(orb.value, 7);
+        assert_eq!(orb.count, 1);
+    }
+
+    #[test]
+    fn protocol_767_experience_orb_rejects_negative_values_as_zero() {
+        assert_eq!(experience_orb(1, [0.0; 3], -1).value, 0);
+    }
+
     use super::synced_local_use;
 
     #[test]
