@@ -180,6 +180,7 @@ def build(
     heightmap_predicates: dict | None = None,
     gameplay_facts: Path | None = None,
     block_behaviours: Path | None = None,
+    entity_types: Path | None = None,
 ) -> dict:
     client_jar = client_jar.resolve()
     server_game_jar = server_game_jar.resolve()
@@ -255,6 +256,24 @@ def build(
                 raise ValueError(f"1.21.1 block behaviour state {index} is malformed")
         shutil.copyfile(block_behaviours, stage / "block-behaviours.json")
 
+        if entity_types is None or not entity_types.is_file():
+            raise ValueError("official 1.21.1 entity type facts are required for runtime resources")
+        entity_facts = json.loads(entity_types.read_text(encoding="utf-8"))
+        expected_entity_types = inventory["registries"].get("minecraft:entity_type")
+        if (
+            not isinstance(entity_facts, dict)
+            or not isinstance(expected_entity_types, list)
+            or set(entity_facts) != set(expected_entity_types)
+        ):
+            raise ValueError("1.21.1 entity type facts do not match the built-in entity registry")
+        for name, entry in entity_facts.items():
+            if not isinstance(entry, dict) or any(
+                not isinstance(entry.get(field), (int, float))
+                for field in ("width", "height", "eye_height")
+            ):
+                raise ValueError(f"1.21.1 entity type facts are malformed for {name}")
+        shutil.copyfile(entity_types, stage / "entity-types.json")
+
         if heightmap_predicates is None:
             raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
         motion = heightmap_predicates.get("motion")
@@ -306,6 +325,7 @@ def build(
             "gameplay_fact_state_count": len(gameplay_states),
             "block_behaviour_block_count": len(behaviour_blocks),
             "block_behaviour_state_count": len(behaviour_states),
+            "entity_type_count": len(entity_facts),
             "block_tag_count": len(client_tags),
             "item_component_item_count": item_count,
             "biome_parameter_file_count": biome_count,
@@ -331,6 +351,7 @@ def main() -> None:
     parser.add_argument("--heightmap-predicates", required=True, type=Path)
     parser.add_argument("--gameplay-facts", required=True, type=Path)
     parser.add_argument("--block-behaviours", required=True, type=Path)
+    parser.add_argument("--entity-types", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     heightmap_predicates = json.loads(args.heightmap_predicates.read_text(encoding="utf-8"))
@@ -342,6 +363,7 @@ def main() -> None:
         heightmap_predicates,
         args.gameplay_facts,
         args.block_behaviours,
+        args.entity_types,
     )
     print(json.dumps({
         "runtime_resources": str(args.out.resolve()),
