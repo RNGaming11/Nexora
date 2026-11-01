@@ -1088,6 +1088,36 @@ fn receive_play_1_21_1(
                     return Ok("Disconnected".into());
                 }
             }
+            target::PlayPacket1211::MoveEntityPos(packet) => {
+                if send
+                    .send(Event::Packet(Box::new(
+                        play::Clientbound::MoveEntityPos(packet),
+                    )))
+                    .is_err()
+                {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::MoveEntityPosRot(packet) => {
+                if send
+                    .send(Event::Packet(Box::new(
+                        play::Clientbound::MoveEntityPosRot(packet),
+                    )))
+                    .is_err()
+                {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::MoveEntityRot(packet) => {
+                if send
+                    .send(Event::Packet(Box::new(
+                        play::Clientbound::MoveEntityRot(packet),
+                    )))
+                    .is_err()
+                {
+                    return Ok("Disconnected".into());
+                }
+            }
             target::PlayPacket1211::ResourcePackPush(packet) => {
                 let _ = send.send(Event::PackPush(packet));
             }
