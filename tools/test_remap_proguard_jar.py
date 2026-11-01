@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from tools.proguard import ProguardMappings
-from tools.remap_proguard_jar import asm_libraries, write_mapping_table
+from tools.remap_proguard_jar import JVM_EXPORTS, write_mapping_table
 
 
 class ProguardJarRemapperTests(unittest.TestCase):
@@ -31,17 +31,14 @@ net.minecraft.world.level.levelgen.Heightmap$Types -> d:
             )
             self.assertIn("C\td\tnet/minecraft/world/level/levelgen/Heightmap$Types", rows)
 
-    def test_selects_asm_core_and_commons_from_bundled_server_libraries(self):
-        libraries = [
-            Path("cache/libraries/com/google/guava/guava/33.0/guava-33.0.jar"),
-            Path("cache/libraries/org/ow2/asm/asm/9.6/asm-9.6.jar"),
-            Path("cache/libraries/org/ow2/asm/asm-commons/9.6/asm-commons-9.6.jar"),
-        ]
-        self.assertEqual(asm_libraries(libraries), libraries[1:])
-
-    def test_rejects_missing_asm_commons(self):
-        with self.assertRaisesRegex(ValueError, "ASM and asm-commons"):
-            asm_libraries([Path("cache/org/ow2/asm/asm/9.6/asm-9.6.jar")])
+    def test_remapper_uses_only_the_jdk_21_internal_asm_modules(self):
+        self.assertEqual(len(JVM_EXPORTS), 2)
+        self.assertTrue(
+            any("jdk.internal.org.objectweb.asm=" in value for value in JVM_EXPORTS)
+        )
+        self.assertTrue(
+            any("jdk.internal.org.objectweb.asm.commons=" in value for value in JVM_EXPORTS)
+        )
 
 
 if __name__ == "__main__":
