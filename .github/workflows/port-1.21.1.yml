@@ -42,6 +42,8 @@ jobs:
         run: cargo test -p horizon-world
       - name: Workspace compile check
         run: cargo check --workspace
+      - name: Minecraft 1.21.1 client profile compile check
+        run: cargo check -p horizon-client --features minecraft-1-21-1
       - name: Packet codec coverage audit
         shell: pwsh
         run: |
