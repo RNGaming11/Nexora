@@ -10,7 +10,7 @@
 
 A nightly builds main plus the pull requests the trusted reviewers picked (the set: tools/ci/nightly_set.py), merged
 in their order and pushed as nightly/build-<date>-<n>; with no set, main alone. Main is its newest commit where
-`checks` and `parity-main` passed, as for a release (release_train.green_main_head), or NIGHTLY_BASE when the caller
+`checks` (and optional `parity-main`) passed, as for a release (release_train.green_main_head), or NIGHTLY_BASE when the caller
 gives that commit. It is published as the `nightly` pre-release; the previous one stays a week as nightly-<date>.
 Its notes list what reached main since the previous nightly, then the picked pull requests. Runs from main's
 checkout with `gh`; it reads and merges the branches with git and never runs anything from them.
@@ -207,11 +207,10 @@ def build_set(main: Ref, prs: list[dict], left_out: list[str], today: str, force
 
 
 def green_base(repo: str, issue: str) -> Ref:
-    """The main commit a nightly builds on: NIGHTLY_BASE, else main's newest commit where checks and parity-main
-    passed (what releases ship), so a merge that breaks main holds nightlies too."""
+    """The default-branch commit a nightly builds on: NIGHTLY_BASE, else its newest commit with required checks green."""
     sha = os.environ.get("NIGHTLY_BASE", "").strip() or train.green_main_head(parity=train.REQUIRE_PARITY_MAIN)
     if not sha:
-        stop(repo, issue, "the build stopped: the default branch's newest checks or parity-main run did not pass, so no commit of "
+        stop(repo, issue, "the build stopped: the default branch's newest required checks did not pass, so no commit of "
                           "main is green to build on. The next build after they pass takes it.")
     if not is_ancestor(sha, f"refs/remotes/origin/{train.DEFAULT_BRANCH}"):
         stop(repo, issue, f"the build stopped: {sha[:9]} is not on the default branch.")
