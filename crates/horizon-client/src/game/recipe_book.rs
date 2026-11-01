@@ -10,7 +10,7 @@ use horizon_client::{
     hud::{HudBatch, Rect, rgba},
     items::ItemStack,
     menu::place::{PostPlace, Stacked},
-    recipe_book::{Book, BookType, ClientBook, Collection, Entry, GhostTarget, Tab},
+    recipe_book::{Book, BookType, ClientBook, Collection, Entry, GhostTarget, RecipeIndex, Tab},
     recipe_book_screen::{
         self as screen, ButtonView, Call, Drawn, GhostView, ItemCall, OverlayRecipe, OverlayView,
         Screen as Layout, Search, TabView,
@@ -29,6 +29,41 @@ const HEIGHT: f32 = 166.0;
 const SWAP_TICKS: f32 = 30.0;
 /// Widest GUI at which the book sits next to the menu (`widthTooNarrow`).
 const NARROW: f32 = 379.0;
+
+/// Applies the 1.21.1 recipe identifier packet to the shared display-based book.
+fn apply_legacy_recipe_packet(
+    book: &mut ClientBook,
+    index: &RecipeIndex,
+    action: i32,
+    recipes: &[String],
+    highlights: &[String],
+) -> bool {
+    match action {
+        0 => book.clear(),
+        1 | 2 => {}
+        _ => return false,
+    }
+    if action == 2 {
+        for id in recipes {
+            for display in index.display_ids(id) {
+                book.remove(display);
+            }
+        }
+    } else {
+        for id in recipes {
+            for display in index.display_ids(id) {
+                book.add(display);
+            }
+        }
+        for id in highlights {
+            for display in index.display_ids(id) {
+                book.highlight.insert(display);
+            }
+        }
+    }
+    true
+}
+
 
 /// A ghost recipe slot: the items it cycles through.
 struct Ghost {
@@ -1000,28 +1035,14 @@ impl Game<'_> {
     ) {
         let index = &world_stations!(self).recipe_index;
         let ui = &mut self.recipe_ui;
-        match p.action {
-            0 => ui.client.clear(),
-            1 | 2 => {}
-            _ => return,
-        }
-        if p.action == 2 {
-            for id in &p.recipes {
-                for display in index.display_ids(id) {
-                    ui.client.remove(display);
-                }
-            }
-        } else {
-            for id in &p.recipes {
-                for display in index.display_ids(id) {
-                    ui.client.add(display);
-                }
-            }
-            for id in &p.highlights {
-                for display in index.display_ids(id) {
-                    ui.client.highlight.insert(display);
-                }
-            }
+        if !apply_legacy_recipe_packet(
+            &mut ui.client,
+            index,
+            p.action,
+            &p.recipes,
+            &p.highlights,
+        ) {
+            return;
         }
         for (i, (open, filtering)) in p.book_settings.books.into_iter().enumerate() {
             self.level.recipe_book.open[i] = open;
@@ -1485,5 +1506,45 @@ fn sub_rect(r: Rect, [x, y, w, h]: [f32; 4]) -> Rect {
         v1: r.v0 + (y + h) * dv,
         w: w as u32,
         h: h as u32,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_recipe_book_init_add_and_remove_use_shared_display_ids() {
+        let root = std::env::temp_dir().join(format!("nexora-legacy-recipes-{}", std::process::id()));
+        let recipes = root.join("data/minecraft/recipe");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&recipes).unwrap();
+        let recipe = r#"{"type":"minecraft:crafting_shaped","result":{"id":"minecraft:oak_planks"}}"#;
+        std::fs::write(recipes.join("a.json"), recipe).unwrap();
+        std::fs::write(recipes.join("b.json"), recipe).unwrap();
+        let index = RecipeIndex::load(&root, &horizon_world::loot::PackOverlay::NONE);
+        let mut book = ClientBook::default();
+
+        assert!(apply_legacy_recipe_packet(
+            &mut book, &index, 0,
+            &["minecraft:a".into()], &["minecraft:a".into()],
+        ));
+        assert_eq!(book.displays(), vec![0]);
+        assert!(book.highlight.contains(&0));
+
+        assert!(apply_legacy_recipe_packet(
+            &mut book, &index, 1,
+            &["minecraft:b".into()], &["minecraft:b".into()],
+        ));
+        assert_eq!(book.displays(), vec![0, 1]);
+        assert!(book.highlight.contains(&1));
+
+        assert!(apply_legacy_recipe_packet(
+            &mut book, &index, 2, &["minecraft:a".into()], &[],
+        ));
+        assert_eq!(book.displays(), vec![1]);
+        assert!(!book.highlight.contains(&0));
+        assert!(!apply_legacy_recipe_packet(&mut book, &index, 3, &[], &[]));
+        std::fs::remove_dir_all(&root).unwrap();
     }
 }
