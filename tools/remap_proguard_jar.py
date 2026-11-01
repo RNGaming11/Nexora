@@ -7,8 +7,9 @@ import subprocess
 import tempfile
 
 try:
-    from . import proguard, version_port
+    from . import lab, proguard, version_port
 except ImportError:
+    import lab
     import proguard
     import version_port
 
@@ -17,7 +18,8 @@ def asm_libraries(libraries: list[Path]) -> list[Path]:
     core = []
     commons = []
     for path in libraries:
-        if path.parent.parent.parts[-3:] != ("org", "ow2", "asm"):
+        parts = path.parts
+        if not any(parts[i : i + 3] == ("org", "ow2", "asm") for i in range(len(parts) - 2)):
             continue
         if path.name.startswith("asm-commons-"):
             commons.append(path)
@@ -119,8 +121,8 @@ def remap(
         print(result.stdout.strip())
 
     return {
-        "input_sha256": version_port.file_hash(input_jar, "sha256"),
-        "output_sha256": version_port.file_hash(output_jar, "sha256"),
+        "input_sha256": lab.digest(input_jar, "sha256"),
+        "output_sha256": lab.digest(output_jar, "sha256"),
         "class_mapping_count": len(mapping.obfuscated_to_source),
         "method_mapping_count": len(mapping.methods),
         "field_mapping_count": len(mapping.fields),
