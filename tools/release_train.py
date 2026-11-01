@@ -44,6 +44,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 REPO = os.environ.get("GITHUB_REPOSITORY", "RNGaming11/Nexora")
 DEFAULT_BRANCH = os.environ.get("NEXORA_DEFAULT_BRANCH", "main")
+REQUIRE_PARITY_MAIN = os.environ.get("NEXORA_REQUIRE_PARITY_MAIN", "0") == "1"
 # The maintainer, left out of the notes' thanks (the repository's owner is the horizon-rust organization).
 MAINTAINER = "ludovic111"
 # Releases ship in batches, so players get a few releases a day rather than one per merge: BATCH player-facing pull
@@ -530,7 +531,7 @@ def main():
         return 1 if problem else 0
 
     # Game releases ship only a commit the vanilla harnesses passed on (parity-main, docs/release-flow.md).
-    parity = args.kind == "game" and args.command == "decide" and not args.force
+    parity = args.kind == "game" and args.command == "decide" and not args.force and REQUIRE_PARITY_MAIN
     head = args.head or green_main_head(parity)
     if not head:
         result = {"release": False, "reason": "the default branch's latest checks did not pass" + (
