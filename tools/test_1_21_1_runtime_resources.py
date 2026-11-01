@@ -24,6 +24,11 @@ class RuntimeResources1211Tests(unittest.TestCase):
             "minecraft:item": {"entries": {
                 "minecraft:air": {"protocol_id": 0},
                 "minecraft:stone": {"protocol_id": 1},
+            }},
+            "minecraft:entity_type": {"entries": {
+                "minecraft:player": {"protocol_id": 0},
+                "minecraft:pig": {"protocol_id": 1},
+                "minecraft:cow": {"protocol_id": 2},
             }}
         }), encoding="utf-8")
         (reports / "commands.json").write_text('{"type":"root"}', encoding="utf-8")
@@ -86,6 +91,24 @@ class RuntimeResources1211Tests(unittest.TestCase):
         )
         return path
 
+    def _entity_types(self, root: Path) -> Path:
+        path = root / "entity-types.json"
+        path.write_text(
+            json.dumps({
+                name: {
+                    "width": 0.6,
+                    "height": 1.8,
+                    "eye_height": 1.62,
+                    "category": "creature",
+                    "fire_immune": False,
+                    "attributes": {},
+                }
+                for name in ("minecraft:player", "minecraft:pig", "minecraft:cow")
+            }),
+            encoding="utf-8",
+        )
+        return path
+
     def test_builds_bundle_with_inventory_data_and_base_assets(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -94,7 +117,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
             self._jar(client)
             self._jar(server)
             reports = self._reports(root)
-            manifest = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root))
+            manifest = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root))
             self.assertEqual(
                 (manifest["minecraft_version"], manifest["data_version"], manifest["protocol_version"]),
                 ("1.21.1", 3955, 767),
@@ -103,7 +126,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
                 "assets/minecraft/models/block/stone.json",
                 "data/minecraft/tags/block/blocks_motion.json",
                 "builtin-registry-ids.json", "registries.json", "commands.json",
-                "facts.json", "heightmap-predicates.json", "gameplay-facts.json", "block-behaviours.json", "model-states.json", "items.json",
+                "facts.json", "heightmap-predicates.json", "gameplay-facts.json", "block-behaviours.json", "entity-types.json", "model-states.json", "items.json",
                 "biome-parameters/plains.json", "horizon-resources.json",
             ):
                 self.assertTrue((output / name).is_file(), name)
@@ -139,8 +162,10 @@ class RuntimeResources1211Tests(unittest.TestCase):
             self.assertEqual(manifest["gameplay_fact_state_count"], 5)
             self.assertEqual(manifest["block_behaviour_block_count"], 3)
             self.assertEqual(manifest["block_behaviour_state_count"], 5)
+            self.assertEqual(manifest["entity_type_count"], 3)
             self.assertTrue((output / "gameplay-facts.json").is_file())
             self.assertTrue((output / "block-behaviours.json").is_file())
+            self.assertTrue((output / "entity-types.json").is_file())
             self.assertTrue((output / "items-report.json").is_file())
             self.assertFalse((output / "items.json").exists())
             self.assertTrue((output / "data/minecraft/worldgen/biome/plains.json").is_file())
@@ -162,6 +187,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
                     self._heightmap(),
                     self._gameplay(root),
                     self._behaviours(root),
+                    self._entity_types(root),
                 )
 
 
