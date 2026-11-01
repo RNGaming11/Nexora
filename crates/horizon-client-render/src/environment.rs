@@ -148,8 +148,18 @@ impl Environment {
     }
     /// A dimension's base attributes, optionally driven by the day timeline.
     pub fn load_dimension(root: &Path, dimension: &str, day_cycle: bool) -> Result<Self> {
+        let timeline_path = root.join("data/minecraft/timeline/day.json");
         let timeline: Value = if day_cycle {
-            serde_json::from_slice(&fs::read(root.join("data/minecraft/timeline/day.json"))?)?
+            match fs::read(&timeline_path) {
+                Ok(bytes) => serde_json::from_slice(&bytes)?,
+                Err(error)
+                    if cfg!(feature = "minecraft-1-21-1")
+                        && error.kind() == std::io::ErrorKind::NotFound =>
+                {
+                    serde_json::json!({"period_ticks": 24000, "tracks": {}})
+                }
+                Err(error) => return Err(error.into()),
+            }
         } else {
             serde_json::json!({"period_ticks": 24000, "tracks": {}})
         };
@@ -407,6 +417,25 @@ mod tests {
         root.join("data/minecraft/timeline/day.json")
             .exists()
             .then(|| Environment::load(&root).unwrap())
+    }
+
+    #[cfg(feature = "minecraft-1-21-1")]
+    #[test]
+    fn legacy_target_without_day_timeline_uses_vanilla_cycle() {
+        let root = std::env::temp_dir().join(format!(
+            "horizon-environment-1211-{}",
+            std::process::id()
+        ));
+        let dimension = root.join("data/minecraft/dimension_type");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&dimension).unwrap();
+        fs::write(dimension.join("overworld.json"), br#"{"attributes":{}}"#).unwrap();
+
+        let environment = Environment::load(&root).unwrap();
+        assert_eq!(environment.period, 24_000);
+        assert!(environment.tracks.is_empty());
+
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
