@@ -6,7 +6,8 @@
 use crate::{
     Error, Result,
     buf::{Codec, Reader, Writer},
-    item::{DelimitedSlot1211, Hashed, HashedSlot, Slot1211, Stack},
+    item::{Component, DelimitedSlot1211, Hashed, HashedSlot, Slot1211, Stack},
+    packets::play as play_packets,
 };
 
 use crate::packet_ids_1_21_1::play::{clientbound, serverbound};
@@ -196,6 +197,7 @@ pub enum Clientbound {
     SetContent(ContainerSetContent),
     SetSlot(ContainerSetSlot),
     Equipment(SetEquipment),
+    MerchantOffers(play_packets::MerchantOffers),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -216,10 +218,80 @@ pub fn decode_clientbound(id: i32, payload: &[u8]) -> Result<Clientbound> {
         clientbound::SET_EQUIPMENT => {
             decode_exact(payload, SetEquipment::read).map(Clientbound::Equipment)
         }
+        clientbound::MERCHANT_OFFERS => {
+            decode_merchant_offers(payload).map(Clientbound::MerchantOffers)
+        }
         other => Err(Error::new(format!(
             "unsupported protocol-767 inventory clientbound packet {other}"
         ))),
     }
+}
+
+/// Decode the 1.21.1 MerchantOffers packet. ItemCost component predicates
+/// use target component IDs, while result stacks use the target Slot codec.
+fn decode_merchant_offers(payload: &[u8]) -> Result<play_packets::MerchantOffers> {
+    fn cost(reader: &mut Reader) -> Result<play_packets::NetCost> {
+        let item = reader.varint()?;
+        let count = reader.varint()?;
+        let components_count = reader.count(256)?;
+        let mut components = Vec::with_capacity(components_count.min(64));
+        for _ in 0..components_count {
+            let kind = reader.varint()?;
+            if crate::packets::v1_21_1::component_ids::name(kind).is_none() {
+                return Err(Error::new(format!(
+                    "unknown protocol-767 merchant item component id {kind}"
+                )));
+            }
+            components.push((kind, Component::read_1_21_1(kind, reader)?));
+        }
+        Ok(play_packets::NetCost {
+            item,
+            count,
+            components,
+        })
+    }
+
+    let mut reader = Reader::new(payload);
+    let container = reader.varint()?;
+    let count = reader.count(4096)?;
+    let mut offers = Vec::with_capacity(count.min(64));
+    for _ in 0..count {
+        let cost_a = cost(&mut reader)?;
+        let result = Slot1211::read(&mut reader)?
+            .ok_or_else(|| Error::new("empty merchant result in protocol-767 packet"))?;
+        let cost_b = if reader.bool()? {
+            Some(cost(&mut reader)?)
+        } else {
+            None
+        };
+        offers.push(play_packets::NetOffer {
+            cost_a,
+            result,
+            cost_b,
+            out_of_stock: reader.bool()?,
+            uses: reader.i32()?,
+            max_uses: reader.i32()?,
+            xp: reader.i32()?,
+            special_price: reader.i32()?,
+            price_multiplier: reader.f32()?,
+            demand: reader.i32()?,
+        });
+    }
+    let packet = play_packets::MerchantOffers {
+        container,
+        offers,
+        level: reader.varint()?,
+        xp: reader.varint()?,
+        show_progress: reader.bool()?,
+        can_restock: reader.bool()?,
+    };
+    if reader.remaining() != 0 {
+        return Err(Error::new(format!(
+            "protocol-767 merchant offers packet has {} trailing bytes",
+            reader.remaining()
+        )));
+    }
+    Ok(packet)
 }
 
 /// Encode inventory packets with protocol-767 packet IDs and slot codecs.
