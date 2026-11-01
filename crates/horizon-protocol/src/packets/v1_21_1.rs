@@ -531,6 +531,7 @@ fn is_missing_play_clientbound(id: i32) -> bool {
 
 /// Decode one of the missing 1.21.1 clientbound play packets whose payload
 /// codec is fully represented above. Unknown IDs remain the caller's concern.
+pub fn decode_play_clientbound(id: i32, payload: &[u8]) -> Result<MissingPacket> {
     let mut r = Reader::new(payload);
     let packet = match id {
         ids::play_clientbound::LOGIN => MissingPacket::Login(Login1211::read(&mut r)?),
