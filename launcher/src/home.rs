@@ -457,12 +457,12 @@ impl Launcher {
     }
 }
 
-/// `HORIZON_LAUNCHER_PAGE=getting-ready` opens Home as if Play had been pressed on a version that
+/// `NEXORA_LAUNCHER_PAGE=getting-ready` (legacy `HORIZON_LAUNCHER_PAGE` also works) opens Home as if Play had been pressed on a version that
 /// downloads from Mojang, a third of the way through: for screenshots, nothing runs.
 pub(super) fn getting_ready_preview() -> bool {
     static PREVIEW: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *PREVIEW
-        .get_or_init(|| std::env::var("HORIZON_LAUNCHER_PAGE").as_deref() == Ok("getting-ready"))
+        .get_or_init(|| std::env::var("NEXORA_LAUNCHER_PAGE").or_else(|_| std::env::var("HORIZON_LAUNCHER_PAGE")).as_deref() == Ok("getting-ready"))
 }
 
 /// The download under way, files done of how many.
