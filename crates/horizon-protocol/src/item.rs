@@ -728,7 +728,7 @@ impl Component {
         use component::*;
         match (kind, self) {
             (4 | 18, Self::Bool(value)) => w.bool(*value),
-            (0 | 19 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56, Self::Nbt(value))
+            (0 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56, Self::Nbt(value))
             | (5 | 6, Self::Text(value)) => w.nbt(value),
             (1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50, Self::Int(value)) => w.varint(*value),
             (25, Self::Int(value)) => w.i32(*value),
@@ -1616,7 +1616,7 @@ mod tests {
         slot.bool(true);
         slot.varint(13);
         slot.varint(7);
-        slot.varint(19);
+        slot.varint(0);
         slot.nbt(&Tag::compound([("foo", Tag::Int(1))]));
         let bytes = slot.data;
         let decoded = Slot1211::read(&mut Reader::new(&bytes)).unwrap().unwrap();
@@ -1642,6 +1642,82 @@ mod tests {
         let mut output = Writer::new();
         DelimitedSlot1211::write(&decoded, &mut output);
         assert_eq!(output.data, bytes);
+    }
+
+    #[test]
+    fn protocol_767_unit_lore_and_jukebox_components_use_1211_layouts() {
+        let mut empty = Reader::new(&[]);
+        assert_eq!(Component::read_1_21_1(19, &mut empty).unwrap(), Component::Unit);
+        let mut encoded = Writer::new();
+        Component::Unit.write_1_21_1(19, &mut encoded).unwrap();
+        assert!(encoded.data.is_empty());
+
+        let mut lore = Writer::new();
+        lore.varint(1);
+        lore.nbt(&Tag::String("line".into()));
+        let lore_bytes = lore.data;
+        let mut reader = Reader::new(&lore_bytes);
+        let decoded = Component::read_1_21_1(7, &mut reader).unwrap();
+        assert_eq!(decoded, Component::Raw(lore_bytes.clone()));
+        assert_eq!(reader.remaining(), 0);
+        let mut encoded = Writer::new();
+        decoded.write_1_21_1(7, &mut encoded).unwrap();
+        assert_eq!(encoded.data, lore_bytes);
+
+        let mut jukebox = Writer::new();
+        jukebox.varint(1);
+        jukebox.bool(true);
+        let jukebox_bytes = jukebox.data;
+        let mut reader = Reader::new(&jukebox_bytes);
+        let decoded = Component::read_1_21_1(42, &mut reader).unwrap();
+        assert_eq!(decoded, Component::Raw(jukebox_bytes.clone()));
+        assert_eq!(reader.remaining(), 0);
+        let mut encoded = Writer::new();
+        decoded.write_1_21_1(42, &mut encoded).unwrap();
+        assert_eq!(encoded.data, jukebox_bytes);
+    }
+
+    #[test]
+    fn protocol_767_food_and_pot_decoration_payloads_are_consumed_exactly() {
+        let mut food = Writer::new();
+        food.varint(4);
+        food.f32(0.6);
+        food.bool(false);
+        food.f32(1.6);
+        food.varint(0);
+        food.varint(1);
+        food.varint(2);
+        food.varint(1);
+        food.varint(120);
+        food.bool(false);
+        food.bool(true);
+        food.bool(true);
+        food.bool(false);
+        food.f32(0.25);
+        let food_bytes = food.data;
+        let mut reader = Reader::new(&food_bytes);
+        let decoded = Component::read_1_21_1(20, &mut reader).unwrap();
+        assert_eq!(decoded, Component::Raw(food_bytes.clone()));
+        assert_eq!(reader.remaining(), 0);
+        let mut encoded = Writer::new();
+        decoded.write_1_21_1(20, &mut encoded).unwrap();
+        assert_eq!(encoded.data, food_bytes);
+
+        let mut pot = Writer::new();
+        pot.bool(true);
+        pot.varint(6);
+        pot.bool(false);
+        pot.bool(true);
+        pot.varint(8);
+        pot.bool(false);
+        let pot_bytes = pot.data;
+        let mut reader = Reader::new(&pot_bytes);
+        let decoded = Component::read_1_21_1(51, &mut reader).unwrap();
+        assert_eq!(decoded, Component::Raw(pot_bytes.clone()));
+        assert_eq!(reader.remaining(), 0);
+        let mut encoded = Writer::new();
+        decoded.write_1_21_1(51, &mut encoded).unwrap();
+        assert_eq!(encoded.data, pot_bytes);
     }
 
     #[test]
