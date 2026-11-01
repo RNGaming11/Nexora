@@ -804,14 +804,13 @@ fn run(
     let client_information =
         encode_configuration_serverbound(cfg::Serverbound::ClientInformation(info))?;
     c.send(&client_information).map_err(map_error)?;
-    c.send(
-        &cfg::Serverbound::CustomPayload(cfg::CustomPayload {
+    let brand_packet = encode_configuration_serverbound(cfg::Serverbound::CustomPayload(
+        cfg::CustomPayload {
             channel: "minecraft:brand".into(),
             data: brand(),
-        })
-        .encode(),
-    )
-    .map_err(map_error)?;
+        },
+    ))?;
+    c.send(&brand_packet).map_err(map_error)?;
 
     let (mut reader, writer) = c.split();
     *shared_writer.lock().unwrap() = Some(writer);
@@ -934,8 +933,11 @@ fn configure_1_21_1(
             target::ConfigurationPacket1211::Shared(cfg::Clientbound::FinishConfiguration(_)) => {
                 let mut writer = writer.lock().unwrap();
                 let writer = writer.as_mut().ok_or("Disconnected")?;
+                let finish = encode_configuration_serverbound(
+                    cfg::Serverbound::FinishConfiguration(Empty),
+                )?;
                 writer
-                    .send(&cfg::Serverbound::FinishConfiguration(Empty).encode())
+                    .send(&finish)
                     .map_err(|error| connection_lost(error, lang))?;
                 configuring.store(false, Ordering::Relaxed);
                 return Ok(registries);
