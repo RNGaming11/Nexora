@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-OWNER = "ludovic111"
+OWNER = os.environ.get("NEXORA_RELEASE_OWNER", "ludovic111")
 DEFAULT_BRANCH = os.environ.get("NEXORA_DEFAULT_BRANCH", "main")
 REVIEWERS = ".github/trusted-reviewers.txt"
 CODEOWNERS = ".github/CODEOWNERS"
