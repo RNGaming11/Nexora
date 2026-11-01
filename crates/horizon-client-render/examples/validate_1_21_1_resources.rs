@@ -72,6 +72,18 @@ fn validate() -> Result<(), Box<dyn std::error::Error>> {
         return Err("entity type facts do not match the 1.21.1 entity registry".into());
     }
 
+    let attributes: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("attributes.json"))?)?;
+    if attributes["data_version"].as_i64() != Some(3955)
+        || attributes["attributes"].as_array().map(Vec::len)
+            != manifest["attribute_definition_count"].as_u64().map(|n| n as usize)
+        || attributes["entities"].as_object().map(serde_json::Map::len)
+            != manifest["attribute_entity_supplier_count"].as_u64().map(|n| n as usize)
+        || attributes["entities"]["minecraft:player"].is_null()
+    {
+        return Err("1.21.1 attribute catalog does not match the selected version".into());
+    }
+
     for name in ["cached-collision.nbt", "occlusion.nbt"] {
         let metadata = fs::metadata(root.join(name))?;
         if metadata.len() < 16 {
