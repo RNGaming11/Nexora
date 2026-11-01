@@ -1,5 +1,21 @@
 # Release flow
 
+## Nexora fork build infrastructure
+
+This fork does not require a maintainer-owned Mac or self-hosted Actions runner. The game build uses GitHub-hosted
+Linux, Windows and Apple Silicon macOS runners. A hosted Linux preparation job downloads the exact Mojang client,
+server, library and selected asset files pinned by `research-lock.json`, verifies their SHA-1 hashes, prepares the
+game data and runs the 1,500-frame smoke test. The Minecraft files and prepared resources stay on that ephemeral
+runner; only Nexora's original exporter classes and the smoke-test report are uploaded as build artifacts.
+
+The platform jobs then build the Linux, Windows and macOS packages. macOS packages are ad-hoc signed unless the
+fork owner separately configures an Apple Developer ID signing environment. The release checksum signature is a
+separate Ed25519 key and must be configured in this fork's `release` GitHub environment.
+
+The operational details below describe the inherited upstream Horizon infrastructure and should not be used to
+configure runners for this Nexora fork.
+
+
 How a change gets from a pull request to players: the checks a pull request passes, how it merges, and the
 automatic releases that follow. Releases are automatic and frequent so the latest Horizon is always playable.
 Since 2026-10-28 Horizon ships only the **Nightly** (Ludovic's decision; the Team proposed it): the batch train builds
