@@ -1076,6 +1076,30 @@ fn write_component_patch_1_21_1(
     Ok(())
 }
 
+fn write_delimited_component_patch_1_21_1(
+    added: &[(i32, Component)],
+    removed: &[i32],
+    w: &mut Writer,
+) -> Result<()> {
+    w.varint(added.len() as i32);
+    w.varint(removed.len() as i32);
+    for (kind, component) in added {
+        w.varint(*kind);
+        let mut value = Writer::new();
+        component.write_1_21_1(*kind, &mut value)?;
+        w.byte_array(&value.data);
+    }
+    for kind in removed {
+        if crate::packets::v1_21_1::component_ids::name(*kind).is_none() {
+            return Err(crate::Error::new(format!(
+                "unknown protocol-767 removed item component id {kind}"
+            )));
+        }
+        w.varint(*kind);
+    }
+    Ok(())
+}
+
 /// ItemStack.OPTIONAL_STREAM_CODEC for Minecraft 1.21.1.
 pub struct Slot1211;
 impl Codec<Option<Stack>> for Slot1211 {
@@ -1110,26 +1134,12 @@ impl Codec<Option<Stack>> for DelimitedSlot1211 {
         let mut encoded = Writer::new();
         encoded.varint(stack.count);
         encoded.varint(stack.item);
-        if let Some(patch) = &stack.wire.0 {
-            encoded.bytes(patch);
-        } else {
-            encoded.varint(stack.added.len() as i32);
-            encoded.varint(stack.removed.len() as i32);
-            for (kind, component) in &stack.added {
-                encoded.varint(*kind);
-                let mut value = Writer::new();
-                component
-                    .write_1_21_1(*kind, &mut value)
-                    .expect("invalid protocol-767 item component value");
-                encoded.byte_array(&value.data);
-            }
-            for kind in &stack.removed {
-                if crate::packets::v1_21_1::component_ids::name(*kind).is_none() {
-                    panic!("unknown protocol-767 removed item component id {kind}");
-                }
-                encoded.varint(*kind);
-            }
-        }
+        write_delimited_component_patch_1_21_1(
+            &stack.added,
+            &stack.removed,
+            &mut encoded,
+        )
+        .expect("invalid protocol-767 item component value");
         w.bytes(&encoded.data);
     }
 }
