@@ -410,6 +410,46 @@ mod tests {
     }
 
     #[test]
+    fn merchant_offers_decode_with_protocol_767_component_ids_and_slots() {
+        let mut writer = Writer::new();
+        writer.varint(4);
+        writer.varint(1);
+        writer.varint(5);
+        writer.varint(3);
+        writer.varint(1);
+        writer.varint(1);
+        writer.varint(9);
+        Slot1211::write(&Some(Stack::new(6, 2)), &mut writer);
+        writer.bool(false);
+        writer.bool(false);
+        writer.i32(0);
+        writer.i32(12);
+        writer.i32(1);
+        writer.i32(0);
+        writer.f32(0.05);
+        writer.i32(0);
+        writer.varint(2);
+        writer.varint(17);
+        writer.bool(true);
+        writer.bool(false);
+
+        let packet = decode_merchant_offers(&writer.data).unwrap();
+        assert_eq!(packet.container, 4);
+        assert_eq!(packet.level, 2);
+        assert_eq!(packet.xp, 17);
+        assert!(packet.show_progress);
+        assert!(!packet.can_restock);
+        assert_eq!(
+            packet.offers[0].cost_a.components,
+            vec![(1, Component::Int(9))]
+        );
+        assert_eq!(packet.offers[0].result, Stack::new(6, 2));
+
+        writer.u8(0);
+        assert!(decode_merchant_offers(&writer.data).is_err());
+    }
+
+    #[test]
     fn inventory_decoders_reject_trailing_data() {
         let mut writer = Writer::new();
         ContainerSetSlot::write(
