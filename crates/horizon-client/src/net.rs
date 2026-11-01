@@ -52,6 +52,8 @@ pub enum Event {
         name: String,
     },
     Packet(Box<play::Clientbound>),
+    /// Protocol-767's dedicated experience-orb spawn packet.
+    ExperienceOrb { id: i32, position: [f64; 3], value: i16 },
     /// A packet that failed to decode (skipped, like vanilla's skippable packets).
     DecodeError(String),
     /// The server sent us back to configuration (`ClientboundStartConfigurationPacket`):
@@ -1245,6 +1247,15 @@ fn receive_play_1_21_1(
             }
             target::PlayPacket1211::UpdateRecipes(_) => {}
             target::PlayPacket1211::Missing(packet) => match packet {
+                target::MissingPacket::AddExperienceOrb(packet) => {
+                    if send.send(Event::ExperienceOrb {
+                        id: packet.entity_id,
+                        position: [packet.x, packet.y, packet.z],
+                        value: packet.value,
+                    }).is_err() {
+                        return Ok("Disconnected".into());
+                    }
+                }
                 target::MissingPacket::CommandSuggestions(packet) => {
                     let encoded = target::encode_play_clientbound(
                         &target::MissingPacket::CommandSuggestions(packet),
