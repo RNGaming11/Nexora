@@ -1169,6 +1169,7 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
     if !matches!(
         name,
         "accept_teleportation"
+            | "chunk_batch_received"
             | "client_command"
             | "configuration_acknowledged"
             | "cookie_response"
@@ -1179,8 +1180,11 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
             | "move_player_rot"
             | "move_player_status_only"
             | "move_vehicle"
+            | "player_abilities"
             | "player_action"
             | "player_command"
+            | "player_input"
+            | "player_loaded"
             | "pong"
             | "resource_pack"
             | "set_carried_item"
@@ -1203,6 +1207,9 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
 
     let mut body = Writer::new();
     match name {
+        "accept_teleportation" => {
+            body.varint(reader.varint()?);
+        }
         "move_player_pos" => {
             body.f64(reader.f64()?);
             body.f64(reader.f64()?);
@@ -1919,6 +1926,67 @@ mod tests {
         );
         assert_eq!(reader.f32().unwrap(), 45.0);
         assert_eq!(reader.f32().unwrap(), 10.0);
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
+    fn protocol_767_teleport_ack_sends_only_the_teleport_id() {
+        let packet = play_packets::Serverbound::AcceptTeleportation(
+            play_packets::AcceptTeleportation {
+                id: 44,
+                x: 100.5,
+                y: 64.0,
+                z: -200.25,
+                yaw: 90.0,
+                pitch: 10.0,
+            },
+        );
+        let encoded = encode_play_serverbound_1_21_1(packet).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::NAMES
+                .iter()
+                .position(|name| *name == "accept_teleportation")
+                .unwrap() as i32
+        );
+        assert_eq!(reader.varint().unwrap(), 44);
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
+    fn protocol_767_loaded_and_chunk_batch_packets_keep_their_target_layouts() {
+        let loaded = encode_play_serverbound_1_21_1(
+            play_packets::Serverbound::PlayerLoaded(Empty),
+        )
+        .unwrap();
+        let mut reader = Reader::new(&loaded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::NAMES
+                .iter()
+                .position(|name| *name == "player_loaded")
+                .unwrap() as i32
+        );
+        assert_eq!(reader.remaining(), 0);
+
+        let batch = encode_play_serverbound_1_21_1(
+            play_packets::Serverbound::ChunkBatchReceived(
+                play_packets::ChunkBatchReceived {
+                    chunks_per_tick: 48.0,
+                },
+            ),
+        )
+        .unwrap();
+        let mut reader = Reader::new(&batch);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::NAMES
+                .iter()
+                .position(|name| *name == "chunk_batch_received")
+                .unwrap() as i32
+        );
+        assert_eq!(reader.f32().unwrap(), 48.0);
         assert_eq!(reader.remaining(), 0);
     }
 
