@@ -9,6 +9,8 @@ use std::{collections::BTreeMap, fmt};
 
 #[derive(Deserialize)]
 pub(super) struct Facts {
+    #[serde(default)]
+    pub data_version: Option<i32>,
     pub states: Vec<Row>,
     pub defaults: BTreeMap<String, i64>,
 }
