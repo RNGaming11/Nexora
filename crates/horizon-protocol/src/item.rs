@@ -1133,12 +1133,8 @@ impl Codec<Option<Stack>> for DelimitedSlot1211 {
         let mut encoded = Writer::new();
         encoded.varint(stack.count);
         encoded.varint(stack.item);
-        write_delimited_component_patch_1_21_1(
-            &stack.added,
-            &stack.removed,
-            &mut encoded,
-        )
-        .expect("invalid protocol-767 item component value");
+        write_delimited_component_patch_1_21_1(&stack.added, &stack.removed, &mut encoded)
+            .expect("invalid protocol-767 item component value");
         w.bytes(&encoded.data);
     }
 }
