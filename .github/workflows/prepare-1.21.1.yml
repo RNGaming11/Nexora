@@ -14,12 +14,17 @@ on:
       - "tools/generate_1_21_1_model_states.py"
       - "tools/build_1_21_1_runtime_resources.py"
       - "tools/generate_1_21_1_heightmap_predicates.py"
+      - "tools/export_1_21_1_gameplay_facts.py"
+      - "tools/remap_proguard_jar.py"
+      - "tools/java/ProguardJarRemapper.java"
+      - "mods/horizon/src/test/java/dev/horizonlab/parity/VanillaGameplayFactsExporter.java"
       - "tools/java/Vanilla1211HeightmapPredicates.java"
       - "tools/remap_proguard_jar.py"
       - "tools/java/ProguardJarRemapper.java"
       - "tools/test_remap_proguard_jar.py"
       - "crates/horizon-client-render/src/assets.rs"
       - "crates/horizon-client-render/examples/validate_1_21_1_resources.rs"
+      - "crates/horizon-client-render/src/assets.rs"
       - "ports/1.21.1/recipe-serializers.json"
       - "ports/1.21.1/data-component-ids.json"
 
@@ -43,7 +48,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Test official ProGuard jar remapper
-        run: python -m unittest tools.test_remap_proguard_jar
+        run: python -m unittest tools.test_remap_proguard_jar tools.test_1_21_1_heightmap_predicates
       - name: Prepare official 1.21.1 artifacts and mapped inventories
         run: python tools/prepare_1_21_1.py --jobs 4
       - name: Generate an independent packet inventory
@@ -139,6 +144,7 @@ jobs:
             .port-cache/versions/1.21.1/datagen/reports/blocks.json
             .port-cache/versions/1.21.1/datagen/reports/commands.json
             .port-cache/versions/1.21.1/heightmap-predicates.json
+            .port-cache/versions/1.21.1/gameplay-facts.json
             .port-cache/versions/1.21.1/runtime-resources/
             target/1.21.1/packet_ids.rs
             target/1.21.1/recipe-serializers.json
