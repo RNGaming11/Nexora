@@ -61,8 +61,8 @@ impl Builtin {
     pub fn load(path: &Path) -> Result<Self> {
         let text = std::fs::read_to_string(path)
             .map_err(|e| Error::new(format!("{}: {e}", path.display())))?;
-        let json: serde_json::Value = serde_json::from_str(&text)
-            .map_err(|e| Error::new(format!("registry data: {e}")))?;
+        let json: serde_json::Value =
+            serde_json::from_str(&text).map_err(|e| Error::new(format!("registry data: {e}")))?;
         if json.get("schema").is_none() && json.get("minecraft_version").is_none() {
             return Self::parse(&text);
         }
@@ -71,7 +71,8 @@ impl Builtin {
             horizon_core::version::VANILLA_VERSION,
             horizon_core::version::DATA_VERSION,
         )?;
-        let Some(report_path) = path.parent()
+        let Some(report_path) = path
+            .parent()
             .map(|parent| parent.join("registries.json"))
             .filter(|candidate| candidate.is_file())
         else {
@@ -393,10 +394,8 @@ mod tests {
 
     #[test]
     fn loads_profile_inventory_and_preserves_appended_registry_ids() {
-        let directory = std::env::temp_dir().join(format!(
-            "nexora-registry-inventory-{}",
-            std::process::id()
-        ));
+        let directory =
+            std::env::temp_dir().join(format!("nexora-registry-inventory-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&directory);
         std::fs::create_dir_all(&directory).unwrap();
         let version = horizon_core::version::VANILLA_VERSION;
@@ -418,17 +417,21 @@ mod tests {
         let path = Builtin::find(&directory).unwrap();
         assert!(path.ends_with("builtin-registry-ids.json"));
         let loaded = Builtin::load(&path).unwrap();
-        assert_eq!(loaded.get("minecraft:item").unwrap().name(2), Some("test:custom_item"));
-        assert_eq!(loaded.get("test:custom_registry").unwrap().name(0), Some("test:first"));
+        assert_eq!(
+            loaded.get("minecraft:item").unwrap().name(2),
+            Some("test:custom_item")
+        );
+        assert_eq!(
+            loaded.get("test:custom_registry").unwrap().name(0),
+            Some("test:first")
+        );
         let _ = std::fs::remove_dir_all(directory);
     }
 
     #[test]
     fn rejects_full_report_that_changes_a_pinned_vanilla_id() {
-        let directory = std::env::temp_dir().join(format!(
-            "nexora-registry-mismatch-{}",
-            std::process::id()
-        ));
+        let directory =
+            std::env::temp_dir().join(format!("nexora-registry-mismatch-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&directory);
         std::fs::create_dir_all(&directory).unwrap();
         let version = horizon_core::version::VANILLA_VERSION;
@@ -443,7 +446,11 @@ mod tests {
         std::fs::write(directory.join("builtin-registry-ids.json"), inventory).unwrap();
         std::fs::write(directory.join("registries.json"), report).unwrap();
         let error = Builtin::load(&Builtin::find(&directory).unwrap()).unwrap_err();
-        assert!(error.to_string().contains("does not preserve the pinned vanilla ID prefix"));
+        assert!(
+            error
+                .to_string()
+                .contains("does not preserve the pinned vanilla ID prefix")
+        );
         let _ = std::fs::remove_dir_all(directory);
     }
 
