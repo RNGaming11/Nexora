@@ -1243,6 +1243,7 @@ fn receive_play_1_21_1(
                     return Ok("Disconnected".into());
                 }
             }
+            target::PlayPacket1211::UpdateRecipes(_) => {}
             target::PlayPacket1211::Missing(packet) => match packet {
                 target::MissingPacket::SetCarriedItem(packet) => {
                     let packet = play::Clientbound::SetHeldSlot(play::SetHeldSlot {
