@@ -181,6 +181,8 @@ def build(
     gameplay_facts: Path | None = None,
     block_behaviours: Path | None = None,
     entity_types: Path | None = None,
+    cached_collision: Path | None = None,
+    occlusion: Path | None = None,
 ) -> dict:
     client_jar = client_jar.resolve()
     server_game_jar = server_game_jar.resolve()
@@ -274,6 +276,18 @@ def build(
                 raise ValueError(f"1.21.1 entity type facts are malformed for {name}")
         shutil.copyfile(entity_types, stage / "entity-types.json")
 
+        if (
+            cached_collision is None
+            or not cached_collision.is_file()
+            or occlusion is None
+            or not occlusion.is_file()
+        ):
+            raise ValueError("official 1.21.1 collision and occlusion tables are required for runtime resources")
+        if cached_collision.stat().st_size < 16 or occlusion.stat().st_size < 16:
+            raise ValueError("1.21.1 collision and occlusion tables are incomplete")
+        shutil.copyfile(cached_collision, stage / "cached-collision.nbt")
+        shutil.copyfile(occlusion, stage / "occlusion.nbt")
+
         if heightmap_predicates is None:
             raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
         motion = heightmap_predicates.get("motion")
@@ -326,6 +340,8 @@ def build(
             "block_behaviour_block_count": len(behaviour_blocks),
             "block_behaviour_state_count": len(behaviour_states),
             "entity_type_count": len(entity_facts),
+            "collision_table_bytes": cached_collision.stat().st_size,
+            "occlusion_table_bytes": occlusion.stat().st_size,
             "block_tag_count": len(client_tags),
             "item_component_item_count": item_count,
             "biome_parameter_file_count": biome_count,
@@ -352,6 +368,8 @@ def main() -> None:
     parser.add_argument("--gameplay-facts", required=True, type=Path)
     parser.add_argument("--block-behaviours", required=True, type=Path)
     parser.add_argument("--entity-types", required=True, type=Path)
+    parser.add_argument("--cached-collision", required=True, type=Path)
+    parser.add_argument("--occlusion", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     heightmap_predicates = json.loads(args.heightmap_predicates.read_text(encoding="utf-8"))
@@ -364,6 +382,8 @@ def main() -> None:
         args.gameplay_facts,
         args.block_behaviours,
         args.entity_types,
+        args.cached_collision,
+        args.occlusion,
     )
     print(json.dumps({
         "runtime_resources": str(args.out.resolve()),
