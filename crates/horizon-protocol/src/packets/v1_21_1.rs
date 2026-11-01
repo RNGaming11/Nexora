@@ -474,6 +474,7 @@ pub enum PlayPacket1211 {
     StoreCookie(cfg::StoreCookie),
     Transfer(cfg::Transfer),
     Missing(MissingPacket),
+    Inventory(inventory::Clientbound),
     Compatible(play_packets::Clientbound),
     LevelChunkWithLight(play_packets::LevelChunkWithLight),
     LightUpdate(play_packets::LightUpdate),
@@ -505,6 +506,12 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
             shared(|r| cfg::Disconnect::read(r).map(PlayPacket1211::Disconnect)),
         ids::play_clientbound::KEEP_ALIVE =>
             shared(|r| cfg::KeepAlive::read(r).map(PlayPacket1211::KeepAlive)),
+        id if matches!(
+            id,
+            crate::packet_ids_1_21_1::play::clientbound::CONTAINER_SET_CONTENT
+                | crate::packet_ids_1_21_1::play::clientbound::CONTAINER_SET_SLOT
+                | crate::packet_ids_1_21_1::play::clientbound::SET_EQUIPMENT
+        ) => inventory::decode_clientbound(id, payload).map(PlayPacket1211::Inventory),
         crate::packet_ids_1_21_1::play::clientbound::LEVEL_CHUNK_WITH_LIGHT => {
             decode_level_chunk_with_light_1_21_1(payload)
                 .map(PlayPacket1211::LevelChunkWithLight)
@@ -1159,7 +1166,32 @@ pub fn decode_play_serverbound(id: i32, payload: &[u8]) -> Result<MissingPacket>
 /// Re-encode a shared play packet with its protocol-767 packet ID. Only
 /// serverbound payloads whose layouts are verified for 1.21.1 are accepted.
 pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Result<Vec<u8>> {
-    let encoded = packet.encode();
+    match packet {
+        play_packets::Serverbound::ContainerClick(value) => {
+            let click = inventory::ContainerClick {
+                container: value.container,
+                state: value.state,
+                slot: value.slot,
+                button: value.button,
+                mode: value.input,
+                changed: value
+                    .changed
+                    .into_iter()
+                    .map(|(slot, item)| inventory::ChangedSlot { slot, item })
+                    .collect(),
+                carried: value.carried,
+            };
+            return inventory::encode_serverbound(&inventory::Serverbound::Click(click));
+        }
+        play_packets::Serverbound::SetCreativeModeSlot(value) => {
+            let slot = inventory::SetCreativeModeSlot {
+                slot: value.slot,
+                item: value.item,
+            };
+            return inventory::encode_serverbound(&inventory::Serverbound::CreativeSlot(slot));
+        }
+        packet => {
+            let encoded = packet.encode();
     let mut reader = Reader::new(&encoded);
     let active_id = reader.varint()?;
     let name = crate::ids::play::serverbound::NAMES
@@ -1274,6 +1306,8 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
     out.varint(target_id as i32);
     out.bytes(&body.data);
     Ok(out.data)
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
