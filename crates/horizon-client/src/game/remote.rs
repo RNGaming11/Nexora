@@ -45,6 +45,13 @@ use horizon_world::{
     registry::BlockStateId,
     stepped_interpolation::{Path, PosRot, Start, SteppedInterpolation},
 };
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::Arc,
+    time::{Duration, Instant},
+};
+use winit::{event::MouseButton, keyboard::KeyCode};
+
 fn experience_orb(id: i32, position: [f64; 3], value: i16) -> ExperienceOrb {
     let at = Vec3::new(position[0], position[1], position[2]);
     ExperienceOrb {
@@ -60,12 +67,6 @@ fn experience_orb(id: i32, position: [f64; 3], value: i16) -> ExperienceOrb {
     }
 }
 
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::Arc,
-    time::{Duration, Instant},
-};
-use winit::{event::MouseButton, keyboard::KeyCode};
 
 /// A text component the server sent, for the HUD.
 pub(super) fn remote_text(tag: &Tag) -> horizon_client::text::Text {
@@ -8707,8 +8708,6 @@ mod tests {
     fn protocol_767_experience_orb_rejects_negative_values_as_zero() {
         assert_eq!(experience_orb(1, [0.0; 3], -1).value, 0);
     }
-
-    use super::synced_local_use;
 
     #[test]
     fn the_server_stopping_the_use_lowers_the_shield() {
