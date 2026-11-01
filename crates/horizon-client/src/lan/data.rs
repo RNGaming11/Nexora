@@ -15,6 +15,24 @@ use std::{
 };
 
 /// RegistryDataLoader.SYNCHRONIZED_REGISTRIES, in vanilla's order.
+#[cfg(feature = "minecraft-1-21-1")]
+pub const SYNCHRONIZED: &[&str] = &[
+    "minecraft:worldgen/biome",
+    "minecraft:chat_type",
+    "minecraft:trim_pattern",
+    "minecraft:trim_material",
+    "minecraft:wolf_variant",
+    "minecraft:painting_variant",
+    "minecraft:dimension_type",
+    "minecraft:damage_type",
+    "minecraft:banner_pattern",
+    "minecraft:enchantment",
+    "minecraft:jukebox_song",
+    "minecraft:instrument",
+    "minecraft:decorated_pot_pattern",
+];
+
+#[cfg(not(feature = "minecraft-1-21-1"))]
 pub const SYNCHRONIZED: &[&str] = &[
     "minecraft:worldgen/biome",
     "minecraft:chat_type",
