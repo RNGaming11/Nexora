@@ -23,7 +23,7 @@ on:
       dry_run:
         description: Decide only; start no Nightly build
         type: boolean
-        default: true
+        default: false
       force:
         description: A Nightly even without player-facing changes, before merges settle, while paused or past the day's cap
         type: boolean
