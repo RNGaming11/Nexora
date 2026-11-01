@@ -85,7 +85,11 @@ fn data_packs_are_their_own_kind() {
         version("old", &["1.21.4"], &["datapack"]),
     ];
     assert_eq!(pick(Kind::DataPack, &versions, false).unwrap().id, "pack");
-    assert_eq!(pick_for(Kind::DataPack, &versions, false, "1.21.1").unwrap().id, "old");
+    let target = [version("target", &["1.21.1"], &["datapack"])];
+    assert_eq!(
+        pick_for(Kind::DataPack, &target, false, "1.21.1").unwrap().id,
+        "target"
+    );
     assert!(pick(Kind::DataPack, &versions[2..], false).is_none());
     assert_eq!(
         pick(Kind::DataPack, &versions[2..], true).unwrap().id,
