@@ -977,6 +977,7 @@ fn receive_play_1_21_1(
         }
     };
 
+    let mut current_dimension = "minecraft:overworld".to_owned();
     loop {
         let (id, payload) = reader
             .recv()
@@ -1000,6 +1001,7 @@ fn receive_play_1_21_1(
             }
             target::PlayPacket1211::BundleDelimiter(_) => {}
             target::PlayPacket1211::Login(packet) => {
+                current_dimension = packet.spawn.dimension.clone();
                 let packet = active_login_from_1_21_1(packet, online_mode);
                 if send
                     .send(Event::Packet(Box::new(play::Clientbound::Login(packet))))
@@ -1023,6 +1025,44 @@ fn receive_play_1_21_1(
                     .send(Event::Packet(Box::new(play::Clientbound::LightUpdate(
                         packet,
                     ))))
+                    .is_err()
+                {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::PlayerPosition(packet) => {
+                if send
+                    .send(Event::Packet(Box::new(play::Clientbound::PlayerPosition(
+                        packet,
+                    ))))
+                    .is_err()
+                {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::ChangeDifficulty(packet) => {
+                if send
+                    .send(Event::Packet(Box::new(play::Clientbound::ChangeDifficulty(
+                        packet,
+                    ))))
+                    .is_err()
+                {
+                    return Ok("Disconnected".into());
+                }
+            }
+            target::PlayPacket1211::SpawnPosition(packet) => {
+                let packet = play::SetDefaultSpawnPosition {
+                    pos: play::GlobalPos {
+                        dimension: current_dimension.clone(),
+                        pos: packet.position,
+                    },
+                    yaw: packet.angle,
+                    pitch: 0.0,
+                };
+                if send
+                    .send(Event::Packet(Box::new(
+                        play::Clientbound::SetDefaultSpawnPosition(packet),
+                    )))
                     .is_err()
                 {
                     return Ok("Disconnected".into());
