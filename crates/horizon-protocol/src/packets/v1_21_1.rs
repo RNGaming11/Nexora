@@ -396,7 +396,18 @@ pub mod ids {
     }
     pub mod login_clientbound { pub const GAME_PROFILE: i32 = 2; }
     pub mod play_clientbound {
+        pub const BUNDLE_DELIMITER: i32 = 0;
+        pub const COOKIE_REQUEST: i32 = 22;
+        pub const CUSTOM_PAYLOAD: i32 = 25;
+        pub const DISCONNECT: i32 = 29;
+        pub const KEEP_ALIVE: i32 = 38;
         pub const LOGIN: i32 = 43;
+        pub const RESOURCE_PACK_POP: i32 = 69;
+        pub const RESOURCE_PACK_PUSH: i32 = 70;
+        pub const START_CONFIGURATION: i32 = 105;
+        pub const STORE_COOKIE: i32 = 107;
+        pub const TRANSFER: i32 = 115;
+        pub const SERVER_LINKS: i32 = 123;
         pub const ADD_EXPERIENCE_ORB: i32 = 2;
         pub const COMMAND_SUGGESTIONS: i32 = 16;
         pub const CUSTOM_REPORT_DETAILS: i32 = 122;
@@ -444,9 +455,82 @@ pub enum MissingPacket {
 }
 
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum PlayPacket1211 {
+    BundleDelimiter(Empty),
+    CookieRequest(cfg::CookieRequest),
+    CustomPayload(cfg::CustomPayload),
+    Disconnect(cfg::Disconnect),
+    KeepAlive(cfg::KeepAlive),
+    Login(Login1211),
+    ResourcePackPop(cfg::ResourcePackPop),
+    ResourcePackPush(cfg::ResourcePackPush),
+    ServerLinks(cfg::ServerLinks),
+    StartConfiguration(Empty),
+    StoreCookie(cfg::StoreCookie),
+    Transfer(cfg::Transfer),
+    Missing(MissingPacket),
+}
+
+/// Decode the 1.21.1 play packets whose payloads have target-verified codecs.
+/// This is not a complete play-state decoder; unsupported IDs stay explicit
+/// errors rather than being passed to the 26.3 packet table.
+pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket1211> {
+    let shared = |decode: fn(&mut Reader) -> Result<PlayPacket1211>| {
+        decode_exact(payload, decode)
+    };
+    match id {
+        ids::play_clientbound::BUNDLE_DELIMITER =>
+            shared(|r| Empty::read(r).map(PlayPacket1211::BundleDelimiter)),
+        ids::play_clientbound::COOKIE_REQUEST =>
+            shared(|r| cfg::CookieRequest::read(r).map(PlayPacket1211::CookieRequest)),
+        ids::play_clientbound::CUSTOM_PAYLOAD =>
+            shared(|r| cfg::CustomPayload::read(r).map(PlayPacket1211::CustomPayload)),
+        ids::play_clientbound::DISCONNECT =>
+            shared(|r| cfg::Disconnect::read(r).map(PlayPacket1211::Disconnect)),
+        ids::play_clientbound::KEEP_ALIVE =>
+            shared(|r| cfg::KeepAlive::read(r).map(PlayPacket1211::KeepAlive)),
+        ids::play_clientbound::LOGIN =>
+            shared(|r| Login1211::read(r).map(PlayPacket1211::Login)),
+        ids::play_clientbound::RESOURCE_PACK_POP =>
+            shared(|r| cfg::ResourcePackPop::read(r).map(PlayPacket1211::ResourcePackPop)),
+        ids::play_clientbound::RESOURCE_PACK_PUSH =>
+            shared(|r| cfg::ResourcePackPush::read(r).map(PlayPacket1211::ResourcePackPush)),
+        ids::play_clientbound::SERVER_LINKS =>
+            shared(|r| cfg::ServerLinks::read(r).map(PlayPacket1211::ServerLinks)),
+        ids::play_clientbound::START_CONFIGURATION =>
+            shared(|r| Empty::read(r).map(PlayPacket1211::StartConfiguration)),
+        ids::play_clientbound::STORE_COOKIE =>
+            shared(|r| cfg::StoreCookie::read(r).map(PlayPacket1211::StoreCookie)),
+        ids::play_clientbound::TRANSFER =>
+            shared(|r| cfg::Transfer::read(r).map(PlayPacket1211::Transfer)),
+        id if is_missing_play_clientbound(id) =>
+            decode_play_clientbound(id, payload).map(PlayPacket1211::Missing),
+        other => Err(Error::new(format!(
+            "unsupported protocol-767 clientbound play packet: {other}"
+        ))),
+    }
+}
+
+fn is_missing_play_clientbound(id: i32) -> bool {
+    matches!(
+        id,
+        ids::play_clientbound::ADD_EXPERIENCE_ORB
+            | ids::play_clientbound::COMMAND_SUGGESTIONS
+            | ids::play_clientbound::CUSTOM_REPORT_DETAILS
+            | ids::play_clientbound::DEBUG_SAMPLE
+            | ids::play_clientbound::HORSE_SCREEN_OPEN
+            | ids::play_clientbound::PLAYER_COMBAT_END
+            | ids::play_clientbound::PLAYER_COMBAT_ENTER
+            | ids::play_clientbound::RECIPE
+            | ids::play_clientbound::SELECT_ADVANCEMENTS_TAB
+            | ids::play_clientbound::SET_CARRIED_ITEM
+            | ids::play_clientbound::UPDATE_RECIPES
+    )
+}
+
 /// Decode one of the missing 1.21.1 clientbound play packets whose payload
 /// codec is fully represented above. Unknown IDs remain the caller's concern.
-pub fn decode_play_clientbound(id: i32, payload: &[u8]) -> Result<MissingPacket> {
     let mut r = Reader::new(payload);
     let packet = match id {
         ids::play_clientbound::LOGIN => MissingPacket::Login(Login1211::read(&mut r)?),
