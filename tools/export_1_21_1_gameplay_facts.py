@@ -58,6 +58,7 @@ def validate(path: Path, block_report: Path) -> dict:
         "block_entity",
         "render_shape",
         "liquid",
+        "ignited_by_lava",
         "push",
         "full_collision",
         "friction",
@@ -66,6 +67,7 @@ def validate(path: Path, block_report: Path) -> dict:
         "sound",
         "outline",
         "outline_edges",
+        "offset",
     }
     for index, entry in enumerate(states):
         if not isinstance(entry, dict) or entry.get("id") != index:
