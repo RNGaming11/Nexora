@@ -1431,6 +1431,7 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
             | "player_command"
             | "player_input"
             | "recipe_book_change_settings"
+            | "select_trade"
             | "pong"
             | "resource_pack"
             | "set_carried_item"
@@ -2880,6 +2881,19 @@ mod live_inventory_tests {
         assert_eq!(reader.varint().unwrap(), 2);
         assert!(reader.bool().unwrap());
         assert!(!reader.bool().unwrap());
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
+    fn protocol_767_villager_trade_selection_uses_the_target_packet() {
+        let packet = play_packets::Serverbound::SelectTrade(play_packets::SelectTrade { item: 3 });
+        let encoded = encode_play_serverbound_1_21_1(packet).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::SELECT_TRADE
+        );
+        assert_eq!(reader.varint().unwrap(), 3);
         assert_eq!(reader.remaining(), 0);
     }
 
