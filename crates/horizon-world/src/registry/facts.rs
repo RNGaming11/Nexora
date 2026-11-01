@@ -119,6 +119,30 @@ mod tests {
         }
     }
 
+    #[test]
+    fn versioned_block_facts_require_the_exact_data_version() {
+        let facts = br#"{
+            "data_version": 3955,
+            "defaults": {"minecraft:air": 0},
+            "states": [["minecraft:air", true, false, "", "minecraft:air"]]
+        }"#;
+        let (registry, flags) =
+            BlockRegistry::from_facts_json_with_data_version(&facts[..], 3955).unwrap();
+        assert_eq!(registry.len(), 1);
+        assert_eq!(flags, [(true, false)]);
+        assert!(
+            BlockRegistry::from_facts_json_with_data_version(&facts[..], 5023).is_err()
+        );
+
+        let legacy = br#"{
+            "defaults": {"minecraft:air": 0},
+            "states": [["minecraft:air", true, false, "", "minecraft:air"]]
+        }"#;
+        assert!(
+            BlockRegistry::from_facts_json_with_data_version(&legacy[..], 3955).is_err()
+        );
+    }
+
     /// The streamed registry is the one the JSON and NBT trees built.
     #[test]
     fn matches_the_tree_built_registry() {
