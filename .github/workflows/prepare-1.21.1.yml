@@ -18,6 +18,8 @@ on:
       - "tools/test_1_21_1_gameplay_facts.py"
       - "tools/remap_proguard_jar.py"
       - "tools/java/ProguardJarRemapper.java"
+      - "tools/java/dev/horizonlab/parity/Vanilla1211GameplayFactsExporter.java"
+      - "tools/export_1_21_1_gameplay_facts.py"
       - "mods/horizon/src/test/java/dev/horizonlab/parity/VanillaGameplayFactsExporter.java"
       - "tools/java/Vanilla1211HeightmapPredicates.java"
       - "tools/remap_proguard_jar.py"
