@@ -137,8 +137,10 @@ jobs:
       - name: ALSA and udev headers
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
-      - name: Build the client, horizon-ctl, horizon-prepare and horizon-server
+      - name: Build the 26.3 client, horizon-ctl, horizon-prepare and horizon-server
         run: cargo build --release --locked -p horizon-client --bin horizon-client --bin horizon-ctl -p horizon-prepare --bin horizon-prepare -p horizon-server --bin horizon-server
+      - name: Build the Minecraft 1.21.1 client
+        run: cargo build --release --locked -p horizon-client --features minecraft-1-21-1 --bin horizon-client-1-21-1
       - name: Every program the release folder takes was built
         run: |
           for binary in horizon-client horizon-ctl horizon-prepare horizon-server; do
@@ -178,6 +180,7 @@ jobs:
           set -euo pipefail
           bin=target/release
           "$bin/horizon-client${{ matrix.exe }}" --help | grep -q -- '--resources'
+          "$bin/horizon-client-1-21-1${{ matrix.exe }}" --help | grep -q -- '--resources'
           "$bin/horizon-ctl${{ matrix.exe }}" --help > /dev/null
           "$bin/horizon-prepare${{ matrix.exe }}" --help | grep -q -- '--minecraft-dir'
           # The version is the release's.
@@ -232,6 +235,7 @@ jobs:
         run: |
           set -euo pipefail
           cargo run --locked -p xtask -- package "target/release/horizon-client${{ matrix.exe }}" "dist/${{ matrix.dir }}"
+          cp "target/release/horizon-client-1-21-1${{ matrix.exe }}" "dist/${{ matrix.dir }}/"
           cd dist
           rm -f "${{ matrix.asset }}"
           case "${{ matrix.asset }}" in
