@@ -486,6 +486,7 @@ pub enum PlayPacket1211 {
     MoveEntityPos(play_packets::MoveEntityPos),
     MoveEntityPosRot(play_packets::MoveEntityPosRot),
     MoveEntityRot(play_packets::MoveEntityRot),
+    UpdateRecipes(UpdateRecipes),
 }
 
 /// Decode the 1.21.1 play packets whose payloads have target-verified codecs.
@@ -563,6 +564,10 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
             shared(|r| cfg::StoreCookie::read(r).map(PlayPacket1211::StoreCookie)),
         ids::play_clientbound::TRANSFER =>
             shared(|r| cfg::Transfer::read(r).map(PlayPacket1211::Transfer)),
+        crate::packet_ids_1_21_1::play::clientbound::UPDATE_RECIPES => {
+            decode_update_recipes(payload, &VanillaRecipeSerializers)
+                .map(PlayPacket1211::UpdateRecipes)
+        }
         id if is_missing_play_clientbound(id) =>
             decode_play_clientbound(id, payload).map(PlayPacket1211::Missing),
         id => decode_compatible_play_packet_1_21_1(id, payload)
@@ -1821,6 +1826,28 @@ mod tests {
         let mut trailing = encoded.data;
         trailing.push(0);
         assert!(decode_play_login(&trailing).is_err());
+    }
+
+    #[test]
+    fn play_update_recipes_uses_the_target_serializer_registry() {
+        let mut payload = Writer::new();
+        payload.varint(0);
+        assert_eq!(
+            decode_play_packet_1_21_1(
+                crate::packet_ids_1_21_1::play::clientbound::UPDATE_RECIPES,
+                &payload.data,
+            )
+            .unwrap(),
+            PlayPacket1211::UpdateRecipes(UpdateRecipes { recipes: vec![] })
+        );
+        payload.data.push(0);
+        assert!(
+            decode_play_packet_1_21_1(
+                crate::packet_ids_1_21_1::play::clientbound::UPDATE_RECIPES,
+                &payload.data,
+            )
+            .is_err()
+        );
     }
 
     #[test]
