@@ -102,14 +102,27 @@ fn invalid(message: &str) -> io::Error {
 }
 impl Assets {
     pub fn load(root: &Path) -> Result<Self> {
+        Self::load_with_data_version(root, DATA_VERSION)
+    }
+
+    /// Load resources only when their manifest and block facts match the explicitly
+    /// selected Minecraft data version. The default loader remains pinned to the
+    /// active workspace version.
+    pub fn load_with_data_version(root: &Path, data_version: i32) -> Result<Self> {
         let manifest: Value = serde_json::from_reader(BufReader::new(File::open(
             root.join("horizon-resources.json"),
         )?))?;
-        if manifest["data_version"].as_i64() != Some(i64::from(DATA_VERSION)) {
-            return Err(invalid("resources do not match Horizon's pinned data version").into());
+        if manifest["data_version"].as_i64() != Some(i64::from(data_version)) {
+            return Err(invalid("resources do not match the selected Minecraft data version").into());
         }
-        let (registry, flags) =
-            BlockRegistry::from_facts_json_with_flags(File::open(root.join("facts.json"))?)?;
+        let (registry, flags) = if data_version == DATA_VERSION {
+            BlockRegistry::from_facts_json_with_flags(File::open(root.join("facts.json"))?)?
+        } else {
+            BlockRegistry::from_facts_json_with_data_version(
+                File::open(root.join("facts.json"))?,
+                data_version,
+            )?
+        };
         let bundle: Value =
             serde_json::from_reader(BufReader::new(File::open(root.join("block-tags.json"))?))?;
         let mut definitions = TagDefinitions::default();
