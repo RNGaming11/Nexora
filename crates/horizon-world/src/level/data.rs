@@ -622,10 +622,22 @@ fn set_type(value: &Value, cache: &mut HashMap<String, Arc<str>>) -> Option<SetT
     })
 }
 
-/// Build the block-state registry from the resources' `facts.json` (the
-/// same source the native client uses), streamed.
+/// Build the active-version block-state registry from the resources' `facts.json`.
 pub fn load_registry(root: &Path) -> io::Result<BlockRegistry> {
     BlockRegistry::from_facts_json(File::open(root.join("facts.json"))?)
+}
+
+/// Build a block-state registry only when the facts declare the requested
+/// Minecraft DataVersion. Versioned ports must use this rather than the
+/// active-version convenience loader above.
+pub fn load_registry_with_data_version(
+    root: &Path,
+    data_version: i32,
+) -> io::Result<BlockRegistry> {
+    BlockRegistry::from_facts_json_with_data_version(
+        File::open(root.join("facts.json"))?,
+        data_version,
+    )
 }
 
 pub(super) fn load(registry: &BlockRegistry, root: &Path) -> io::Result<Behaviours> {
