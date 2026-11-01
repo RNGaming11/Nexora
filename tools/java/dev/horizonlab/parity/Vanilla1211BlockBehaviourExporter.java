@@ -154,28 +154,6 @@ public final class Vanilla1211BlockBehaviourExporter {
 
     private static final SupportType[] SUPPORTS = {SupportType.FULL, SupportType.CENTER, SupportType.RIGID};
 
-    private static String instrument(BlockState state) {
-        if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.NOTEBLOCK_INSTRUMENT)) {
-            return state.getValue(
-                net.minecraft.world.level.block.state.properties.BlockStateProperties.NOTEBLOCK_INSTRUMENT
-            ).name();
-        }
-        try {
-            Field propertiesField = BlockBehaviour.class.getDeclaredField("properties");
-            propertiesField.setAccessible(true);
-            Object properties = propertiesField.get(state.getBlock());
-            Field instrumentField = BlockBehaviour.Properties.class.getDeclaredField("instrument");
-            instrumentField.setAccessible(true);
-            Object value = instrumentField.get(properties);
-            if (value instanceof Enum<?> instrument) {
-                return instrument.name();
-            }
-            throw new IllegalStateException("Block has no vanilla note-block instrument value");
-        } catch (ReflectiveOperationException error) {
-            throw new IllegalStateException("Could not read the 1.21.1 block instrument", error);
-        }
-    }
-
     private static JsonArray states() {
         var states = new JsonArray();
         var level = EmptyBlockGetter.INSTANCE;
@@ -239,7 +217,7 @@ public final class Vanilla1211BlockBehaviourExporter {
             o.add(weak);
             o.add(strong);
             o.add(signalError);
-            o.add(instrument(state));
+            o.add(state.instrument().name());
             states.add(o);
         }
         return states;
