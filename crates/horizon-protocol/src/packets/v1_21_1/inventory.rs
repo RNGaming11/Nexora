@@ -9,7 +9,7 @@ use crate::{
     item::{DelimitedSlot1211, Hashed, HashedSlot, Slot1211, Stack},
 };
 
-use super::ids;
+use crate::packet_ids_1_21_1::play::{clientbound, serverbound};
 
 /// ClientboundContainerSetContentPacket (1.21.1).
 #[derive(Clone, Debug, PartialEq)]
@@ -207,13 +207,13 @@ pub enum Serverbound {
 /// Decode inventory packets whose item payloads use the 1.21.1 component IDs.
 pub fn decode_clientbound(id: i32, payload: &[u8]) -> Result<Clientbound> {
     match id {
-        ids::play_clientbound::CONTAINER_SET_CONTENT => {
+        clientbound::CONTAINER_SET_CONTENT => {
             decode_exact(payload, ContainerSetContent::read).map(Clientbound::SetContent)
         }
-        ids::play_clientbound::CONTAINER_SET_SLOT => {
+        clientbound::CONTAINER_SET_SLOT => {
             decode_exact(payload, ContainerSetSlot::read).map(Clientbound::SetSlot)
         }
-        ids::play_clientbound::SET_EQUIPMENT => {
+        clientbound::SET_EQUIPMENT => {
             decode_exact(payload, SetEquipment::read).map(Clientbound::Equipment)
         }
         other => Err(Error::new(format!(
@@ -228,11 +228,11 @@ pub fn encode_serverbound(packet: &Serverbound) -> Result<Vec<u8>> {
     let id = match packet {
         Serverbound::Click(value) => {
             ContainerClick::write(value, &mut payload);
-            ids::play_serverbound::CONTAINER_CLICK
+            serverbound::CONTAINER_CLICK
         }
         Serverbound::CreativeSlot(value) => {
             SetCreativeModeSlot::write(value, &mut payload);
-            ids::play_serverbound::SET_CREATIVE_MODE_SLOT
+            serverbound::SET_CREATIVE_MODE_SLOT
         }
     };
     let mut output = Writer::new();
@@ -314,7 +314,7 @@ mod tests {
             carried: None,
         };
         let encoded = encode_serverbound(&Serverbound::Click(click.clone())).unwrap();
-        assert_eq!(encoded[0], ids::play_serverbound::CONTAINER_CLICK as u8);
+        assert_eq!(encoded[0], serverbound::CONTAINER_CLICK as u8);
         assert_eq!(
             decode_exact(&encoded[1..], ContainerClick::read).unwrap(),
             click
@@ -329,7 +329,7 @@ mod tests {
         let encoded = encode_serverbound(&Serverbound::CreativeSlot(creative.clone())).unwrap();
         assert_eq!(
             encoded[0],
-            ids::play_serverbound::SET_CREATIVE_MODE_SLOT as u8
+            serverbound::SET_CREATIVE_MODE_SLOT as u8
         );
         assert_eq!(
             decode_exact(&encoded[1..], SetCreativeModeSlot::read).unwrap(),
@@ -351,7 +351,7 @@ mod tests {
         );
         writer.u8(0);
         assert!(decode_clientbound(
-            ids::play_clientbound::CONTAINER_SET_SLOT,
+            clientbound::CONTAINER_SET_SLOT,
             &writer.data
         )
         .is_err());
