@@ -15,7 +15,7 @@ on:
     # A game release ships a commit both passed on (parity-main runs on batches: the newest commit it passed on).
     workflows: [checks, parity-main]
     types: [completed]
-    branches: [main]
+    branches: [nexora/master]
   schedule:
     - cron: '2-59/10 * * * *'
   workflow_dispatch:
@@ -58,11 +58,12 @@ jobs:
           fetch-depth: 0
       - id: mode
         # A dry run never publishes; a hand-started run off main is always one.
-        run: echo "dry_run=${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run || github.ref != 'refs/heads/main') }}" >> "$GITHUB_OUTPUT"
+        run: echo "dry_run=${{ github.event_name == 'workflow_dispatch' && (inputs.dry_run || github.ref != format('refs/heads/{0}', github.event.repository.default_branch)) }}" >> "$GITHUB_OUTPUT"
       - id: decide
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASES_PAUSED: ${{ vars.RELEASES_PAUSED }}
+          NEXORA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           # The commit whose checks or parity-main just passed; a dry run builds the branch it was started on;
           # otherwise main's newest commit with green checks and parity-main.
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || (steps.mode.outputs.dry_run == 'true' && github.sha) || '' }}
@@ -84,7 +85,8 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ needs.decide.outputs.head }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           URGENT: ${{ needs.decide.outputs.urgent }}
         run: |
-          gh workflow run nightly-build.yml --repo "$GITHUB_REPOSITORY" --ref main -f base="$HEAD_SHA" -f urgent="$URGENT"
+          gh workflow run nightly-build.yml --repo "$GITHUB_REPOSITORY" --ref "$DEFAULT_BRANCH" -f base="$HEAD_SHA" -f urgent="$URGENT"
           echo "### Started \`nightly build\` on ${HEAD_SHA:0:9}" >> "$GITHUB_STEP_SUMMARY"
