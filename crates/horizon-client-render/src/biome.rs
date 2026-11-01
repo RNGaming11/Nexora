@@ -182,6 +182,15 @@ fn colormap(root: &Path, name: &str) -> Result<Vec<u32>> {
         .map(|p| u32::from(p[0]) << 16 | u32::from(p[1]) << 8 | u32::from(p[2]))
         .collect())
 }
+
+fn dry_foliage_colormap(root: &Path, foliage: &[u32]) -> Result<Vec<u32>> {
+    let path = root.join("assets/minecraft/textures/colormap/dry_foliage.png");
+    if cfg!(feature = "minecraft-1-21-1") && !path.exists() {
+        Ok(foliage.to_vec())
+    } else {
+        colormap(root, "dry_foliage")
+    }
+}
 /// `GrassColor.get`/`FoliageColor.get`: temperature and downfall index a 256x256 map.
 fn sample(map: &[u32], temperature: f32, downfall: f32, fallback: u32) -> u32 {
     let temperature = f64::from(temperature.clamp(0.0, 1.0));
@@ -270,10 +279,11 @@ pub fn identifier_order(a: &str, b: &str) -> std::cmp::Ordering {
 }
 impl Biomes {
     pub fn load(root: &Path) -> Result<Self> {
+        let foliage = colormap(root, "foliage")?;
         let maps = Colormaps {
             grass: colormap(root, "grass")?,
-            foliage: colormap(root, "foliage")?,
-            dry: colormap(root, "dry_foliage")?,
+            dry: dry_foliage_colormap(root, &foliage)?,
+            foliage,
         };
         let mut list = Vec::new();
         let mut names: Vec<_> = fs::read_dir(root.join("data/minecraft/worldgen/biome"))?
@@ -480,6 +490,19 @@ mod pack_tests {
             colormaps: Arc::new(maps),
             packs: BTreeMap::new(),
         }
+    }
+
+    #[cfg(feature = "minecraft-1-21-1")]
+    #[test]
+    fn target_without_dry_foliage_colormap_reuses_foliage_map() {
+        let root = std::env::temp_dir().join(format!(
+            "horizon-biome-colormap-1211-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let foliage = vec![0x123456, 0xabcdef];
+        assert_eq!(dry_foliage_colormap(&root, &foliage).unwrap(), foliage);
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
