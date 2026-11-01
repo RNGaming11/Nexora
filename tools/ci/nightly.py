@@ -220,7 +220,7 @@ def green_base(repo: str, issue: str) -> Ref:
 
 
 def pick(force: bool) -> None:
-    git("fetch", "--quiet", "origin", "+refs/heads/main:refs/remotes/origin/main", "+refs/tags/nightly:refs/tags/nightly")
+    git("fetch", "--quiet", "origin", f"+refs/heads/{train.DEFAULT_BRANCH}:refs/remotes/origin/{train.DEFAULT_BRANCH}", "+refs/tags/nightly:refs/tags/nightly")
     today = dt.datetime.now(dt.timezone.utc).date().isoformat()
     repo, token = os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GH_TOKEN", "")
     main = green_base(repo, os.environ.get("NIGHTLY_ISSUE", ""))
