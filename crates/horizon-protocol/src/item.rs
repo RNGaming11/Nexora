@@ -527,6 +527,7 @@ impl Component {
         })
     }
     pub(crate) fn read_1_21_1(kind: i32, r: &mut Reader) -> Result<Self> {
+        use component::{BANNER_PATTERNS, TRIM, WRITABLE_BOOK_CONTENT};
         match kind {
             0 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56 => Ok(Self::Nbt(r.nbt()?)),
             1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50 => Ok(Self::Int(r.varint()?)),
@@ -725,7 +726,6 @@ impl Component {
     }
 
     pub(crate) fn write_1_21_1(&self, kind: i32, w: &mut Writer) -> Result<()> {
-        use component::*;
         match (kind, self) {
             (4 | 18, Self::Bool(value)) => w.bool(*value),
             (0 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56, Self::Nbt(value))
