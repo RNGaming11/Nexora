@@ -138,7 +138,7 @@ pub fn install_in(data: &Path, exe: &Path) -> io::Result<bool> {
             fs::create_dir_all(dir)?;
         }
         // Written beside and renamed, so a menu never reads half an entry.
-        let temp = path.with_extension("horizon-tmp");
+        let temp = path.with_extension("nexora-tmp");
         fs::write(&temp, &bytes)?;
         fs::rename(&temp, &path)?;
         wrote = true;
@@ -213,10 +213,10 @@ pub fn needs_repair_in(data: &Path, path: Option<&OsStr>) -> bool {
     }
 }
 
-/// What the entry starts: a distributor's wrapper (`HORIZON_LAUNCHER_DESKTOP_EXEC`) when one is
+/// What the entry starts: a distributor's wrapper (`NEXORA_LAUNCHER_DESKTOP_EXEC`, or the legacy variable) when one is
 /// configured, else the binary at `exe`.
 pub(crate) fn target(exe: &Path) -> PathBuf {
-    std::env::var_os("HORIZON_LAUNCHER_DESKTOP_EXEC")
+    std::env::var_os("NEXORA_LAUNCHER_DESKTOP_EXEC").or_else(|| std::env::var_os("HORIZON_LAUNCHER_DESKTOP_EXEC"))
         .filter(|path| !path.is_empty())
         .map_or_else(|| exe.to_path_buf(), PathBuf::from)
 }
