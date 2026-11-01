@@ -1396,6 +1396,7 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
             | "chat_ack"
             | "chat_command"
             | "chat_session_update"
+            | "command_suggestion"
             | "chunk_batch_received"
             | "client_command"
             | "configuration_acknowledged"
@@ -1437,6 +1438,10 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
             body.varint(reader.varint()?);
             let _position = [reader.f64()?, reader.f64()?, reader.f64()?];
             let _rotation = [reader.f32()?, reader.f32()?];
+        }
+        "command_suggestion" => {
+            body.varint(reader.varint()?);
+            body.string(&reader.string(32500)?);
         }
         "move_player_pos" => {
             body.f64(reader.f64()?);
@@ -2229,6 +2234,28 @@ mod tests {
         );
         assert_eq!(reader.f32().unwrap(), 45.0);
         assert_eq!(reader.f32().unwrap(), 10.0);
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
+    fn command_suggestion_requests_use_the_protocol_767_id() {
+        let mut payload = Writer::new();
+        payload.varint(17);
+        payload.string("/time set");
+        let encoded = encode_play_serverbound_1_21_1(
+            play_packets::Serverbound::Unknown(
+                crate::ids::play::serverbound::COMMAND_SUGGESTION,
+                payload.data,
+            ),
+        )
+        .unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::COMMAND_SUGGESTION
+        );
+        assert_eq!(reader.varint().unwrap(), 17);
+        assert_eq!(reader.string(32500).unwrap(), "/time set");
         assert_eq!(reader.remaining(), 0);
     }
 
