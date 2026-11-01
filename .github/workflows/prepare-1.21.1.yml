@@ -9,6 +9,7 @@ on:
       - "tools/version_port.py"
       - "tools/generate_recipe_serializer_inventory.py"
       - "tools/generate_data_component_inventory.py"
+      - "tools/generate_builtin_registry_inventory.py"
       - "ports/1.21.1/recipe-serializers.json"
       - "ports/1.21.1/data-component-ids.json"
 
@@ -51,6 +52,8 @@ jobs:
           $generatedHash = (Get-FileHash "target\1.21.1\data-component-ids.json" -Algorithm SHA256).Hash
           $pinnedHash = (Get-FileHash "ports\1.21.1\data-component-ids.json" -Algorithm SHA256).Hash
           if ($generatedHash -ne $pinnedHash) { throw "Generated data component IDs differ from the pinned 1.21.1 registry inventory." }
+          python tools/generate_builtin_registry_inventory.py --report $registries --out "target/1.21.1/builtin-registry-ids.json" --version 1.21.1 --data-version 3955
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -105,3 +108,4 @@ jobs:
             target/1.21.1/packet_ids.rs
             target/1.21.1/recipe-serializers.json
             target/1.21.1/data-component-ids.json
+            target/1.21.1/builtin-registry-ids.json
