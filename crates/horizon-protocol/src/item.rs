@@ -1288,14 +1288,14 @@ fn read_component_patch_1_21_1(
     patch.varint(negative as i32);
     for _ in 0..positive {
         let kind = r.varint()?;
+        if crate::packets::v1_21_1::component_ids::name(kind).is_none() {
+            return Err(crate::Error::new(format!(
+                "unknown protocol-767 item component id {kind}"
+            )));
+        }
         let (component, bytes) = if delimited {
             let len = r.count(r.remaining())?;
             let bytes = r.bytes(len)?;
-            if crate::packets::v1_21_1::component_ids::name(kind).is_none() {
-                return Err(crate::Error::new(format!(
-                    "unknown protocol-767 item component id {kind}"
-                )));
-            }
             let mut value_reader = Reader::new(bytes);
             let value = match Component::read_1_21_1(kind, &mut value_reader) {
                 Ok(value) if value_reader.remaining() == 0 => value,
