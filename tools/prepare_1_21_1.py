@@ -9,13 +9,14 @@ import sys
 import zipfile
 
 try:
-    from . import export_1_21_1_block_behaviours, export_1_21_1_collision, export_1_21_1_entity_attributes, export_1_21_1_entity_types, export_1_21_1_movement, export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
+    from . import export_1_21_1_block_behaviours, export_1_21_1_collision, export_1_21_1_entity_attributes, export_1_21_1_entity_types, export_1_21_1_movement, export_1_21_1_landing, export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
 except ImportError:
     import export_1_21_1_block_behaviours
     import export_1_21_1_collision
     import export_1_21_1_entity_attributes
     import export_1_21_1_entity_types
     import export_1_21_1_movement
+    import export_1_21_1_landing
     import export_1_21_1_gameplay_facts
     import generate_1_21_1_heightmap_predicates
     import build_1_21_1_runtime_resources
@@ -211,6 +212,16 @@ def main():
     )
     artifacts["movement_properties"] = movement_dir / "movement-properties.nbt"
 
+    landing_definitions = directory / "landing-definitions.json"
+    print("Backporting native 1.21.1 landing definitions for the shared fall system", flush=True)
+    landing_summary = export_1_21_1_landing.export(
+        Path(gameplay_summary["named_server_jar"]),
+        artifacts["server_libraries"],
+        reports / "blocks.json",
+        landing_definitions,
+    )
+    artifacts["landing_definitions"] = landing_definitions
+
     runtime_resources = directory / "runtime-resources"
     print("Building local Minecraft 1.21.1 runtime resources", flush=True)
     runtime_summary = build_1_21_1_runtime_resources.build(
@@ -226,6 +237,7 @@ def main():
         artifacts["occlusion"],
         attributes,
         artifacts["movement_properties"],
+        landing_definitions,
     )
 
     print("Indexing raw obfuscated class names for provenance", flush=True)
@@ -354,6 +366,7 @@ def main():
         "attribute_summary": attribute_summary,
         "collision_summary": collision_summary,
         "movement_summary": movement_summary,
+        "landing_summary": landing_summary,
         "next_required_step": "Runtime resources and version-pinned built-in registries are prepared locally; gameplay packet integration and parity remain incomplete.",
     }
     lab.write_json(directory / "facts.json", facts)
