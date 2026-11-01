@@ -9,9 +9,9 @@ import sys
 import zipfile
 
 try:
-    from . import build_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
+    from . import generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
 except ImportError:
-    import build_1_21_1_heightmap_predicates
+    import generate_1_21_1_heightmap_predicates
     import build_1_21_1_runtime_resources
     import class_index
     import lab
@@ -138,7 +138,7 @@ def main():
 
     heightmap_predicates = directory / "heightmap-predicates.json"
     print("Exporting exact 1.21.1 heightmap predicates from the official server", flush=True)
-    heightmap_data = build_1_21_1_heightmap_predicates.export(
+    heightmap_data = generate_1_21_1_heightmap_predicates.export(
         artifacts["server_game"],
         artifacts["server_libraries"],
         artifacts["server_mappings"],
