@@ -992,6 +992,46 @@ impl Game<'_> {
 
     // ---- a server's recipe book ----
 
+    /// Protocol-767's legacy ClientboundRecipePacket: recipe identifiers
+    /// are translated to the display IDs used by the shared recipe-book UI.
+    pub(super) fn remote_recipe_packet(
+        &mut self,
+        p: horizon_protocol::packets::v1_21_1::RecipePacket,
+    ) {
+        let index = &world_stations!(self).recipe_index;
+        let ui = &mut self.recipe_ui;
+        match p.action {
+            0 => ui.client.clear(),
+            1 | 2 => {}
+            _ => return,
+        }
+        if p.action == 2 {
+            for id in &p.recipes {
+                for display in index.display_ids(id) {
+                    ui.client.remove(display);
+                }
+            }
+        } else {
+            for id in &p.recipes {
+                for display in index.display_ids(id) {
+                    ui.client.add(display);
+                }
+            }
+            for id in &p.highlights {
+                for display in index.display_ids(id) {
+                    ui.client.highlight.insert(display);
+                }
+            }
+        }
+        for (i, (open, filtering)) in p.book_settings.books.into_iter().enumerate() {
+            self.level.recipe_book.open[i] = open;
+            self.level.recipe_book.filtering[i] = filtering;
+        }
+        ui.client_known = None;
+        ui.client_version += 1;
+        self.recipe_toast(&p.highlights);
+    }
+
     /// ClientboundRecipeBookAddPacket (`ClientRecipeBook.add`): the
     /// displays join the book, highlighted when new, and the recipes whose
     /// entries ask for it show the toast.
