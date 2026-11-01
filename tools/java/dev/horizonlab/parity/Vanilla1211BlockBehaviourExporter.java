@@ -69,7 +69,7 @@ public final class Vanilla1211BlockBehaviourExporter {
             if (holder.isBound() && depth > 0) {
                 return value(holder.value(), depth - 1);
             }
-            return holder.unwrapKey().<JsonElement>map(k -> new JsonPrimitive(k.identifier().toString())).orElse(JsonNull.INSTANCE);
+            return holder.unwrapKey().<JsonElement>map(k -> new JsonPrimitive(k.location().toString())).orElse(JsonNull.INSTANCE);
         } else if (v instanceof Optional<?> optional) {
             return optional.isPresent() ? value(optional.get(), depth) : JsonNull.INSTANCE;
         } else if (depth > 0 && v instanceof java.util.Map<?, ?> map) {
