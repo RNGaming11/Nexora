@@ -1321,6 +1321,10 @@ fn receive_play_1_21_1(
                         return Ok("Disconnected".into());
                     }
                 }
+                target::MissingPacket::PlayerCombatEnd(_)
+                | target::MissingPacket::PlayerCombatEnter(_)
+                | target::MissingPacket::SelectAdvancementsTab(_)
+                | target::MissingPacket::DebugSample(_) => {}
                 other => {
                     let _ = send.send(Event::DecodeError(format!(
                         "protocol-767 packet needs gameplay integration: {other:?}"
