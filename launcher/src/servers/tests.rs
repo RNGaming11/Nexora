@@ -58,7 +58,7 @@ fn programs_are_laid_out_as_install_sh_does() {
     fs::write(version.join(PROGRAM), "server").unwrap();
     fs::write(version.join("horizon-client"), "game").unwrap();
     fs::write(version.join(".installed"), "").unwrap();
-    crate::game_app::ensure(&version).unwrap();
+    crate::game_app::ensure(&version, "horizon-client").unwrap();
     fs::write(
         version.join(".local/horizon-client/26.3/horizon-resources.json"),
         "{}",
