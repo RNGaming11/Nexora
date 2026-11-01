@@ -1,11 +1,13 @@
 //! Protocol-767 vanilla recipe serializer codecs.
 //!
 //! The serializer IDs are read from the official 1.21.1 built-in registry
-//! report. Payload layouts follow the 1.21.1 packet schema. Recipe slots with
-//! data-component patches are rejected until their version-specific codecs
-//! are implemented; treating them as 26.3 components would corrupt the stream.
+//! report. Payload layouts follow the 1.21.1 packet schema. Recipe slots use the
+//! protocol-767 item codec and reject component formats not yet implemented.
 use super::{Error, RecipeSerializer, Result};
-use crate::buf::{Reader, Writer};
+use crate::{
+    buf::{Codec, Reader, Writer},
+    item::Slot1211,
+};
 
 pub const SERIALIZERS: &[&str] = &[
     "minecraft:crafting_shaped",
@@ -49,38 +51,8 @@ pub fn serializer_id(name: &str) -> Result<i32> {
         .ok_or_else(|| Error::new(format!("unknown protocol-767 recipe serializer {name}")))
 }
 
-/// A recipe slot with no data-component patch. This is sufficient for the
-/// vanilla 1.21.1 recipe payloads represented by the standard serializers.
-/// Component-bearing slots fail closed rather than using the 26.3 component
-/// registry, whose IDs and codecs differ.
 fn read_slot(r: &mut Reader) -> Result<()> {
-    let count = r.varint()?;
-    if count < 0 {
-        return Err(Error::new("negative item count in 1.21.1 recipe slot"));
-    }
-    if count == 0 {
-        return Ok(());
-    }
-    let item_id = r.varint()?;
-    if item_id < 0 {
-        return Err(Error::new("negative item registry id in 1.21.1 recipe slot"));
-    }
-    let added = r.count(256)?;
-    let removed = r.count(256)?;
-    if added != 0 {
-        let component_id = r.varint()?;
-        let component = super::component_ids::name(component_id).unwrap_or("unknown");
-        return Err(Error::new(format!(
-            "1.21.1 recipe slot component {component} (id {component_id}) is not supported yet"
-        )));
-    }
-    if removed != 0 {
-        let component_id = r.varint()?;
-        let component = super::component_ids::name(component_id).unwrap_or("unknown");
-        return Err(Error::new(format!(
-            "1.21.1 recipe slot removal for {component} (id {component_id}) is not supported yet"
-        )));
-    }
+    let _slot = Slot1211::read(r)?;
     Ok(())
 }
 
@@ -331,13 +303,17 @@ mod tests {
             vec![2]
         );
 
-        let mut component_slot = Reader::new(&[1, 5, 1, 0, 0]);
-        let error = read_slot(&mut component_slot).unwrap_err();
-        assert!(error.to_string().contains("minecraft:custom_data"));
+        let mut component_slot = Reader::new(&[1, 5, 1, 0, 1, 7]);
+        assert!(read_slot(&mut component_slot).is_ok());
+        assert_eq!(component_slot.remaining(), 0);
+
+        let mut unsupported_component = Reader::new(&[1, 5, 1, 0, 13]);
+        let error = read_slot(&mut unsupported_component).unwrap_err();
+        assert!(error.to_string().contains("minecraft:custom_model_data"));
 
         let mut removed_component = Reader::new(&[1, 5, 0, 1, 14]);
-        let error = read_slot(&mut removed_component).unwrap_err();
-        assert!(error.to_string().contains("minecraft:hide_additional_tooltip"));
+        assert!(read_slot(&mut removed_component).is_ok());
+        assert_eq!(removed_component.remaining(), 0);
     }
 
     #[test]
