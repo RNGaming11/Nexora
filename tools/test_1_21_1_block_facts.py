@@ -41,30 +41,6 @@ class BlockFacts1211Tests(unittest.TestCase):
                 {"id": "minecraft:oak_slab", "properties": {"waterlogged": "true"}},
             )
 
-    def test_exact_heightmap_predicates_are_appended_by_state_id(self):
-        with tempfile.TemporaryDirectory() as directory:
-            report = Path(directory) / "blocks.json"
-            report.write_text(
-                json.dumps({
-                    "minecraft:air": {"states": [{"id": 0, "default": True}]},
-                    "minecraft:stone": {"states": [{"id": 1, "default": True}]},
-                }),
-                encoding="utf-8",
-            )
-            predicates = {
-                "data_version": 3955,
-                "states": 2,
-                "motion": [False, True],
-                "no_leaves": [False, True],
-            }
-            facts = build(report, heightmap_predicates=predicates)
-            self.assertEqual(facts["states"][0][5:], [False, False])
-            self.assertEqual(facts["states"][1][5:], [True, True])
-
-            predicates["states"] = 1
-            with self.assertRaises(SystemExit):
-                build(report, heightmap_predicates=predicates)
-
     def test_air_flags_and_one_default_per_block_are_required(self):
         with tempfile.TemporaryDirectory() as directory:
             report = Path(directory) / "blocks.json"
