@@ -113,7 +113,15 @@ def install_archive_resources(resources: dict[str, bytes], root: Path) -> tuple[
 def install_items(reports: Path, root: Path) -> int:
     source = reports / "minecraft" / "components" / "item"
     if not source.is_dir():
-        raise ValueError(f"missing item component reports: {source}")
+        # Minecraft 1.21.1 has an item registry report, not the later
+        # minecraft/components/item report tree. Preserve the report without
+        # pretending that it contains per-item component defaults.
+        report = reports / "items.json"
+        if report.is_file():
+            destination = root / "items-report.json"
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(report, destination)
+        return 0
 
     items = {}
     for path in sorted(source.rglob("*.json")):
@@ -132,7 +140,10 @@ def install_items(reports: Path, root: Path) -> int:
 def install_biome_parameters(reports: Path, root: Path) -> int:
     source = reports / "biome_parameters" / "minecraft"
     if not source.is_dir():
-        raise ValueError(f"missing biome parameter reports: {source}")
+        # The 1.21.1 client jar already contains the target's worldgen/biome
+        # data. The quantized biome_parameters report is not emitted by this
+        # version's data generator.
+        return 0
 
     count = 0
     for path in sorted(source.rglob("*.json")):
