@@ -1004,18 +1004,29 @@ impl WirePatch {
         for _ in 0..positive {
             let kind = r.varint()?;
             let len = r.count(r.remaining())?;
-            let mut value_reader = Reader::new(r.bytes(len)?);
-            let value = Component::read_1_21_1(kind, &mut value_reader)?;
-            if value_reader.remaining() != 0 {
-                let name = crate::packets::v1_21_1::component_ids::name(kind).unwrap_or("unknown");
+            let bytes = r.bytes(len)?;
+            if crate::packets::v1_21_1::component_ids::name(kind).is_none() {
                 return Err(crate::Error::new(format!(
-                    "protocol-767 component {name} left {} unread bytes",
-                    value_reader.remaining()
+                    "unknown protocol-767 item component id {kind}"
                 )));
             }
+            let mut value_reader = Reader::new(bytes);
+            let value = match Component::read_1_21_1(kind, &mut value_reader) {
+                Ok(value) if value_reader.remaining() == 0 => value,
+                Ok(_) | Err(_) => Component::Raw(bytes.to_vec()),
+            };
             added.push((kind, value));
         }
-        let removed = (0..negative).map(|_| r.varint()).collect::<Result<_>>()?;
+        let mut removed = Vec::with_capacity(negative.min(64));
+        for _ in 0..negative {
+            let kind = r.varint()?;
+            if crate::packets::v1_21_1::component_ids::name(kind).is_none() {
+                return Err(crate::Error::new(format!(
+                    "unknown protocol-767 removed item component id {kind}"
+                )));
+            }
+            removed.push(kind);
+        }
         if r.remaining() != 0 {
             return Err(crate::Error::new(
                 "trailing bytes in protocol-767 component patch",
