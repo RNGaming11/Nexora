@@ -90,11 +90,11 @@ impl Codec<SetEquipment> for SetEquipment {
         loop {
             let encoded_slot = r.u8()?;
             slots.push((encoded_slot & 0x7f, Slot1211::read(r)?));
-            if encoded_slot & 0x80 == 0 {
-                break;
-            }
             if slots.len() > 8 {
                 return Err(Error::new("too many equipment entries in protocol-767 packet"));
+            }
+            if encoded_slot & 0x80 == 0 {
+                break;
             }
         }
         Ok(SetEquipment { entity_id, slots })
