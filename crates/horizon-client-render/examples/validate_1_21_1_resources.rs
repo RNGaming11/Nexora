@@ -39,6 +39,17 @@ fn validate() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let assets = Assets::load(&root)?;
+    let gameplay: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("gameplay-facts.json"))?)?;
+    let gameplay_states = gameplay["states"]
+        .as_array()
+        .ok_or("gameplay facts have no state table")?;
+    if gameplay_states.len() != assets.registry.len()
+        || manifest["gameplay_fact_state_count"].as_u64()
+            != Some(gameplay_states.len() as u64)
+    {
+        return Err("gameplay facts do not match the 1.21.1 block-state registry".into());
+    }
     let render = assets.reload(&root)?;
     if render.sprite_layers.is_empty() {
         return Err("block models did not resolve any sprite layers".into());
