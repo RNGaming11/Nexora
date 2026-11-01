@@ -798,9 +798,8 @@ fn run(
     };
 
     status(send, "Joining world...");
-    let client_information = encode_configuration_serverbound(
-        cfg::Serverbound::ClientInformation(info),
-    )?;
+    let client_information =
+        encode_configuration_serverbound(cfg::Serverbound::ClientInformation(info))?;
     c.send(&client_information).map_err(map_error)?;
     c.send(
         &cfg::Serverbound::CustomPayload(cfg::CustomPayload {
