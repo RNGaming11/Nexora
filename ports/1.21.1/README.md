@@ -100,7 +100,9 @@ All nineteen previously missing packet payloads now have target-specific codecs.
 - [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
 - [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
 - [x] Generate the core 1.21.1 runtime bundle: official client assets/data, built-in registry inventory, block facts/tags, model-state schemas, heightmap predicates, gameplay facts, and block behaviours. The gameplay/behaviour exporters are backports of the existing vanilla exporters, not replacement game logic; CI checks their registry coverage.
-- [ ] Reuse and adapt the remaining existing runtime exporters for collision/occlusion, motion, items, entities, mob data, creative data, and other startup tables; feed their output into the existing Rust loaders.
+- [x] Export exact 1.21.1 collision/occlusion tables, movement properties, entity dimensions/categories, and the default entity attribute catalog through the mapped official server jar.
+- [x] Use the official item data-generator report and pinned 57-entry data-component registry as the target runtime item inputs.
+- [ ] Backport the remaining mob-data, entity-model-layer, and creative-tab exporters to 1.21.1 and feed their output into the existing Rust loaders.
 - [x] Connect protocol-767 container content/slot/equipment and merchant-offer decoding, plus container-click/creative-slot encoding, to the live client path using the 1.21.1 item/component codecs.
 - [x] Route protocol-767's dedicated experience-orb spawn packet into the shared orb simulation, preserving its server-provided position and XP value.
 - [x] Apply protocol-767 recipe-book initialization/add/remove/highlight/settings packets to the shared UI, and encode recipe placement with the target's recipe-identifier field.
