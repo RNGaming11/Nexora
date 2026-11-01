@@ -13,6 +13,9 @@ on:
       - "tools/generate_1_21_1_block_facts.py"
       - "tools/generate_1_21_1_model_states.py"
       - "tools/build_1_21_1_runtime_resources.py"
+      - "tools/generate_1_21_1_heightmap_predicates.py"
+      - "tools/java/Vanilla1211HeightmapPredicates.java"
+      - "crates/horizon-client-render/src/assets.rs"
       - "crates/horizon-client-render/examples/validate_1_21_1_resources.rs"
       - "ports/1.21.1/recipe-serializers.json"
       - "ports/1.21.1/data-component-ids.json"
@@ -60,6 +63,8 @@ jobs:
           python tools/generate_builtin_registry_inventory.py --report $registries --out "target/1.21.1/builtin-registry-ids.json" --version 1.21.1 --data-version 3955
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $blocks = Join-Path $env:HORIZON_VERSIONS '1.21.1/datagen/reports/blocks.json'
+          $heightmap = Join-Path $env:HORIZON_VERSIONS '1.21.1/heightmap-predicates.json'
+          if (-not (Test-Path $heightmap)) { throw "The official 1.21.1 heightmap predicates were not exported." }
           python tools/generate_1_21_1_block_facts.py --report $blocks --out 'target/1.21.1/block-facts.json' --data-version 3955
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/generate_1_21_1_model_states.py --report $blocks --out 'target/1.21.1/model-states.json'
@@ -69,6 +74,7 @@ jobs:
             [pscustomobject]@{ Source = 'target/1.21.1/builtin-registry-ids.json'; Runtime = (Join-Path $runtime 'builtin-registry-ids.json') }
             [pscustomobject]@{ Source = 'target/1.21.1/block-facts.json'; Runtime = (Join-Path $runtime 'facts.json') }
             [pscustomobject]@{ Source = 'target/1.21.1/model-states.json'; Runtime = (Join-Path $runtime 'model-states.json') }
+            [pscustomobject]@{ Source = $heightmap; Runtime = (Join-Path $runtime 'heightmap-predicates.json') }
           )
           foreach ($check in $checks) {
             python -c "import json,sys; left=json.load(open(sys.argv[1], encoding='utf-8')); right=json.load(open(sys.argv[2], encoding='utf-8')); sys.exit(0 if left == right else 1)" $check.Source $check.Runtime
@@ -127,6 +133,8 @@ jobs:
             .port-cache/versions/1.21.1/datagen/reports/items.json
             .port-cache/versions/1.21.1/datagen/reports/blocks.json
             .port-cache/versions/1.21.1/datagen/reports/commands.json
+            .port-cache/versions/1.21.1/heightmap-predicates.json
+            .port-cache/versions/1.21.1/runtime-resources/heightmap-predicates.json
             target/1.21.1/packet_ids.rs
             target/1.21.1/recipe-serializers.json
             target/1.21.1/data-component-ids.json
