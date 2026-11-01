@@ -42,7 +42,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = os.environ.get("GITHUB_REPOSITORY", "horizon-rust/horizon")
+REPO = os.environ.get("GITHUB_REPOSITORY", "RNGaming11/Nexora")
+DEFAULT_BRANCH = os.environ.get("NEXORA_DEFAULT_BRANCH", "main")
 # The maintainer, left out of the notes' thanks (the repository's owner is the horizon-rust organization).
 MAINTAINER = "ludovic111"
 # Releases ship in batches, so players get a few releases a day rather than one per merge: BATCH player-facing pull
@@ -85,7 +86,7 @@ LAUNCHER_IGNORED = ["launcher/links.json", "launcher/docs/", "launcher/tests/"]
 # themselves. The site's Releases page leaves it out too. Player notes always name horizon-rust/horizon, even when CI on a fork sets GITHUB_REPOSITORY to that fork.
 PLAYERS = ('<h3>Want to play? Download the <a href="https://github.com/RNGaming11/Nexora">Nexora launcher</a>, not the files '
            'below</h3><p>It installs this version and keeps it up to date. It is also on GitHub: <a href="'
-           'https://github.com/horizon-rust/horizon/releases?q=launcher&amp;expanded=true">the launcher releases</a>. You need your '
+           'https://github.com/RNGaming11/Nexora/releases?q=launcher&amp;expanded=true">the launcher releases</a>. You need your '
            "own copy of Minecraft: Java Edition. The files below are what the launcher installs, and the dedicated "
            "server for people who host one.</p>")
 LAUNCHER_FOOTER = ("Your launcher updates itself. New here? Download the archive for your system below, extract it, "
@@ -475,18 +476,18 @@ def merged_between(kind, base, head):
 
 def passed_on(workflow, sha):
     """Whether the newest finished push run of workflow on main for commit sha passed."""
-    runs = gh_json("run", "list", "--repo", REPO, "--workflow", workflow, "--branch", "main", "--event", "push",
+    runs = gh_json("run", "list", "--repo", REPO, "--workflow", workflow, "--branch", DEFAULT_BRANCH, "--event", "push",
                    "--commit", sha, "--limit", "5", "--json", "status,conclusion")
     done = [entry for entry in runs if entry["status"] == "completed" and entry["conclusion"] != "cancelled"]
     return bool(done) and done[0]["conclusion"] == "success"
 
 
 def green_main_head(parity=False):
-    """The newest commit on main whose checks passed: what an automatic release builds. With parity (game
+    """The newest commit on the default branch whose checks passed: what an automatic release builds. With parity (game
     releases), the newest commit parity-main passed on, if its checks passed too: parity-main runs on batches of
     merges, so the commits a run skipped are covered by the next one, and a superseded run counts for nothing."""
     workflow = "parity-main" if parity else "checks"
-    runs = gh_json("run", "list", "--repo", REPO, "--workflow", workflow, "--branch", "main", "--event", "push",
+    runs = gh_json("run", "list", "--repo", REPO, "--workflow", workflow, "--branch", DEFAULT_BRANCH, "--event", "push",
                    "--limit", "10", "--json", "headSha,status,conclusion")
     for entry in runs:
         if entry["status"] == "completed" and entry["conclusion"] != "cancelled":
@@ -507,7 +508,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=["decide", "notes", "gate"])
     parser.add_argument("--kind", choices=["game", "launcher"], required=True)
-    parser.add_argument("--head", help="the commit to release (default: the newest commit on main whose checks passed)")
+    parser.add_argument("--head", help="the commit to release (default: the newest commit on the default branch whose checks passed)")
     parser.add_argument("--tag", help="notes: the release's tag")
     parser.add_argument("--force", action="store_true", help="release even without player-facing changes, before merges settle, while paused or before parity-main passed")
     parser.add_argument("--out", type=Path, help="notes: write title.txt and body.md here")
@@ -532,7 +533,7 @@ def main():
     parity = args.kind == "game" and args.command == "decide" and not args.force
     head = args.head or green_main_head(parity)
     if not head:
-        result = {"release": False, "reason": "main's latest checks did not pass" + (
+        result = {"release": False, "reason": "the default branch's latest checks did not pass" + (
             " or parity-main did not pass on them" if parity else "")}
         print(json.dumps(result, indent=1))
         write_outputs({"release": "false", "reason": result["reason"]})
