@@ -585,8 +585,13 @@ impl Component {
                 let strings = (0..n).map(|_| r.string(32767)).collect::<Result<_>>()?;
                 let n = r.count(r.remaining())?;
                 let colors = (0..n).map(|_| r.i32()).collect::<Result<_>>()?;
-                Ok(Self::CustomModelData { floats, flags, strings, colors })
-            },
+                Ok(Self::CustomModelData {
+                    floats,
+                    flags,
+                    strings,
+                    colors,
+                })
+            }
             4 | 18 => Ok(Self::Bool(r.bool()?)),
             5 | 6 => Ok(Self::Text(r.nbt()?)),
             7 => capture_component(r, |r| {
@@ -805,7 +810,15 @@ impl Component {
             (0 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56, Self::Nbt(value))
             | (5 | 6, Self::Text(value)) => w.nbt(value),
             (1 | 2 | 3 | 8 | 16 | 26 | 28 | 41 | 50, Self::Int(value)) => w.varint(*value),
-            (13, Self::CustomModelData { floats, flags, strings, colors }) => {
+            (
+                13,
+                Self::CustomModelData {
+                    floats,
+                    flags,
+                    strings,
+                    colors,
+                },
+            ) => {
                 w.varint(floats.len() as i32);
                 floats.iter().for_each(|value| w.f32(*value));
                 w.varint(flags.len() as i32);
