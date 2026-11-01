@@ -1618,6 +1618,9 @@ mod tests {
     fn protocol_module_matches_the_isolated_target_version_facts() {
         assert_eq!(PROTOCOL_VERSION, horizon_core::version_1_21_1::PROTOCOL_VERSION);
         assert_eq!(horizon_core::version_1_21_1::VANILLA_VERSION, "1.21.1");
+        #[cfg(feature = "minecraft-1-21-1")]
+        assert_eq!(PROTOCOL_VERSION, crate::PROTOCOL_VERSION);
+        #[cfg(not(feature = "minecraft-1-21-1"))]
         assert_ne!(PROTOCOL_VERSION, crate::PROTOCOL_VERSION);
     }
 
