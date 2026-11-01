@@ -156,7 +156,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
             (reports / "biome_parameters").rmdir()
             (reports / "items.json").write_text('{"minecraft:stone":{"max_stack_size":64}}', encoding="utf-8")
 
-            manifest = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root))
+            manifest = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root))
             self.assertEqual(manifest["item_component_item_count"], 0)
             self.assertEqual(manifest["biome_parameter_file_count"], 0)
             self.assertEqual(manifest["gameplay_fact_state_count"], 5)
