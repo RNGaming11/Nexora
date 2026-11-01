@@ -100,15 +100,15 @@ mod tests {
             BlockRegistry::from_facts_json_with_data_version(&facts[..], 3955).unwrap();
         assert_eq!(registry.len(), 1);
         assert_eq!(flags, [(true, false)]);
-        assert!(BlockRegistry::from_facts_json_with_data_version(&facts[..], DATA_VERSION).is_err());
+        assert!(
+            BlockRegistry::from_facts_json_with_data_version(&facts[..], DATA_VERSION).is_err()
+        );
 
         let legacy = br#"{
             "defaults": {"minecraft:air": 0},
             "states": [["minecraft:air", true, false, "Block{minecraft:air}", "minecraft:air"]]
         }"#;
-        assert!(
-            BlockRegistry::from_facts_json_with_data_version(&legacy[..], 3955).is_err()
-        );
+        assert!(BlockRegistry::from_facts_json_with_data_version(&legacy[..], 3955).is_err());
         assert!(BlockRegistry::from_facts_json_with_flags(&legacy[..]).is_ok());
     }
 
@@ -153,17 +153,13 @@ mod tests {
             BlockRegistry::from_facts_json_with_data_version(&facts[..], 3955).unwrap();
         assert_eq!(registry.len(), 1);
         assert_eq!(flags, [(true, false)]);
-        assert!(
-            BlockRegistry::from_facts_json_with_data_version(&facts[..], 5023).is_err()
-        );
+        assert!(BlockRegistry::from_facts_json_with_data_version(&facts[..], 5023).is_err());
 
         let legacy = br#"{
             "defaults": {"minecraft:air": 0},
             "states": [["minecraft:air", true, false, "", "minecraft:air"]]
         }"#;
-        assert!(
-            BlockRegistry::from_facts_json_with_data_version(&legacy[..], 3955).is_err()
-        );
+        assert!(BlockRegistry::from_facts_json_with_data_version(&legacy[..], 3955).is_err());
     }
 
     /// The streamed registry is the one the JSON and NBT trees built.
