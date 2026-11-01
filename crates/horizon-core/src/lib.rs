@@ -19,8 +19,11 @@ pub mod text;
 pub mod ticks;
 
 pub mod release;
+#[cfg(not(feature = "minecraft-1-21-1"))]
 pub mod version;
 #[path = "../../../ports/1.21.1/version.rs"]
 pub mod version_1_21_1;
+#[cfg(feature = "minecraft-1-21-1")]
+pub use version_1_21_1 as version;
 
 pub use version::VANILLA_VERSION;
