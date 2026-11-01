@@ -169,6 +169,17 @@ fn capture_component(
     Ok(Component::Raw(reader.since(start).to_vec()))
 }
 
+fn read_1211_sound_event(reader: &mut Reader) -> Result<()> {
+    let holder = reader.varint()?;
+    if holder == 0 {
+        reader.string(32767)?;
+        if reader.bool()? {
+            reader.f32()?;
+        }
+    }
+    Ok(())
+}
+
 fn read_1211_id_set(reader: &mut Reader) -> Result<()> {
     match reader.varint()? {
         0 => reader.string(32767).map(drop),
@@ -529,7 +540,7 @@ impl Component {
     pub(crate) fn read_1_21_1(kind: i32, r: &mut Reader) -> Result<Self> {
         use component::{BANNER_PATTERNS, TRIM, WRITABLE_BOOK_CONTENT};
         match kind {
-            0 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56 => Ok(Self::Nbt(r.nbt()?)),
+            0 | 27 | 36 | 38 | 43 | 55 | 56 => Ok(Self::Nbt(r.nbt()?)),
             1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50 => Ok(Self::Int(r.varint()?)),
             4 | 18 => Ok(Self::Bool(r.bool()?)),
             5 | 6 => Ok(Self::Text(r.nbt()?)),
@@ -640,17 +651,29 @@ impl Component {
                 skip::component(TRIM, r)?;
                 r.bool().map(drop)
             }),
+            37 | 39 => capture_component(r, |r| {
+                r.varint()?;
+                r.nbt()?;
+                Ok(())
+            }),
             40 => capture_component(r, |r| {
                 let holder = r.varint()?;
                 if holder == 0 {
-                    return Err(crate::Error::new(
-                        "inline protocol-767 instrument data is not supported yet",
-                    ));
+                    read_1211_sound_event(r)?;
+                    r.f32()?;
+                    r.f32()?;
+                    r.nbt()?;
                 }
                 Ok(())
             }),
             42 => capture_component(r, |r| {
-                skip::component(66, r)?;
+                let holder = r.varint()?;
+                if holder == 0 {
+                    read_1211_sound_event(r)?;
+                    r.nbt()?;
+                    r.f32()?;
+                    r.varint()?;
+                }
                 r.bool().map(drop)
             }),
             44 => {
@@ -1721,6 +1744,58 @@ mod tests {
         let mut encoded = Writer::new();
         decoded.write_1_21_1(51, &mut encoded).unwrap();
         assert_eq!(encoded.data, pot_bytes);
+    }
+
+    #[test]
+    fn protocol_767_typed_entity_data_and_instrument_components_round_trip_as_raw() {
+        for kind in [37, 39] {
+            let mut value = Writer::new();
+            value.varint(4);
+            value.nbt(&Tag::compound([("id", Tag::String("minecraft:chest".into()))]));
+            let bytes = value.data;
+            let mut reader = Reader::new(&bytes);
+            let decoded = Component::read_1_21_1(kind, &mut reader).unwrap();
+            assert_eq!(decoded, Component::Raw(bytes.clone()));
+            assert_eq!(reader.remaining(), 0);
+            let mut output = Writer::new();
+            decoded.write_1_21_1(kind, &mut output).unwrap();
+            assert_eq!(output.data, bytes);
+        }
+
+        let mut instrument = Writer::new();
+        instrument.varint(0);
+        instrument.varint(0);
+        instrument.string("minecraft:item.goat_horn.sound.0");
+        instrument.bool(false);
+        instrument.f32(7.0);
+        instrument.f32(16.0);
+        instrument.nbt(&Tag::String("horn".into()));
+        let instrument_bytes = instrument.data;
+        let mut reader = Reader::new(&instrument_bytes);
+        let decoded = Component::read_1_21_1(40, &mut reader).unwrap();
+        assert_eq!(decoded, Component::Raw(instrument_bytes.clone()));
+        assert_eq!(reader.remaining(), 0);
+        let mut output = Writer::new();
+        decoded.write_1_21_1(40, &mut output).unwrap();
+        assert_eq!(output.data, instrument_bytes);
+
+        let mut jukebox = Writer::new();
+        jukebox.varint(0);
+        jukebox.varint(0);
+        jukebox.string("minecraft:music_disc.13");
+        jukebox.bool(false);
+        jukebox.nbt(&Tag::String("song".into()));
+        jukebox.f32(178.0);
+        jukebox.varint(1);
+        jukebox.bool(true);
+        let jukebox_bytes = jukebox.data;
+        let mut reader = Reader::new(&jukebox_bytes);
+        let decoded = Component::read_1_21_1(42, &mut reader).unwrap();
+        assert_eq!(decoded, Component::Raw(jukebox_bytes.clone()));
+        assert_eq!(reader.remaining(), 0);
+        let mut output = Writer::new();
+        decoded.write_1_21_1(42, &mut output).unwrap();
+        assert_eq!(output.data, jukebox_bytes);
     }
 
     #[test]
