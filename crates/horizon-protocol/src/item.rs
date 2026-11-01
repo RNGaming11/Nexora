@@ -2220,7 +2220,8 @@ mod tests {
             Slot::write(&stack, &mut w);
             assert_eq!(w.data, bytes);
         }
-    }    
+    }
+
     #[test]
     fn protocol_767_can_place_on_and_can_break_components_round_trip() {
         let mut wire = Writer::new();
@@ -2267,5 +2268,4 @@ mod tests {
             assert!(Component::read_1_21_1(kind, &mut reader).is_err());
         }
     }
-
 }
