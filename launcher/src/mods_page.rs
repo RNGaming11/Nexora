@@ -404,6 +404,10 @@ impl Launcher {
             m.results_list.reset();
             m.installed_list.reset();
         }
+        let game_version = self
+            .selected()
+            .map(|tag| backend::game_version(tag))
+            .unwrap_or_else(|| browser::GAME.to_owned());
         let query = match m.java_for(m.kind) {
             Some(target) => Query {
                 offset,
@@ -415,7 +419,7 @@ impl Launcher {
                 offset,
                 limit: PAGE,
                 filters: m.browse.filters.clone(),
-                ..Query::new(m.text.text(), m.kind)
+                ..Query::new_for(&game_version, m.text.text(), m.kind)
             },
         };
         // A Java instance's files are Modrinth's; Horizon's registry is for Horizon.
