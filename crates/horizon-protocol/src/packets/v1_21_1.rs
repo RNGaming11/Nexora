@@ -1166,6 +1166,7 @@ pub fn decode_play_serverbound(id: i32, payload: &[u8]) -> Result<MissingPacket>
 /// serverbound payloads whose layouts are verified for 1.21.1 are accepted.
 pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Result<Vec<u8>> {
     match packet {
+        play_packets::Serverbound::PlayerLoaded(_) => return Ok(Vec::new()),
         play_packets::Serverbound::ContainerClick(value) => {
             let click = inventory::ContainerClick {
                 container: value.container,
@@ -1215,7 +1216,6 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
             | "player_action"
             | "player_command"
             | "player_input"
-            | "player_loaded"
             | "pong"
             | "resource_pack"
             | "set_carried_item"
@@ -1240,6 +1240,8 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
     match name {
         "accept_teleportation" => {
             body.varint(reader.varint()?);
+            let _position = [reader.f64()?, reader.f64()?, reader.f64()?];
+            let _rotation = [reader.f32()?, reader.f32()?];
         }
         "move_player_pos" => {
             body.f64(reader.f64()?);
@@ -1989,19 +1991,11 @@ mod tests {
 
     #[test]
     fn protocol_767_loaded_and_chunk_batch_packets_keep_their_target_layouts() {
-        let loaded = encode_play_serverbound_1_21_1(
-            play_packets::Serverbound::PlayerLoaded(Empty),
-        )
-        .unwrap();
-        let mut reader = Reader::new(&loaded);
-        assert_eq!(
-            reader.varint().unwrap(),
-            crate::packet_ids_1_21_1::play::serverbound::NAMES
-                .iter()
-                .position(|name| *name == "player_loaded")
-                .unwrap() as i32
+        assert!(
+            encode_play_serverbound_1_21_1(play_packets::Serverbound::PlayerLoaded(Empty))
+                .unwrap()
+                .is_empty()
         );
-        assert_eq!(reader.remaining(), 0);
 
         let batch = encode_play_serverbound_1_21_1(
             play_packets::Serverbound::ChunkBatchReceived(
