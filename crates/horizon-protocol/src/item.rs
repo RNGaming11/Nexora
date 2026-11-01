@@ -491,19 +491,38 @@ impl Component {
     pub(crate) fn read_1_21_1(kind: i32, r: &mut Reader) -> Result<Self> {
         use component::*;
         let codec = match kind {
-            0 => CUSTOM_DATA, 1 => MAX_STACK_SIZE, 2 => MAX_DAMAGE, 3 => DAMAGE,
-            5 => CUSTOM_NAME, 6 => ITEM_NAME, 7 => LORE, 8 => RARITY,
-            9 => ENCHANTMENTS, 16 => REPAIR_COST, 18 => ENCHANTMENT_GLINT_OVERRIDE,
-            23 => STORED_ENCHANTMENTS, 24 => DYED_COLOR, 26 => MAP_ID,
-            28 => MAP_POST_PROCESSING, 32 => SUSPICIOUS_STEW_EFFECTS,
-            33 => WRITABLE_BOOK_CONTENT, 34 => WRITTEN_BOOK_CONTENT, 35 => TRIM,
-            40 => INSTRUMENT, 41 => OMINOUS_BOTTLE_AMPLIFIER,
-            44 => LODESTONE_TRACKER, 45 => FIREWORK_EXPLOSION, 46 => FIREWORKS,
-            49 => BANNER_PATTERNS, 50 => BASE_COLOR,
+            0 => CUSTOM_DATA,
+            1 => MAX_STACK_SIZE,
+            2 => MAX_DAMAGE,
+            3 => DAMAGE,
+            5 => CUSTOM_NAME,
+            6 => ITEM_NAME,
+            7 => LORE,
+            8 => RARITY,
+            9 => ENCHANTMENTS,
+            16 => REPAIR_COST,
+            18 => ENCHANTMENT_GLINT_OVERRIDE,
+            23 => STORED_ENCHANTMENTS,
+            24 => DYED_COLOR,
+            26 => MAP_ID,
+            28 => MAP_POST_PROCESSING,
+            32 => SUSPICIOUS_STEW_EFFECTS,
+            33 => WRITABLE_BOOK_CONTENT,
+            34 => WRITTEN_BOOK_CONTENT,
+            35 => TRIM,
+            40 => INSTRUMENT,
+            41 => OMINOUS_BOTTLE_AMPLIFIER,
+            44 => LODESTONE_TRACKER,
+            45 => FIREWORK_EXPLOSION,
+            46 => FIREWORKS,
+            49 => BANNER_PATTERNS,
+            50 => BASE_COLOR,
             4 | 14 | 15 | 17 | 19 | 21 => return Ok(Self::Unit),
             other => {
                 let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
-                return Err(crate::Error::new(format!("unsupported protocol-767 item component {name} (id {other})")));
+                return Err(crate::Error::new(format!(
+                    "unsupported protocol-767 item component {name} (id {other})"
+                )));
             }
         };
         Self::read(codec, r)
@@ -739,11 +758,16 @@ impl WirePatch {
         for _ in 0..positive {
             let kind = r.varint()?;
             let len = r.count(r.remaining())?;
-            added.push((kind, Component::read_1_21_1(kind, &mut Reader::new(r.bytes(len)?))?));
+            added.push((
+                kind,
+                Component::read_1_21_1(kind, &mut Reader::new(r.bytes(len)?))?,
+            ));
         }
         let removed = (0..negative).map(|_| r.varint()).collect::<Result<_>>()?;
         if r.remaining() != 0 {
-            return Err(crate::Error::new("trailing bytes in protocol-767 component patch"));
+            return Err(crate::Error::new(
+                "trailing bytes in protocol-767 component patch",
+            ));
         }
         Ok((added, removed))
     }
@@ -1026,11 +1050,16 @@ mod tests {
     #[test]
     fn protocol_767_component_ids_use_verified_1211_codecs() {
         let mut patch = Writer::new();
-        patch.varint(4); patch.varint(1);
-        patch.varint(1); patch.byte_array(&[7]);
-        patch.varint(4); patch.byte_array(&[]);
-        patch.varint(18); patch.byte_array(&[1]);
-        patch.varint(24); patch.byte_array(&[0, 0, 0, 42]);
+        patch.varint(4);
+        patch.varint(1);
+        patch.varint(1);
+        patch.byte_array(&[7]);
+        patch.varint(4);
+        patch.byte_array(&[]);
+        patch.varint(18);
+        patch.byte_array(&[1]);
+        patch.varint(24);
+        patch.byte_array(&[0, 0, 0, 42]);
         patch.varint(21);
         let (added, removed) = WirePatch::decode_1_21_1(&patch.data).unwrap();
         assert_eq!(added[0], (1, Component::Int(7)));
@@ -1039,14 +1068,18 @@ mod tests {
         assert_eq!(added[3], (24, Component::Int(42)));
         assert_eq!(removed, vec![21]);
         let mut encoded = Writer::new();
-        for (id, value) in &added { value.write_1_21_1(*id, &mut encoded).unwrap(); }
+        for (id, value) in &added {
+            value.write_1_21_1(*id, &mut encoded).unwrap();
+        }
         assert_eq!(encoded.data, [7, 1, 0, 0, 0, 42]);
     }
 
     #[test]
     fn protocol_767_component_decoder_rejects_unverified_formats() {
         let mut patch = Writer::new();
-        patch.varint(1); patch.varint(0); patch.varint(13);
+        patch.varint(1);
+        patch.varint(0);
+        patch.varint(13);
         patch.byte_array(&[1, 2, 3, 4]);
         assert!(WirePatch::decode_1_21_1(&patch.data).is_err());
     }
