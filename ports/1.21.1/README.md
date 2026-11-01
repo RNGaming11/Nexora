@@ -57,7 +57,7 @@ The complete machine-generated comparison contains 930 ranked work items and is 
 
 ## Next port stages
 
-1. The separate feature-gated client now selects 1.21.1 version constants and DataVersion 3955 while the ordinary client remains 26.3. Preparation builds a core runtime bundle containing the official client assets/data, built-in registry inventory, block facts/tags, model-state schemas, and exact heightmap predicates exported from the official 1.21.1 server. The CI validator loads that bundle through `Assets::load` and the renderer's `reload` path. This is not yet the complete runtime data set: the full game startup also needs target-specific gameplay facts, block behaviours, collision/occlusion, motion/attributes, item, entity and mob tables. The version constants remain isolated in `ports/1.21.1/version.rs` and exposed through the selected `horizon_core::version`; do not hand-edit `crates/horizon-core/src/version.rs`, which describes the default 26.3 profile.
+1. The 1.21.1 executable deliberately reuses the existing 26.3 Rust client, renderer, world, inventory, and gameplay implementation; both binaries compile the same source. Only version-specific constants, protocol adapters, and compatibility data are selected by the `minecraft-1-21-1` feature. Preparation now reuses the existing vanilla gameplay/block-behaviour exporters, copied and adjusted only for the 1.21.1 mapped Java API, to supply exact target-version inputs to the same Rust loaders. It builds the official client resources, registry inventory, block facts/tags/model-state schemas, heightmap predicates, gameplay facts and block behaviours. The CI validator loads the assets through `Assets::load` and the renderer's `reload` path. The remaining resource inputs must be ported through the same existing exporter pipeline (collision/occlusion, motion, items, entities, mob data, creative data, and related tables); no second game engine is being written. The version constants remain isolated in `ports/1.21.1/version.rs` and exposed through the selected `horizon_core::version`; do not hand-edit `crates/horizon-core/src/version.rs`, which describes the default 26.3 profile.
 2. Generate and review the mapped 26.3-to-1.21.1 class/source diff and ranked worklist. With both version caches prepared, run:
 
    ```powershell
@@ -68,7 +68,7 @@ The complete machine-generated comparison contains 930 ranked work items and is 
 
 3. Expand the feature-gated protocol-767 live client path. The `minecraft-1-21-1` build selects the target version constants and uses separate handshake, login, configuration, play dispatch, chunk/light conversion, and item-slot codecs. It now routes container contents/slots, equipment, container clicks, and creative-slot updates through the target item-component IDs. This is still a partial play-state adapter: unsupported gameplay packets must be implemented or proven wire-compatible before normal server play is reliable.
 4. Bridge the decoded 1.21.1 recipe definitions into gameplay and the recipe-book UI; the live network path now safely decodes the target's recipe synchronization packet.
-5. Port gameplay systems in dependency order, using the mapped source diff and parity tests.
+5. Backport only the 1.21.1 API/protocol differences into the existing shared Rust systems, using the mapped source diff and parity tests. Keep the 26.3 implementation as the base; do not duplicate or rewrite the game systems.
 6. Demonstrate the playable milestone by launching the Rust client and joining a local vanilla 1.21.1 server. A successful compile or packet-codec test alone is not proof of gameplay compatibility.
 
 Do not change the active protocol constant to 767 as a shortcut: that would make the existing 26.3 client send a 1.21.1 handshake while still decoding 26.3 packets.
@@ -99,8 +99,8 @@ All nineteen previously missing packet payloads now have target-specific codecs.
 - [x] Added a compact built-in registry inventory generator, strict Rust loader, and preparation artifact for the target's 78 registries / 5,825 IDs.
 - [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
 - [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
-- [x] Generate the core 1.21.1 runtime bundle: official client assets/data, built-in registry inventory, block facts/tags, model-state schemas, and official-server-derived heightmap predicates; CI loads it through the actual renderer asset loader.
-- [ ] Export and integrate the remaining gameplay runtime tables required by full game startup: gameplay facts, block behaviours, collision/occlusion, motion/attributes, item, entity and mob data.
+- [x] Generate the core 1.21.1 runtime bundle: official client assets/data, built-in registry inventory, block facts/tags, model-state schemas, heightmap predicates, gameplay facts, and block behaviours. The gameplay/behaviour exporters are backports of the existing vanilla exporters, not replacement game logic; CI checks their registry coverage.
+- [ ] Reuse and adapt the remaining existing runtime exporters for collision/occlusion, motion, items, entities, mob data, creative data, and other startup tables; feed their output into the existing Rust loaders.
 - [x] Connect protocol-767 container content/slot/equipment and merchant-offer decoding, plus container-click/creative-slot encoding, to the live client path using the 1.21.1 item/component codecs.
 - [x] Add live hotbar selection and horse-inventory packet adaptation into existing gameplay handlers.
 - [x] Add a separately named `horizon-client-1-21-1` binary target; the normal `horizon-client` target still uses the 26.3 profile.
