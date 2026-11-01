@@ -55,6 +55,7 @@ wgpu = { version = "30.0.1", default-features = false, features = ["dx12"] }
 wgpu = { version = "30.0.1", default-features = false, features = ["gles"] }
 
 [features]
+minecraft-1-21-1 = ["horizon-core/minecraft-1-21-1", "horizon-protocol/minecraft-1-21-1"]
 # Sound output: horizon-client's `audio` feature.
 audio = ["dep:cpal"]
 # Helpers horizon-client's tests build their fixtures with.
