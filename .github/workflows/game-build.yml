@@ -19,16 +19,12 @@ on:
         type: string
         default: ''
       trusted:
-        # Only release.yml says true: it builds main. A nightly can hold pull requests nobody reviewed yet, whose
-        # build scripts and tests run here and could rewrite target/, the cargo home or a compiler cache. So an
-        # untrusted build never runs on the release runner, never saves the Rust cache (its key is its own anyway),
-        # and a trusted one never reads the machine's shared sccache, which pull requests' jobs write
-        # (tests/test_nightly.py pins all of it).
-        description: The source is main (a release); false for anything else (a nightly)
+                # Only a trusted default-branch release may save the release cache; Nightly builds use a separate cache.
+        description: Allow this build to save the trusted release cache
         type: boolean
         default: false
       developer_id:
-        description: Sign the macOS programs with Developer ID and notarize the zip (the runner's keychain)
+        description: Sign and notarize macOS packages when a configured self-hosted signing runner is used
         type: boolean
         default: true
 permissions:
