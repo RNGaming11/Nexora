@@ -307,9 +307,9 @@ mod tests {
         assert!(read_slot(&mut component_slot).is_ok());
         assert_eq!(component_slot.remaining(), 0);
 
-        let mut unsupported_component = Reader::new(&[1, 5, 1, 0, 13]);
-        let error = read_slot(&mut unsupported_component).unwrap_err();
-        assert!(error.to_string().contains("minecraft:custom_model_data"));
+        let mut unknown_component = Reader::new(&[1, 5, 1, 0, 57]);
+        let error = read_slot(&mut unknown_component).unwrap_err();
+        assert!(error.to_string().contains("unknown protocol-767 item component id 57"));
 
         let mut removed_component = Reader::new(&[1, 5, 0, 1, 14]);
         assert!(read_slot(&mut removed_component).is_ok());
