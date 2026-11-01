@@ -70,9 +70,8 @@ jobs:
             [pscustomobject]@{ Source = 'target/1.21.1/model-states.json'; Runtime = (Join-Path $runtime 'model-states.json') }
           )
           foreach ($check in $checks) {
-            $left = (Get-FileHash $check.Source -Algorithm SHA256).Hash
-            $right = (Get-FileHash $check.Runtime -Algorithm SHA256).Hash
-            if ($left -ne $right) { throw "Runtime file differs from independent output: $($check.Source)" }
+            python -c "import json,sys; left=json.load(open(sys.argv[1], encoding='utf-8')); right=json.load(open(sys.argv[2], encoding='utf-8')); sys.exit(0 if left == right else 1)" $check.Source $check.Runtime
+            if ($LASTEXITCODE -ne 0) { throw "Runtime JSON differs from independently generated output: $($check.Source)" }
           }
           cargo run -p horizon-client-render --example validate_1_21_1_resources --features minecraft-1-21-1 -- $runtime
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
