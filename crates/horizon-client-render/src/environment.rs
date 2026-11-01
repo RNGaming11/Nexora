@@ -422,10 +422,8 @@ mod tests {
     #[cfg(feature = "minecraft-1-21-1")]
     #[test]
     fn legacy_target_without_day_timeline_uses_vanilla_cycle() {
-        let root = std::env::temp_dir().join(format!(
-            "horizon-environment-1211-{}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("horizon-environment-1211-{}", std::process::id()));
         let dimension = root.join("data/minecraft/dimension_type");
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&dimension).unwrap();
