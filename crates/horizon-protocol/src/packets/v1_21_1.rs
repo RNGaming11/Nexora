@@ -7,7 +7,13 @@
 use crate::{
     Error, Result,
     buf::{Codec, Reader, Writer, pack_block_pos, unpack_block_pos},
-    packets::{Empty, login::GameProfile, recipes::RecipeBookSettings},
+    packets::{
+        Empty,
+        configuration as cfg,
+        login as login_packets,
+        login::GameProfile,
+        recipes::RecipeBookSettings,
+    },
 };
 use horizon_world::nbt::Tag;
 
@@ -476,6 +482,53 @@ pub fn decode_play_serverbound(id: i32, payload: &[u8]) -> Result<MissingPacket>
     };
     if r.remaining() != 0 { return Err(Error::new(format!("1.21.1 packet {id} has {} trailing bytes", r.remaining()))); }
     Ok(packet)
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoginPacket1211 {
+    Shared(login_packets::Clientbound),
+    GameProfile(GameProfilePacket),
+}
+
+pub fn decode_login_packet_1_21_1(id: i32, payload: &[u8]) -> Result<LoginPacket1211> {
+    if id == ids::login_clientbound::GAME_PROFILE {
+        return decode_exact(payload, GameProfilePacket::read)
+            .map(LoginPacket1211::GameProfile);
+    }
+    login_packets::Clientbound::decode(id, payload).map(LoginPacket1211::Shared)
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ConfigurationPacket1211 {
+    Shared(cfg::Clientbound),
+    CustomReportDetails(CustomReportDetails),
+}
+
+pub fn decode_configuration_packet_1_21_1(
+    id: i32,
+    payload: &[u8],
+) -> Result<ConfigurationPacket1211> {
+    if id == ids::configuration_clientbound::CUSTOM_REPORT_DETAILS {
+        return decode_exact(payload, CustomReportDetails::read)
+            .map(ConfigurationPacket1211::CustomReportDetails);
+    }
+
+    // Packet ids 0 through 9 retain their positions. The 26.3 protocol adds
+    // post_effects at id 10, shifting the remaining shared packet codecs by one.
+    let active_id = if id >= ids::configuration_clientbound::STORE_COOKIE {
+        id + 1
+    } else {
+        id
+    };
+    cfg::Clientbound::decode(active_id, payload).map(ConfigurationPacket1211::Shared)
+}
+
+pub fn encode_configuration_serverbound_1_21_1(
+    packet: cfg::Serverbound,
+) -> Vec<u8> {
+    // The eight 1.21.1 serverbound configuration packets have the same
+    // packet IDs and payload codecs as protocol 777.
+    packet.encode()
 }
 
 pub fn decode_configuration_clientbound(id: i32, payload: &[u8]) -> Result<CustomReportDetails> {
