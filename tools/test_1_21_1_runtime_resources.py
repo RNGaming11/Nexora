@@ -137,7 +137,7 @@ class RuntimeResources1211Tests(unittest.TestCase):
                 model_states["minecraft:oak_log"]["schema"],
                 {"axis": {"named": ["y", "x", "z"]}},
             )
-            rebuilt = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root))
+            rebuilt = build(client, server, reports, output, self._heightmap(), self._gameplay(root), self._behaviours(root), self._entity_types(root))
             self.assertEqual(rebuilt["client_jar_sha1"], manifest["client_jar_sha1"])
 
     def test_accepts_target_version_without_later_item_and_biome_reports(self):
