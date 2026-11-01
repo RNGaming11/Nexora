@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-_INTEGER = re.compile(r"-?[0-9]+\\Z")
+_INTEGER = re.compile(r"-?[0-9]+\Z")
 
 
 def build(report_path: Path) -> dict:
@@ -59,7 +59,7 @@ def main() -> None:
     result = build(args.report)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(
-        json.dumps(result, separators=(",", ":"), ensure_ascii=False) + "\\n",
+        json.dumps(result, separators=(",", ":"), ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     print(f"Wrote model-state schemas for {len(result)} blocks to {args.out}")
