@@ -542,7 +542,7 @@ pub struct LevelChunkWithLight1211 {
 
 fn read_target_light(r: &mut Reader) -> Result<ActiveLightData> {
     let read_mask = |r: &mut Reader| -> Result<Vec<u8>> {
-        let count = r.count(r.remaining() / 8)?;
+        let count = r.count(8)?;
         let mut bytes = Vec::with_capacity(count * 8);
         for _ in 0..count {
             bytes.extend_from_slice(&r.i64()?.to_le_bytes());
@@ -550,7 +550,7 @@ fn read_target_light(r: &mut Reader) -> Result<ActiveLightData> {
         Ok(bytes)
     };
     let read_layers = |r: &mut Reader| -> Result<Vec<Vec<u8>>> {
-        let count = r.count(r.remaining())?;
+        let count = r.count(1)?;
         (0..count).map(|_| r.byte_array(2048)).collect()
     };
     Ok(ActiveLightData {
@@ -572,7 +572,7 @@ impl Codec<LevelChunkWithLight1211> for LevelChunkWithLight1211 {
             return Err(Error::new("protocol-767 chunk heightmaps were not a compound"));
         }
         let chunk_data = r.byte_array(16 * 1024 * 1024)?;
-        let entity_count = r.count(r.remaining())?;
+        let entity_count = r.count(5)?;
         let block_entities = (0..entity_count)
             .map(|_| crate::chunk::BlockEntityInfo::read(r))
             .collect::<Result<Vec<_>>>()?;
