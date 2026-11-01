@@ -143,7 +143,7 @@ jobs:
         run: cargo build --release --locked -p horizon-client --features minecraft-1-21-1 --bin horizon-client-1-21-1
       - name: Every program the release folder takes was built
         run: |
-          for binary in horizon-client horizon-ctl horizon-prepare horizon-server; do
+          for binary in horizon-client horizon-client-1-21-1 horizon-ctl horizon-prepare horizon-server; do
             test -f "target/release/$binary${{ matrix.exe }}" || { echo "::error::target/release/$binary${{ matrix.exe }} is missing"; exit 1; }
           done
       - name: The signing keychain, unlocked
