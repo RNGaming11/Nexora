@@ -242,11 +242,11 @@ enum Shown<'a> {
     Error(&'a str),
 }
 
-/// `HORIZON_LAUNCHER_PAGE=sign-in` opens the sheet with a made-up code, for screenshots: nothing
+/// `NEXORA_LAUNCHER_PAGE=sign-in` (legacy `HORIZON_LAUNCHER_PAGE` also works) opens the sheet with a made-up code, for screenshots: nothing
 /// asks Microsoft, and the gate itself is as it was (no account, no Play).
 pub(super) fn sign_in_preview() -> bool {
     static PREVIEW: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *PREVIEW.get_or_init(|| std::env::var("HORIZON_LAUNCHER_PAGE").as_deref() == Ok("sign-in"))
+    *PREVIEW.get_or_init(|| std::env::var("NEXORA_LAUNCHER_PAGE").or_else(|_| std::env::var("HORIZON_LAUNCHER_PAGE")).as_deref() == Ok("sign-in"))
 }
 
 /// `https://www.microsoft.com/link` as `microsoft.com/link`.
