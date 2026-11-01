@@ -11,6 +11,8 @@ on:
       - "tools/generate_data_component_inventory.py"
       - "tools/generate_builtin_registry_inventory.py"
       - "tools/generate_1_21_1_block_facts.py"
+      - "tools/generate_1_21_1_model_states.py"
+      - "tools/build_1_21_1_runtime_resources.py"
       - "ports/1.21.1/recipe-serializers.json"
       - "ports/1.21.1/data-component-ids.json"
 
@@ -25,6 +27,7 @@ jobs:
       HORIZON_VERSIONS: ${{ github.workspace }}/.port-cache/versions
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -57,6 +60,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $blocks = Join-Path $env:HORIZON_VERSIONS '1.21.1/datagen/reports/blocks.json'
           python tools/generate_1_21_1_block_facts.py --report $blocks --out 'target/1.21.1/block-facts.json' --data-version 3955
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/generate_1_21_1_model_states.py --report $blocks --out 'target/1.21.1/model-states.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $runtime = Join-Path $env:HORIZON_VERSIONS '1.21.1/runtime-resources'
+          foreach ($pair in @(
+            @('target/1.21.1/builtin-registry-ids.json', (Join-Path $runtime 'builtin-registry-ids.json')),
+            @('target/1.21.1/block-facts.json', (Join-Path $runtime 'facts.json')),
+            @('target/1.21.1/model-states.json', (Join-Path $runtime 'model-states.json'))
+          )) {
+            $left = (Get-FileHash $pair[0] -Algorithm SHA256).Hash
+            $right = (Get-FileHash $pair[1] -Algorithm SHA256).Hash
+            if ($left -ne $right) { throw "Runtime file differs from independent output: $($pair[0])" }
+          }
+          cargo run -p horizon-client-render --example validate_1_21_1_resources --features minecraft-1-21-1 -- $runtime
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/setup-java@v4
         with:
@@ -114,3 +131,4 @@ jobs:
             target/1.21.1/data-component-ids.json
             target/1.21.1/builtin-registry-ids.json
             target/1.21.1/block-facts.json
+            target/1.21.1/model-states.json
