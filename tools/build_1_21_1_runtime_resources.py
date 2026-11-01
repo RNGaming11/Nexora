@@ -217,8 +217,19 @@ def build(\n    client_jar: Path,\n    server_game_jar: Path,\n    reports: Path
         )
         if heightmap_predicates is None:
             raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
-        if heightmap_predicates.get("states") != len(block_facts["states"]):
-            raise ValueError("1.21.1 heightmap predicate count does not match the block-state facts")
+        motion = heightmap_predicates.get("motion")
+        no_leaves = heightmap_predicates.get("no_leaves")
+        if (
+            heightmap_predicates.get("data_version") != DATA_VERSION
+            or heightmap_predicates.get("states") != len(block_facts["states"])
+            or not isinstance(motion, list)
+            or not isinstance(no_leaves, list)
+            or len(motion) != len(block_facts["states"])
+            or len(no_leaves) != len(block_facts["states"])
+            or any(type(value) is not bool for value in motion)
+            or any(type(value) is not bool for value in no_leaves)
+        ):
+            raise ValueError("1.21.1 heightmap predicates do not match the block-state registry")
         write_json(stage / "heightmap-predicates.json", heightmap_predicates)
         write_json(stage / "facts.json", block_facts)
 
