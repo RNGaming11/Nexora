@@ -528,16 +528,14 @@ impl Component {
     }
     pub(crate) fn read_1_21_1(kind: i32, r: &mut Reader) -> Result<Self> {
         match kind {
-            0 | 19 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56 => Ok(Self::Nbt(r.nbt()?)),
+            0 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56 => Ok(Self::Nbt(r.nbt()?)),
             1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50 => Ok(Self::Int(r.varint()?)),
             4 | 18 => Ok(Self::Bool(r.bool()?)),
             5 | 6 => Ok(Self::Text(r.nbt()?)),
             7 => capture_component(r, |r| {
                 let n = r.count(r.remaining())?;
                 for _ in 0..n {
-                    if r.bool()? {
-                        r.nbt()?;
-                    }
+                    r.nbt()?;
                 }
                 Ok(())
             }),
@@ -561,7 +559,7 @@ impl Component {
                 }
                 r.bool().map(drop)
             }),
-            14 | 15 | 17 | 21 => Ok(Self::Unit),
+            14 | 15 | 17 | 19 | 21 => Ok(Self::Unit),
             20 => capture_component(r, |r| {
                 r.varint()?;
                 r.f32()?;
@@ -570,7 +568,7 @@ impl Component {
                 let _remainder = Slot1211::read(r)?;
                 let n = r.count(r.remaining())?;
                 for _ in 0..n {
-                    r.varint()?;
+                    skip::mob_effect(r)?;
                     r.f32()?;
                 }
                 Ok(())
@@ -651,16 +649,7 @@ impl Component {
                 Ok(())
             }),
             42 => capture_component(r, |r| {
-                if r.bool()? {
-                    let holder = r.varint()?;
-                    if holder == 0 {
-                        return Err(crate::Error::new(
-                            "inline protocol-767 jukebox song data is not supported yet",
-                        ));
-                    }
-                } else {
-                    r.string(32767)?;
-                }
+                skip::component(66, r)?;
                 r.bool().map(drop)
             }),
             44 => {
@@ -707,9 +696,10 @@ impl Component {
                 Ok(Self::Raw(r.since(start).to_vec()))
             }
             51 => capture_component(r, |r| {
-                let n = r.count(r.remaining())?;
-                for _ in 0..n {
-                    r.varint()?;
+                for _ in 0..4 {
+                    if r.bool()? {
+                        r.varint()?;
+                    }
                 }
                 Ok(())
             }),
@@ -743,7 +733,7 @@ impl Component {
             (1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50, Self::Int(value)) => w.varint(*value),
             (25, Self::Int(value)) => w.i32(*value),
             (48, Self::Ident(value)) => w.string(value),
-            (14 | 15 | 17 | 21, Self::Unit) => {}
+            (14 | 15 | 17 | 19 | 21, Self::Unit) => {}
             (
                 31,
                 Self::Potion {
