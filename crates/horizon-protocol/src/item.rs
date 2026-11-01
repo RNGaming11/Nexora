@@ -1587,8 +1587,7 @@ mod tests {
         let mut map_color = Writer::new();
         map_color.i32(0x12345678);
         let map_color_bytes = map_color.data;
-        let decoded =
-            Component::read_1_21_1(25, &mut Reader::new(&map_color_bytes)).unwrap();
+        let decoded = Component::read_1_21_1(25, &mut Reader::new(&map_color_bytes)).unwrap();
         assert_eq!(decoded, Component::Int(0x12345678));
         let mut encoded = Writer::new();
         decoded.write_1_21_1(25, &mut encoded).unwrap();
