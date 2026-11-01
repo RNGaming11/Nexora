@@ -172,7 +172,7 @@ def is_managed_output(output: Path) -> bool:
     )
 
 
-def build(client_jar: Path, server_game_jar: Path, reports: Path, output: Path) -> dict:
+def build(\n    client_jar: Path,\n    server_game_jar: Path,\n    reports: Path,\n    output: Path,\n    heightmap_predicates: dict | None = None,\n) -> dict:
     client_jar = client_jar.resolve()
     server_game_jar = server_game_jar.resolve()
     reports = reports.resolve()
@@ -213,8 +213,13 @@ def build(client_jar: Path, server_game_jar: Path, reports: Path, output: Path) 
         write_json(stage / "builtin-registry-ids.json", inventory)
 
         block_facts = generate_1_21_1_block_facts.build(
-            reports / "blocks.json", DATA_VERSION
+            reports / "blocks.json", DATA_VERSION, heightmap_predicates
         )
+        if heightmap_predicates is None:
+            raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
+        if heightmap_predicates.get("states") != len(block_facts["states"]):
+            raise ValueError("1.21.1 heightmap predicate count does not match the block-state facts")
+        write_json(stage / "heightmap-predicates.json", heightmap_predicates)
         write_json(stage / "facts.json", block_facts)
 
         model_states = generate_1_21_1_model_states.build(reports / "blocks.json")
@@ -246,6 +251,7 @@ def build(client_jar: Path, server_game_jar: Path, reports: Path, output: Path) 
             "block_count": len(block_facts["defaults"]),
             "block_state_count": len(block_facts["states"]),
             "model_schema_count": len(model_states),
+            "heightmap_predicate_state_count": heightmap_predicates["states"],
             "block_tag_count": len(client_tags),
             "item_component_item_count": item_count,
             "biome_parameter_file_count": biome_count,
@@ -268,9 +274,17 @@ def main() -> None:
     parser.add_argument("--client-jar", required=True, type=Path)
     parser.add_argument("--server-game-jar", required=True, type=Path)
     parser.add_argument("--reports", required=True, type=Path)
+    parser.add_argument("--heightmap-predicates", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
-    result = build(args.client_jar, args.server_game_jar, args.reports, args.out)
+    heightmap_predicates = json.loads(args.heightmap_predicates.read_text(encoding="utf-8"))
+    result = build(
+        args.client_jar,
+        args.server_game_jar,
+        args.reports,
+        args.out,
+        heightmap_predicates,
+    )
     print(json.dumps({
         "runtime_resources": str(args.out.resolve()),
         "minecraft_version": result["minecraft_version"],
