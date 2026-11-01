@@ -14,7 +14,7 @@ pub const APP: &str = "Nexora.app";
 /// The game, then horizon-ctl, which the game looks for beside itself (Copy Connection Details).
 const PROGRAMS: [&str; 2] = ["horizon-client", "horizon-ctl"];
 
-const ICON: &[u8] = include_bytes!("../../packaging/icons/horizon.icns");
+const ICON: &[u8] = include_bytes!("../../packaging/icons/nexora.icns");
 
 /// Its own identifier, so macOS keeps it apart from the launcher (dev.horizon.launcher); the
 /// games category lets macOS turn Game Mode on when it plays full screen.
@@ -33,7 +33,7 @@ const INFO_PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Horizon</string>
+	<string>Nexora</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>LSApplicationCategoryType</key>
@@ -52,7 +52,7 @@ pub fn ensure(version: &Path, client: &str) -> io::Result<PathBuf> {
     fs::create_dir_all(&programs)?;
     fs::create_dir_all(contents.join("Resources"))?;
     write_if_changed(&contents.join("Info.plist"), INFO_PLIST.as_bytes())?;
-    write_if_changed(&contents.join("Resources/horizon.icns"), ICON)?;
+    write_if_changed(&contents.join("Resources/nexora.icns"), ICON)?;
     let game = programs.join(PROGRAMS[0]);
     let source = version.join(client);
     if !same_file(&source, &game) {
