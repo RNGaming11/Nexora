@@ -1438,7 +1438,7 @@ mod tests {
         let mut packet = Writer::new();
         packet.i32(-3);
         packet.i32(7);
-        packet.nbt(&Tag::compound([]));
+        packet.nbt(&Tag::Compound(Default::default()));
         packet.byte_array(&section_data.data);
         packet.varint(0);
         write_target_light(&light, &mut packet);
