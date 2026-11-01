@@ -108,7 +108,7 @@ jobs:
             # The C runtime linked in: without it the launcher asks for VCRUNTIME140.dll,
             # which only the Visual C++ redistributable installs.
             rustflags: -C target-feature=+crt-static
-    runs-on: ${{ matrix.mac && (vars.MAC_RUNNER || 'ludovics-mac-mini') || matrix.os }}
+    runs-on: ${{ matrix.mac && (vars.MAC_RUNNER || 'macos-latest') || matrix.os }}
     # Notarizing the app and then the .dmg can take a few minutes each.
     timeout-minutes: ${{ matrix.mac && 60 || 40 }}
     env:
@@ -175,7 +175,7 @@ jobs:
       - name: Smoke test
         env:
           NEXORA_LAUNCHER_NO_SELF_UPDATE: '1'
-          HORIZON_GITHUB_TOKEN: ${{ github.token }}
+          NEXORA_GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           export NEXORA_LAUNCHER_HOME="${RUNNER_TEMP//\\//}/nexora-launcher-smoke"
