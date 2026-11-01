@@ -82,14 +82,16 @@ public final class Vanilla1211HeightmapPredicates {
             }
             @SuppressWarnings("unchecked")
             Predicate<Object> typed = (Predicate<Object>) predicate;
-            if ("ocean_floor".equals(key)) {
+            if ("ocean_floor".equalsIgnoreCase(key)) {
                 oceanFloor = typed;
-            } else if ("motion_blocking_no_leaves".equals(key)) {
+            } else if ("motion_blocking_no_leaves".equalsIgnoreCase(key)) {
                 motionNoLeaves = typed;
             }
         }
         if (oceanFloor == null || motionNoLeaves == null) {
-            throw new IllegalStateException("Minecraft 1.21.1 heightmap predicates were not found");
+            throw new IllegalStateException(
+                "Minecraft 1.21.1 heightmap predicates were not found; inspect the target serialization keys"
+            );
         }
 
         List<Boolean> motion = new ArrayList<>();
