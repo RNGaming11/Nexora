@@ -42,6 +42,7 @@ def run_exporter(
     output_directory: Path,
     label: str,
     heap: str = "1G",
+    extra_sources: list[Path] | None = None,
 ) -> None:
     java, javac = java_tools()
     classpath = os.pathsep.join(
@@ -62,7 +63,7 @@ def run_exporter(
                 classpath,
                 "-d",
                 str(classes),
-                str(source),
+                *[str(path) for path in [source, *(extra_sources or [])]],
             ],
             capture_output=True,
             text=True,
