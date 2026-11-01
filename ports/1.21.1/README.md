@@ -33,6 +33,7 @@ The preparation work already present on this branch includes:
 - The world block registry now has `BlockRegistry::from_nbt_with_data_version`, so a 1.21.1 caller can validate DataVersion 3955 without changing the active 26.3 constant (5023).
 - Recipe slot decoding now uses the 1.21.1 item-stack codec. Supported component patches are parsed with target IDs, component removals are validated against the target registry, and unsupported component payloads fail closed. The 26.3 ID table is never used for these slots.
 - Built-in registry report parsing rejects duplicate IDs, gaps, negative/missing IDs, and IDs outside the contiguous range instead of silently constructing invalid lookup tables.
+- A compact 1.21.1 built-in registry inventory generator and a version/DataVersion-checked Rust loader are in place. The preparation workflow emits all 78 registry name tables (5,825 IDs) as a separate artifact instead of committing another large generated data file.
 
 Large downloaded and generated artifacts intentionally stay outside Git. By default, the preparation cache is under `~/code/horizon-parity/versions/1.21.1/`; set `HORIZON_VERSIONS` to select another location.
 
@@ -56,7 +57,7 @@ The complete machine-generated comparison contains 930 ranked work items and is 
 
 ## Next port stages
 
-1. Generate and validate 1.21.1 registries from the verified vanilla artifacts. The version constants are isolated in `ports/1.21.1/version.rs` and exposed as `horizon_core::version_1_21_1`; do not hand-edit `crates/horizon-core/src/version.rs`, which describes the active 26.3 workspace.
+1. Integrate the generated 1.21.1 built-in registry inventory and runtime resources into a selected 1.21.1 profile. The version constants are isolated in `ports/1.21.1/version.rs` and exposed as `horizon_core::version_1_21_1`; do not hand-edit `crates/horizon-core/src/version.rs`, which describes the active 26.3 workspace.
 2. Generate and review the mapped 26.3-to-1.21.1 class/source diff and ranked worklist. With both version caches prepared, run:
 
    ```powershell
@@ -95,6 +96,7 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [x] Isolated 1.21.1 version constants, checked against the pinned target metadata.
 - [x] Pinned all 57 target data-component IDs and verified them against Mojang's data-generator report.
 - [x] Added version-scoped 1.21.1 item-stack, template, and delimited-slot codecs for the currently supported component payload subset; recipe slots use this adapter.
+- [x] Added a compact built-in registry inventory generator, strict Rust loader, and preparation artifact for the target's 78 registries / 5,825 IDs.
 - [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
 - [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
 - [ ] Generate and integrate all 1.21.1 runtime registries and resource data.
