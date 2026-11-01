@@ -877,6 +877,7 @@ fn decode_compatible_play_packet_1_21_1(
             | "take_item_entity"
             | "teleport_entity"
             | "set_projectile_power"
+            | "ping"
     ) {
         return Err(Error::new(format!(
             "protocol-767 packet {name} has no verified compatible payload adapter"
@@ -956,6 +957,31 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
         .get(usize::try_from(active_id).map_err(|_| Error::new("negative active play packet id"))?)
         .copied()
         .ok_or_else(|| Error::new(format!("unknown active play packet id {active_id}")))?;
+    if !matches!(
+        name,
+        "accept_teleportation"
+            | "client_command"
+            | "configuration_acknowledged"
+            | "cookie_response"
+            | "custom_payload"
+            | "keep_alive"
+            | "move_player_pos"
+            | "move_player_pos_rot"
+            | "move_player_rot"
+            | "move_player_status_only"
+            | "move_vehicle"
+            | "player_action"
+            | "player_command"
+            | "pong_response"
+            | "resource_pack"
+            | "set_carried_item"
+            | "use_item"
+            | "use_item_on"
+    ) {
+        return Err(Error::new(format!(
+            "protocol-767 serverbound packet {name} has no verified payload adapter"
+        )));
+    }
     let target_name = match name {
         "move_player_pos" => "position",
         "move_player_pos_rot" => "position_look",
@@ -965,6 +991,8 @@ pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Resu
         "player_action" => "block_dig",
         "player_command" => "entity_action",
         "resource_pack" => "resource_pack_receive",
+        "pong_response" => "pong",
+        "set_carried_item" => "held_item_slot",
         "use_item_on" => "block_place",
         other => other,
     };
@@ -1437,6 +1465,135 @@ mod tests {
         let mut truncated = packet.data;
         truncated.pop();
         assert!(decode_level_chunk_with_light_1_21_1(&truncated).is_err());
+    }
+
+    #[test]
+    fn protocol_767_initial_world_packet_codecs_use_the_target_layouts() {
+        let position = PlayerPosition1211 {
+            x: 12.5,
+            y: 70.0,
+            z: -3.25,
+            yaw: 90.0,
+            pitch: -10.0,
+            relatives: 0b1_0011,
+            teleport_id: 27,
+        };
+        let mut wire = Writer::new();
+        PlayerPosition1211::write(&position, &mut wire);
+        assert_eq!(
+            decode_player_position_1_21_1(&wire.data).unwrap(),
+            play_packets::PlayerPosition {
+                teleport: 27,
+                position: [12.5, 70.0, -3.25],
+                delta: [0.0; 3],
+                yaw: 90.0,
+                pitch: -10.0,
+                relatives: 0b1_0011,
+            }
+        );
+
+        let difficulty = ChangeDifficulty1211 {
+            difficulty: 2,
+            locked: true,
+        };
+        let mut wire = Writer::new();
+        ChangeDifficulty1211::write(&difficulty, &mut wire);
+        assert_eq!(
+            decode_change_difficulty_1_21_1(&wire.data).unwrap(),
+            play_packets::ChangeDifficulty {
+                difficulty: 2,
+                locked: true,
+            }
+        );
+
+        let spawn = SpawnPosition1211 {
+            position: [100, 64, -100],
+            angle: 45.0,
+        };
+        let mut wire = Writer::new();
+        SpawnPosition1211::write(&spawn, &mut wire);
+        assert_eq!(decode_spawn_position_1_21_1(&wire.data).unwrap(), spawn);
+        assert!(decode_spawn_position_1_21_1(&wire.data[..wire.data.len() - 1]).is_err());
+    }
+
+    #[test]
+    fn protocol_767_outgoing_movement_packets_drop_newer_collision_flags() {
+        let packet = play_packets::Serverbound::MovePlayerPos(play_packets::MovePlayerPos {
+            x: 1.5,
+            y: 64.0,
+            z: -2.5,
+            flags: 3,
+        });
+        let encoded = encode_play_serverbound_1_21_1(packet).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::NAMES
+                .iter()
+                .position(|name| *name == "position")
+                .unwrap() as i32
+        );
+        assert_eq!(reader.f64().unwrap(), 1.5);
+        assert_eq!(reader.f64().unwrap(), 64.0);
+        assert_eq!(reader.f64().unwrap(), -2.5);
+        assert!(reader.bool().unwrap());
+        assert_eq!(reader.remaining(), 0);
+
+        let vehicle =
+            play_packets::Serverbound::MoveVehicle(play_packets::MoveVehicleRequest {
+                position: [1.0, 2.0, 3.0],
+                yaw: 45.0,
+                pitch: 10.0,
+                on_ground: true,
+            });
+        let encoded = encode_play_serverbound_1_21_1(vehicle).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::NAMES
+                .iter()
+                .position(|name| *name == "vehicle_move")
+                .unwrap() as i32
+        );
+        assert_eq!(
+            [reader.f64().unwrap(), reader.f64().unwrap(), reader.f64().unwrap()],
+            [1.0, 2.0, 3.0]
+        );
+        assert_eq!(reader.f32().unwrap(), 45.0);
+        assert_eq!(reader.f32().unwrap(), 10.0);
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
+    fn protocol_767_block_place_drops_the_newer_world_border_flag() {
+        let packet = play_packets::Serverbound::UseItemOn(play_packets::UseItemOn {
+            hand: 1,
+            pos: [10, 64, -20],
+            face: 5,
+            cursor: [0.25, 0.5, 0.75],
+            inside: true,
+            world_border: true,
+            sequence: 17,
+        });
+        let encoded = encode_play_serverbound_1_21_1(packet).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::NAMES
+                .iter()
+                .position(|name| *name == "block_place")
+                .unwrap() as i32
+        );
+        assert_eq!(reader.varint().unwrap(), 1);
+        assert_eq!(unpack_block_pos(reader.i64().unwrap()), [10, 64, -20]);
+        assert_eq!(reader.varint().unwrap(), 5);
+        assert_eq!(
+            [reader.f32().unwrap(), reader.f32().unwrap(), reader.f32().unwrap()],
+            [0.25, 0.5, 0.75]
+        );
+        assert!(reader.bool().unwrap());
+        assert_eq!(reader.varint().unwrap(), 17);
+        assert_eq!(reader.remaining(), 0);
     }
 
     #[test]
