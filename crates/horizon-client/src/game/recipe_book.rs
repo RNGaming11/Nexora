@@ -64,7 +64,6 @@ fn apply_legacy_recipe_packet(
     true
 }
 
-
 /// A ghost recipe slot: the items it cycles through.
 struct Ghost {
     slot: usize,
@@ -1517,7 +1516,7 @@ mod tests {
     fn legacy_recipe_book_init_add_and_remove_use_shared_display_ids() {
         let root = std::env::temp_dir().join(format!(
             "nexora-legacy-recipes-{}",
-            std::process::id()
+            std::process::id(),
         ));
         let recipes = root.join("data/minecraft/recipe");
         let _ = std::fs::remove_dir_all(&root);
