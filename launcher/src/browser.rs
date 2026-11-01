@@ -141,7 +141,11 @@ pub struct Project {
 
 impl Project {
     pub fn support(&self) -> Support {
-        support(self.kind, &self.game_versions, &self.loaders)
+        self.support_for(GAME)
+    }
+
+    pub fn support_for(&self, game_version: &str) -> Support {
+        support_for(self.kind, &self.game_versions, &self.loaders, game_version)
     }
 
     /// The project as a data pack, for a search of data packs or an install into a world;
@@ -284,10 +288,20 @@ pub fn source(id: SourceId) -> Option<Box<dyn Source>> {
 
 /// How well a project of `kind` made for `game_versions` and `loaders` runs in Nexora.
 pub fn support(kind: Kind, game_versions: &[String], loaders: &[String]) -> Support {
+    support_for(kind, game_versions, loaders, GAME)
+}
+
+/// How well a project runs in Nexora when the selected build targets the requested game version.
+pub fn support_for(
+    kind: Kind,
+    game_versions: &[String],
+    loaders: &[String],
+    game_version: &str,
+) -> Support {
     if loaders.iter().any(|l| l == horizon::LOADER) {
         // Made for Nexora and reviewed: it runs when it is for the version Horizon plays.
         return match newest_release(game_versions)
-            .filter(|_| !game_versions.iter().any(|v| v == GAME))
+            .filter(|_| !game_versions.iter().any(|v| v == game_version))
         {
             Some(other) => Support::No(format!("Made for Nexora on {other}.")),
             None => Support::Works,
@@ -295,7 +309,7 @@ pub fn support(kind: Kind, game_versions: &[String], loaders: &[String]) -> Supp
     }
     match kind {
         Kind::ResourcePack => {
-            if game_versions.iter().any(|v| v == GAME) {
+            if game_versions.iter().any(|v| v == game_version) {
                 Support::Works
             } else if let Some(newest) = newest_release(game_versions) {
                 Support::Partial(format!(
@@ -371,6 +385,17 @@ fn newest_release(versions: &[String]) -> Option<&str> {
 /// The version to install: the newest one that runs, or with `everything` the newest at all.
 /// `versions` is newest first, as [`Source::versions`] gives them.
 pub fn pick(kind: Kind, versions: &[Version], everything: bool) -> Option<&Version> {
+    pick_for(kind, versions, everything, GAME)
+}
+
+/// Picks the newest usable file for the selected Minecraft version. The everything flag permits
+/// a compatible fallback when no exact version exists.
+pub fn pick_for(
+    kind: Kind,
+    versions: &[Version],
+    everything: bool,
+    game_version: &str,
+) -> Option<&Version> {
     let mut usable = versions
         .iter()
         .filter(|v| v.blocked.is_none() && v.file().is_some());
@@ -378,7 +403,7 @@ pub fn pick(kind: Kind, versions: &[Version], everything: bool) -> Option<&Versi
         .iter()
         .any(|v| v.loaders.iter().any(|l| l == horizon::LOADER))
     {
-        return usable.find(|v| v.game_versions.iter().any(|g| g == GAME));
+        return usable.find(|v| v.game_versions.iter().any(|g| g == game_version));
     }
     if kind == Kind::Mod {
         let java = |v: &&Version| {
@@ -386,7 +411,7 @@ pub fn pick(kind: Kind, versions: &[Version], everything: bool) -> Option<&Versi
                 .iter()
                 .any(|l| java::LOADERS.contains(&l.as_str()))
         };
-        let made_for = |v: &&Version| v.game_versions.iter().any(|g| g == GAME);
+        let made_for = |v: &&Version| v.game_versions.iter().any(|g| g == game_version);
         let ported = |v: &&Version| v.game_versions.iter().any(|g| portable_version(g));
         return usable
             .clone()
@@ -403,7 +428,7 @@ pub fn pick(kind: Kind, versions: &[Version], everything: bool) -> Option<&Versi
             .find(made_for)
             .or_else(|| packs.find(|_| everything));
     }
-    let runs = |v: &&Version| match support(kind, &v.game_versions, &v.loaders) {
+    let runs = |v: &&Version| match support_for(kind, &v.game_versions, &v.loaders, game_version) {
         Support::Works => true,
         // A modpack's version is for its own Minecraft.
         Support::Partial(_) => kind != Kind::ResourcePack,
@@ -412,7 +437,7 @@ pub fn pick(kind: Kind, versions: &[Version], everything: bool) -> Option<&Versi
     if let Some(v) = usable.clone().find(runs) {
         return Some(v);
     }
-    usable.find(|v| everything && support(kind, &v.game_versions, &v.loaders).installable())
+    usable.find(|v| everything && support_for(kind, &v.game_versions, &v.loaders, game_version).installable())
 }
 
 /// A file name from a source, kept only when it is one plain name: no folders, no `..`, no
