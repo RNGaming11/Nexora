@@ -179,6 +179,7 @@ def build(
     output: Path,
     heightmap_predicates: dict | None = None,
     gameplay_facts: Path | None = None,
+    block_behaviours: Path | None = None,
 ) -> dict:
     client_jar = client_jar.resolve()
     server_game_jar = server_game_jar.resolve()
@@ -233,6 +234,27 @@ def build(
                 raise ValueError(f"1.21.1 gameplay facts are malformed at state {index}")
         shutil.copyfile(gameplay_facts, stage / "gameplay-facts.json")
 
+        if block_behaviours is None or not block_behaviours.is_file():
+            raise ValueError("official 1.21.1 block behaviour facts are required for runtime resources")
+        behaviours = json.loads(block_behaviours.read_text(encoding="utf-8"))
+        behaviour_blocks = behaviours.get("blocks") if isinstance(behaviours, dict) else None
+        behaviour_states = behaviours.get("states") if isinstance(behaviours, dict) else None
+        expected_blocks = list(block_facts["defaults"])
+        if (
+            not isinstance(behaviour_blocks, list)
+            or not isinstance(behaviour_states, list)
+            or len(behaviour_blocks) != len(expected_blocks)
+            or len(behaviour_states) != len(block_facts["states"])
+        ):
+            raise ValueError("1.21.1 block behaviour facts do not match the block registry")
+        for index, (entry, expected_name) in enumerate(zip(behaviour_blocks, expected_blocks)):
+            if not isinstance(entry, dict) or entry.get("name") != expected_name:
+                raise ValueError(f"1.21.1 block behaviour block order differs at block {index}")
+        for index, entry in enumerate(behaviour_states):
+            if not isinstance(entry, list) or len(entry) != 9:
+                raise ValueError(f"1.21.1 block behaviour state {index} is malformed")
+        shutil.copyfile(block_behaviours, stage / "block-behaviours.json")
+
         if heightmap_predicates is None:
             raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
         motion = heightmap_predicates.get("motion")
@@ -282,6 +304,8 @@ def build(
             "model_schema_count": len(model_states),
             "heightmap_predicate_state_count": heightmap_predicates["states"],
             "gameplay_fact_state_count": len(gameplay_states),
+            "block_behaviour_block_count": len(behaviour_blocks),
+            "block_behaviour_state_count": len(behaviour_states),
             "block_tag_count": len(client_tags),
             "item_component_item_count": item_count,
             "biome_parameter_file_count": biome_count,
@@ -306,6 +330,7 @@ def main() -> None:
     parser.add_argument("--reports", required=True, type=Path)
     parser.add_argument("--heightmap-predicates", required=True, type=Path)
     parser.add_argument("--gameplay-facts", required=True, type=Path)
+    parser.add_argument("--block-behaviours", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     heightmap_predicates = json.loads(args.heightmap_predicates.read_text(encoding="utf-8"))
@@ -316,6 +341,7 @@ def main() -> None:
         args.out,
         heightmap_predicates,
         args.gameplay_facts,
+        args.block_behaviours,
     )
     print(json.dumps({
         "runtime_resources": str(args.out.resolve()),
