@@ -1515,7 +1515,10 @@ mod tests {
 
     #[test]
     fn legacy_recipe_book_init_add_and_remove_use_shared_display_ids() {
-        let root = std::env::temp_dir().join(format!("nexora-legacy-recipes-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "nexora-legacy-recipes-{}",
+            std::process::id()
+        ));
         let recipes = root.join("data/minecraft/recipe");
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&recipes).unwrap();
@@ -1526,15 +1529,21 @@ mod tests {
         let mut book = ClientBook::default();
 
         assert!(apply_legacy_recipe_packet(
-            &mut book, &index, 0,
-            &["minecraft:a".into()], &["minecraft:a".into()],
+            &mut book,
+            &index,
+            0,
+            &["minecraft:a".into()],
+            &["minecraft:a".into()],
         ));
         assert_eq!(book.displays(), vec![0]);
         assert!(book.highlight.contains(&0));
 
         assert!(apply_legacy_recipe_packet(
-            &mut book, &index, 1,
-            &["minecraft:b".into()], &["minecraft:b".into()],
+            &mut book,
+            &index,
+            1,
+            &["minecraft:b".into()],
+            &["minecraft:b".into()],
         ));
         let displays = book.displays();
         assert_eq!(displays.len(), 2);
@@ -1543,7 +1552,11 @@ mod tests {
         assert!(book.highlight.contains(&1));
 
         assert!(apply_legacy_recipe_packet(
-            &mut book, &index, 2, &["minecraft:a".into()], &[],
+            &mut book,
+            &index,
+            2,
+            &["minecraft:a".into()],
+            &[],
         ));
         assert_eq!(book.displays(), vec![1]);
         assert!(!book.highlight.contains(&0));
