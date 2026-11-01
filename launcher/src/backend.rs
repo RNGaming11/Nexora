@@ -91,7 +91,10 @@ const CLIENT_1_21_1: &str = if cfg!(windows) {
 };
 
 fn client_binary_name_for_version(version: &str) -> &'static str {
-    if version == "1.21.1" { CLIENT_1_21_1 } else { CLIENT }
+    match version {
+        "1.21.1" => CLIENT_1_21_1,
+        _ => CLIENT,
+    }
 }
 
 fn client_binary_name_at(dir: &Path) -> &'static str {
@@ -3436,10 +3439,17 @@ pub fn {f}("
         assert_eq!(client_binary_name_for_version("26.3"), CLIENT);
         assert_eq!(client_binary_name_for_version("1.21.1"), CLIENT_1_21_1);
         assert_eq!(client_binary_name_at(Path::new("missing-version")), CLIENT);
-        let dir = std::env::temp_dir().join(format!("nexora-client-target-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "nexora-client-target-{}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
-        fs::write(dir.join("research-lock.json"), r#"{"minecraft":{"version":"1.21.1"}}"#).unwrap();
+        fs::write(
+            dir.join("research-lock.json"),
+            r#"{"minecraft":{"version":"1.21.1"}}"#,
+        )
+        .unwrap();
         assert_eq!(client_binary_name_at(&dir), CLIENT_1_21_1);
         fs::remove_dir_all(&dir).unwrap();
     }
