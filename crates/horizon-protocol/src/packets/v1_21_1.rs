@@ -1632,6 +1632,37 @@ mod tests {
     }
 
     #[test]
+    fn configuration_serverbound_packets_use_protocol_767_ids() {
+        use crate::packets::configuration::{
+            ClientInformation, CookieResponse, CustomPayload, KeepAlive, Ping,
+            ResourcePackResponse, SelectKnownPacks,
+        };
+
+        let packets = [
+            (cfg::Serverbound::ClientInformation(ClientInformation::new(12)), 0),
+            (cfg::Serverbound::CookieResponse(CookieResponse {
+                key: "minecraft:test".into(),
+                payload: None,
+            }), 1),
+            (cfg::Serverbound::CustomPayload(CustomPayload {
+                channel: "minecraft:brand".into(),
+                data: vec![1, 2, 3],
+            }), 2),
+            (cfg::Serverbound::FinishConfiguration(Empty), 3),
+            (cfg::Serverbound::KeepAlive(KeepAlive { id: 7 }), 4),
+            (cfg::Serverbound::Pong(Ping { id: 8 }), 5),
+            (cfg::Serverbound::ResourcePack(ResourcePackResponse { id: 9, action: 3 }), 6),
+            (cfg::Serverbound::SelectKnownPacks(SelectKnownPacks { packs: vec![] }), 7),
+        ];
+
+        for (packet, expected_id) in packets {
+            let encoded = encode_configuration_serverbound_1_21_1(packet).unwrap();
+            let mut reader = Reader::new(&encoded);
+            assert_eq!(reader.varint().unwrap(), expected_id);
+        }
+    }
+
+    #[test]
     fn generated_packet_inventory_matches_protocol_767_codec_ids() {
         use crate::{Direction, State, packet_ids_1_21_1 as generated};
 
