@@ -57,7 +57,7 @@ The complete machine-generated comparison contains 930 ranked work items and is 
 
 ## Next port stages
 
-1. Integrate the generated 1.21.1 built-in registry inventory and runtime resources into a selected 1.21.1 profile. The version constants are isolated in `ports/1.21.1/version.rs` and exposed as `horizon_core::version_1_21_1`; do not hand-edit `crates/horizon-core/src/version.rs`, which describes the active 26.3 workspace.
+1. The separate feature-gated client now selects 1.21.1 version constants and DataVersion 3955 while the ordinary client remains 26.3. Preparation builds a core runtime bundle containing the official client assets/data, built-in registry inventory, block facts/tags, model-state schemas, and exact heightmap predicates exported from the official 1.21.1 server. The CI validator loads that bundle through `Assets::load` and the renderer's `reload` path. This is not yet the complete runtime data set: the full game startup also needs target-specific gameplay facts, block behaviours, collision/occlusion, motion/attributes, item, entity and mob tables. The version constants remain isolated in `ports/1.21.1/version.rs` and exposed through the selected `horizon_core::version`; do not hand-edit `crates/horizon-core/src/version.rs`, which describes the default 26.3 profile.
 2. Generate and review the mapped 26.3-to-1.21.1 class/source diff and ranked worklist. With both version caches prepared, run:
 
    ```powershell
@@ -99,9 +99,12 @@ All nineteen previously missing packet payloads now have target-specific codecs.
 - [x] Added a compact built-in registry inventory generator, strict Rust loader, and preparation artifact for the target's 78 registries / 5,825 IDs.
 - [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
 - [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
-- [ ] Generate and integrate all 1.21.1 runtime registries and resource data.
+- [x] Generate the core 1.21.1 runtime bundle: official client assets/data, built-in registry inventory, block facts/tags, model-state schemas, and official-server-derived heightmap predicates; CI loads it through the actual renderer asset loader.
+- [ ] Export and integrate the remaining gameplay runtime tables required by full game startup: gameplay facts, block behaviours, collision/occlusion, motion/attributes, item, entity and mob data.
 - [x] Connect protocol-767 container content/slot/equipment and merchant-offer decoding, plus container-click/creative-slot encoding, to the live client path using the 1.21.1 item/component codecs.
 - [x] Add live hotbar selection and horse-inventory packet adaptation into existing gameplay handlers.
+- [x] Add a separately named `horizon-client-1-21-1` binary target; the normal `horizon-client` target still uses the 26.3 profile.
+- [ ] Package and select that target binary plus its matching runtime resources from the launcher.
 - [x] Add a feature-gated protocol-767 connection state machine with version-specific handshake, login, configuration, chunk/light conversion, and play dispatch.
 - [ ] Expand remaining play-state packet coverage; several target packets are still explicitly reported as requiring gameplay integration.
 - [ ] Implement gameplay-level handling for preserved raw component values and verify the target component data against live server fixtures.
