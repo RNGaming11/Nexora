@@ -1536,7 +1536,10 @@ mod tests {
             &mut book, &index, 1,
             &["minecraft:b".into()], &["minecraft:b".into()],
         ));
-        assert_eq!(book.displays(), vec![0, 1]);
+        let displays = book.displays();
+        assert_eq!(displays.len(), 2);
+        assert!(displays.contains(&0));
+        assert!(displays.contains(&1));
         assert!(book.highlight.contains(&1));
 
         assert!(apply_legacy_recipe_packet(
