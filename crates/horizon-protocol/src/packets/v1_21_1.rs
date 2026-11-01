@@ -1166,6 +1166,65 @@ mod tests {
     }
 
     #[test]
+    fn protocol_767_chunk_sections_are_promoted_to_the_active_palette_widths() {
+        let blocks = Paletted {
+            bits: 15,
+            palette: vec![],
+            data: vec![0; (4096usize * 15).div_ceil(64)],
+        };
+        let biomes = Paletted {
+            bits: 6,
+            palette: vec![],
+            data: vec![0; (64usize * 6).div_ceil(64)],
+        };
+        let mut section_data = Writer::new();
+        section_data.i16(12);
+        blocks.write(&mut section_data);
+        biomes.write(&mut section_data);
+
+        let mut light = ActiveLightData {
+            sky_mask: vec![0b0000_0100],
+            block_mask: vec![0b0000_0001],
+            empty_sky_mask: vec![],
+            empty_block_mask: vec![],
+            sky: vec![vec![0xF0; 2048]],
+            block: vec![vec![0x0F; 2048]],
+        };
+        let mut packet = Writer::new();
+        packet.i32(-3);
+        packet.i32(7);
+        packet.nbt(&Tag::compound([]));
+        packet.byte_array(&section_data.data);
+        packet.varint(0);
+        write_target_light(&light, &mut packet);
+
+        let decoded = decode_level_chunk_with_light_1_21_1(&packet.data).unwrap();
+        assert_eq!((decoded.x, decoded.z), (-3, 7));
+        assert!(decoded.chunk.heightmaps.is_empty());
+        let sections = decoded.chunk.sections(1, 16, 7).unwrap();
+        assert_eq!(sections[0].non_empty, 12);
+        assert_eq!(sections[0].states.bits, 16);
+        assert_eq!(sections[0].biomes.bits, 7);
+        assert_eq!(decoded.light.sky_mask[0], 0b0000_0100);
+        assert_eq!(decoded.light.block_mask[0], 0b0000_0001);
+        assert_eq!(decoded.light.sky[0], vec![0xF0; 2048]);
+
+        assert_eq!(
+            decode_play_packet_1_21_1(
+                crate::packet_ids_1_21_1::play::clientbound::LEVEL_CHUNK_WITH_LIGHT,
+                &packet.data
+            )
+            .unwrap(),
+            PlayPacket1211::LevelChunkWithLight(decoded)
+        );
+
+        light.sky_mask.clear();
+        let mut truncated = packet.data;
+        truncated.pop();
+        assert!(decode_level_chunk_with_light_1_21_1(&truncated).is_err());
+    }
+
+    #[test]
     fn protocol_767_core_play_packets_use_target_ids_and_shared_payload_codecs() {
         let keep_alive = cfg::KeepAlive { id: 0x102030405060708 };
         let mut payload = Writer::new();
