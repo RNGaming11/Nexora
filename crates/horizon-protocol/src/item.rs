@@ -814,7 +814,7 @@ impl Component {
                 strings.iter().for_each(|value| w.string(value));
                 w.varint(colors.len() as i32);
                 colors.iter().for_each(|value| w.i32(*value));
-            },
+            }
             (25, Self::Int(value)) => w.i32(*value),
             (48, Self::Ident(value)) => w.string(value),
             (14 | 15 | 17 | 19 | 21, Self::Unit) => {}
@@ -1626,12 +1626,18 @@ mod tests {
         assert_eq!(added[0], (1, Component::Int(7)));
         assert_eq!(added[1], (4, Component::Bool(true)));
         assert_eq!(added[2], (18, Component::Bool(true)));
-        assert_eq!(added[3], (13, Component::CustomModelData {
-            floats: vec![1.5],
-            flags: vec![true],
-            strings: vec!["variant".into()],
-            colors: vec![42],
-        }));
+        assert_eq!(
+            added[3],
+            (
+                13,
+                Component::CustomModelData {
+                    floats: vec![1.5],
+                    flags: vec![true],
+                    strings: vec!["variant".into()],
+                    colors: vec![42],
+                }
+            )
+        );
         assert_eq!(added[4], (25, Component::Int(42)));
         assert_eq!(removed, vec![21]);
         let mut encoded = Writer::new();
@@ -1689,12 +1695,15 @@ mod tests {
         model_data.i32(0x12345678);
         let model_data_bytes = model_data.data;
         let decoded = Component::read_1_21_1(13, &mut Reader::new(&model_data_bytes)).unwrap();
-        assert_eq!(decoded, Component::CustomModelData {
-            floats: vec![1.25],
-            flags: vec![true],
-            strings: vec!["item".into()],
-            colors: vec![0x12345678],
-        });
+        assert_eq!(
+            decoded,
+            Component::CustomModelData {
+                floats: vec![1.25],
+                flags: vec![true],
+                strings: vec!["item".into()],
+                colors: vec![0x12345678],
+            }
+        );
         let mut encoded = Writer::new();
         decoded.write_1_21_1(13, &mut encoded).unwrap();
         assert_eq!(encoded.data, model_data_bytes);
@@ -1751,12 +1760,18 @@ mod tests {
         let bytes = slot.data;
         let decoded = Slot1211::read(&mut Reader::new(&bytes)).unwrap().unwrap();
         assert_eq!(decoded.added[0], (4, Component::Bool(true)));
-        assert_eq!(decoded.added[1], (13, Component::CustomModelData {
-            floats: vec![1.5],
-            flags: vec![],
-            strings: vec![],
-            colors: vec![],
-        }));
+        assert_eq!(
+            decoded.added[1],
+            (
+                13,
+                Component::CustomModelData {
+                    floats: vec![1.5],
+                    flags: vec![],
+                    strings: vec![],
+                    colors: vec![],
+                }
+            )
+        );
         assert!(matches!(decoded.added[2].1, Component::Nbt(_)));
         let mut encoded = Writer::new();
         Slot1211::write(&Some(decoded), &mut encoded);
