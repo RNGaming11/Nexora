@@ -77,6 +77,30 @@ class RuntimeResources1211Tests(unittest.TestCase):
             rebuilt = build(client, server, reports, output)
             self.assertEqual(rebuilt["client_jar_sha1"], manifest["client_jar_sha1"])
 
+    def test_accepts_target_version_without_later_item_and_biome_reports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            client, server = root / "client.jar", root / "server-game.jar"
+            output = root / "runtime-resources"
+            self._jar(client)
+            self._jar(server)
+            reports = self._reports(root)
+            (reports / "minecraft" / "components" / "item" / "stone.json").unlink()
+            (reports / "minecraft" / "components" / "item").rmdir()
+            (reports / "minecraft" / "components").rmdir()
+            (reports / "biome_parameters" / "minecraft" / "plains.json").unlink()
+            (reports / "biome_parameters" / "minecraft").rmdir()
+            (reports / "biome_parameters").rmdir()
+            (reports / "items.json").write_text('{"minecraft:stone":{"max_stack_size":64}}', encoding="utf-8")
+
+            manifest = build(client, server, reports, output)
+            self.assertEqual(manifest["item_component_item_count"], 0)
+            self.assertEqual(manifest["biome_parameter_file_count"], 0)
+            self.assertTrue((output / "items-report.json").is_file())
+            self.assertFalse((output / "items.json").exists())
+            self.assertTrue((output / "data/minecraft/worldgen/biome/plains.json").is_file())
+
+
     def test_rejects_client_server_block_tag_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
