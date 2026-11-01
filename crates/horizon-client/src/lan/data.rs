@@ -151,7 +151,7 @@ impl SyncData {
     ) -> Result<Self, String> {
         let builtin = Builtin::find(resources)
             .and_then(|p| Builtin::load(&p).ok())
-            .ok_or("registries.json not found next to the resources")?;
+            .ok_or("built-in registry data not found next to the resources")?;
         let root: PathBuf = resources.join("data/minecraft");
         let mut registries = Vec::new();
         let mut dynamic = Dynamic::default();
