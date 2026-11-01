@@ -9,10 +9,11 @@ import sys
 import zipfile
 
 try:
-    from . import export_1_21_1_block_behaviours, export_1_21_1_collision, export_1_21_1_entity_types, export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
+    from . import export_1_21_1_block_behaviours, export_1_21_1_collision, export_1_21_1_entity_attributes, export_1_21_1_entity_types, export_1_21_1_gameplay_facts, generate_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
 except ImportError:
     import export_1_21_1_block_behaviours
     import export_1_21_1_collision
+    import export_1_21_1_entity_attributes
     import export_1_21_1_entity_types
     import export_1_21_1_gameplay_facts
     import generate_1_21_1_heightmap_predicates
@@ -180,6 +181,16 @@ def main():
     )
     artifacts["entity_types"] = entity_types
 
+    attributes = directory / "attributes.json"
+    print("Reusing the vanilla attribute catalog exporter for Minecraft 1.21.1", flush=True)
+    attribute_summary = export_1_21_1_entity_attributes.export(
+        Path(gameplay_summary["named_server_jar"]),
+        artifacts["server_libraries"],
+        reports / "registries.json",
+        attributes,
+    )
+    artifacts["attributes"] = attributes
+
     collision_dir = directory / "collision"
     print("Backporting the vanilla collision and occlusion exporter to 1.21.1", flush=True)
     collision_summary = export_1_21_1_collision.export(
@@ -203,6 +214,7 @@ def main():
         entity_types,
         artifacts["cached_collision"],
         artifacts["occlusion"],
+        attributes,
     )
 
     print("Indexing raw obfuscated class names for provenance", flush=True)
@@ -328,6 +340,7 @@ def main():
         "gameplay_fact_summary": gameplay_summary,
         "block_behaviour_summary": block_behaviour_summary,
         "entity_types_summary": entity_types_summary,
+        "attribute_summary": attribute_summary,
         "collision_summary": collision_summary,
         "next_required_step": "Runtime resources and version-pinned built-in registries are prepared locally; gameplay packet integration and parity remain incomplete.",
     }
