@@ -395,6 +395,10 @@ impl Launcher {
     }
 
     pub(super) fn mods_search(&mut self, offset: usize) {
+        let game_version = self
+            .selected()
+            .map(|tag| backend::game_version(tag))
+            .unwrap_or_else(|| browser::GAME.to_owned());
         let m = &mut self.mods;
         m.search += 1;
         m.searching = true;
@@ -404,10 +408,6 @@ impl Launcher {
             m.results_list.reset();
             m.installed_list.reset();
         }
-        let game_version = self
-            .selected()
-            .map(|tag| backend::game_version(tag))
-            .unwrap_or_else(|| browser::GAME.to_owned());
         let query = match m.java_for(m.kind) {
             Some(target) => Query {
                 offset,
