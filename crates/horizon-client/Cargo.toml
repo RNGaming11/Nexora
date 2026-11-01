@@ -88,7 +88,7 @@ winresource = "0.1"
 [features]
 default = ["audio", "controllers"]
 # Build against the isolated protocol-767 and Minecraft 1.21.1 version adapters.
-minecraft-1-21-1 = ["horizon-core/minecraft-1-21-1", "horizon-protocol/minecraft-1-21-1"]
+minecraft-1-21-1 = ["horizon-core/minecraft-1-21-1", "horizon-protocol/minecraft-1-21-1", "horizon-client-render/minecraft-1-21-1"]
 # Sound output. Without it (and `controllers`) the program links neither libasound nor libudev on
 # Linux: the server build (`--no-default-features`, released as horizon-engine; docs/server.md).
 audio = ["horizon-client-render/audio"]
