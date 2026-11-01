@@ -260,6 +260,31 @@ impl Session {
             w.shutdown();
         }
     }
+    /// Protocol-767 PlaceRecipe uses a recipe identifier, not a display integer.
+    #[cfg(feature = "minecraft-1-21-1")]
+    pub fn send_place_recipe_1_21_1(&self, container: i32, recipe: &str, use_max: bool) {
+        let mut writer = self.writer.lock().unwrap();
+        if self.configuring.load(Ordering::Relaxed) {
+            return;
+        }
+        let body = match horizon_protocol::packets::v1_21_1::encode_place_recipe_1_21_1(
+            container, recipe, use_max,
+        ) {
+            Ok(body) => body,
+            Err(error) => {
+                if self.debug {
+                    eprintln!("[net] place-recipe packet not sent: {error}");
+                }
+                return;
+            }
+        };
+        if let Some(w) = writer.as_mut()
+            && w.send(&body).is_err()
+        {
+            w.shutdown();
+        }
+    }
+
     /// ServerboundResourcePackPacket, in whichever phase the connection is.
     pub fn send_pack_status(&self, id: u128, action: i32) {
         let status = cfg::ResourcePackResponse { id, action };
