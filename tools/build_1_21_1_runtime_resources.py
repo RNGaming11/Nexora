@@ -240,7 +240,7 @@ def build(
         behaviours = json.loads(block_behaviours.read_text(encoding="utf-8"))
         behaviour_blocks = behaviours.get("blocks") if isinstance(behaviours, dict) else None
         behaviour_states = behaviours.get("states") if isinstance(behaviours, dict) else None
-        expected_blocks = list(block_facts["defaults"])
+        expected_blocks = list(dict.fromkeys(row[0] for row in block_facts["states"]))
         if (
             not isinstance(behaviour_blocks, list)
             or not isinstance(behaviour_states, list)
