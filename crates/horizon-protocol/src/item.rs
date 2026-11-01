@@ -519,7 +519,8 @@ impl Component {
             50 => BASE_COLOR,
             4 | 14 | 15 | 17 | 19 | 21 => return Ok(Self::Unit),
             other => {
-                let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
+                let name = crate::packets::v1_21_1::component_ids::name(other)
+                    .unwrap_or("unknown");
                 return Err(crate::Error::new(format!(
                     "unsupported protocol-767 item component {name} (id {other})"
                 )));
@@ -531,19 +532,39 @@ impl Component {
     pub(crate) fn write_1_21_1(&self, kind: i32, w: &mut Writer) -> Result<()> {
         use component::*;
         let codec = match kind {
-            0 => CUSTOM_DATA, 1 => MAX_STACK_SIZE, 2 => MAX_DAMAGE, 3 => DAMAGE,
-            5 => CUSTOM_NAME, 6 => ITEM_NAME, 7 => LORE, 8 => RARITY,
-            9 => ENCHANTMENTS, 16 => REPAIR_COST, 18 => ENCHANTMENT_GLINT_OVERRIDE,
-            23 => STORED_ENCHANTMENTS, 24 => DYED_COLOR, 26 => MAP_ID,
-            28 => MAP_POST_PROCESSING, 32 => SUSPICIOUS_STEW_EFFECTS,
-            33 => WRITABLE_BOOK_CONTENT, 34 => WRITTEN_BOOK_CONTENT, 35 => TRIM,
-            40 => INSTRUMENT, 41 => OMINOUS_BOTTLE_AMPLIFIER,
-            44 => LODESTONE_TRACKER, 45 => FIREWORK_EXPLOSION, 46 => FIREWORKS,
-            49 => BANNER_PATTERNS, 50 => BASE_COLOR,
+            0 => CUSTOM_DATA,
+            1 => MAX_STACK_SIZE,
+            2 => MAX_DAMAGE,
+            3 => DAMAGE,
+            5 => CUSTOM_NAME,
+            6 => ITEM_NAME,
+            7 => LORE,
+            8 => RARITY,
+            9 => ENCHANTMENTS,
+            16 => REPAIR_COST,
+            18 => ENCHANTMENT_GLINT_OVERRIDE,
+            23 => STORED_ENCHANTMENTS,
+            24 => DYED_COLOR,
+            26 => MAP_ID,
+            28 => MAP_POST_PROCESSING,
+            32 => SUSPICIOUS_STEW_EFFECTS,
+            33 => WRITABLE_BOOK_CONTENT,
+            34 => WRITTEN_BOOK_CONTENT,
+            35 => TRIM,
+            40 => INSTRUMENT,
+            41 => OMINOUS_BOTTLE_AMPLIFIER,
+            44 => LODESTONE_TRACKER,
+            45 => FIREWORK_EXPLOSION,
+            46 => FIREWORKS,
+            49 => BANNER_PATTERNS,
+            50 => BASE_COLOR,
             4 | 14 | 15 | 17 | 19 | 21 if matches!(self, Self::Unit) => return Ok(()),
             other => {
-                let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
-                return Err(crate::Error::new(format!("unsupported protocol-767 item component {name} (id {other})")));
+                let name = crate::packets::v1_21_1::component_ids::name(other)
+                    .unwrap_or("unknown");
+                return Err(crate::Error::new(format!(
+                    "unsupported protocol-767 item component {name} (id {other})"
+                )));
             }
         };
         self.write(codec, w);
