@@ -1606,16 +1606,10 @@ mod tests {
 
     #[test]
     fn protocol_767_chunk_sections_are_promoted_to_the_active_palette_widths() {
-        let blocks = Paletted {
-            bits: 15,
-            palette: vec![],
-            data: vec![0; crate::chunk::storage_len(15, 4096)],
-        };
-        let biomes = Paletted {
-            bits: 6,
-            palette: vec![],
-            data: vec![0; crate::chunk::storage_len(6, 64)],
-        };
+        let block_values: Vec<i32> = (0..4096).map(|i| i % 512).collect();
+        let biome_values: Vec<i32> = (0..64).map(|i| i % 9).collect();
+        let blocks = Paletted::from_values(&block_values, Strategy::Blocks, 15);
+        let biomes = Paletted::from_values(&biome_values, Strategy::Biomes, 6);
         let mut section_data = Writer::new();
         section_data.i16(12);
         blocks.write(&mut section_data);
