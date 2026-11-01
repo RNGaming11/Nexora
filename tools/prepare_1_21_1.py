@@ -155,6 +155,7 @@ def main():
         reports / "blocks.json",
         gameplay_facts,
     )
+    artifacts["gameplay_facts"] = gameplay_facts
 
     runtime_resources = directory / "runtime-resources"
     print("Building local Minecraft 1.21.1 runtime resources", flush=True)
@@ -287,6 +288,7 @@ def main():
         "mapping_applied_to_class_index": True,
         "runtime_resources": str(runtime_resources.resolve()),
         "runtime_resource_summary": runtime_summary,
+        "gameplay_fact_summary": gameplay_summary,
         "next_required_step": "Runtime resources and version-pinned built-in registries are prepared locally; gameplay packet integration and parity remain incomplete.",
     }
     lab.write_json(directory / "facts.json", facts)
@@ -303,6 +305,7 @@ def main():
         "prepared_directory": str(directory.resolve()),
         "runtime_resources": str(runtime_resources.resolve()),
         "runtime_resource_summary": runtime_summary,
+        "gameplay_fact_summary": gameplay_summary,
         "reports": str(reports.resolve()),
         "mapped_class_index": str(mapped_classes_path.resolve()),
         "client_server_diff": client_server_summary,
