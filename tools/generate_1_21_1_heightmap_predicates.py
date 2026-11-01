@@ -5,6 +5,8 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
+import zipfile
 
 try:
     from . import proguard, version_port
@@ -50,6 +52,23 @@ def runtime_member(mapping, owner: str, source_name: str, kind: str, descriptor:
             f"Ambiguous {kind} mapping for {owner}.{source_name}: {unique}"
         )
     return unique[0]
+
+
+
+def unsigned_jar(source: Path, destination: Path) -> None:
+    """Copy a verified jar without signer metadata for isolated reflection loading."""
+    signature_extensions = {".SF", ".RSA", ".DSA", ".EC"}
+    with zipfile.ZipFile(source) as original, zipfile.ZipFile(
+        destination, "w"
+    ) as unsigned:
+        for entry in original.infolist():
+            upper = entry.filename.upper()
+            if upper.startswith("META-INF/"):
+                leaf = upper.rsplit("/", 1)[-1]
+                suffix = Path(leaf).suffix
+                if suffix in signature_extensions or leaf.startswith("SIG-"):
+                    continue
+            unsigned.writestr(entry, original.read(entry))
 
 
 def export(
@@ -136,32 +155,48 @@ def export(
             + (compile_result.stdout + compile_result.stderr)[-5000:]
         )
 
-    classpath = os.pathsep.join(
-        [str(classes_dir), str(server_game_jar), *(str(path.resolve()) for path in server_libraries)]
-    )
-    args = [
-        classes["shared_constants"],
-        methods["try_detect_version"],
-        classes["bootstrap"],
-        methods["bootstrap"],
-        classes["block"],
-        methods["block_states"],
-        classes["heightmap_types"],
-        methods["heightmap_key"],
-        methods["heightmap_predicate"],
-        str(output),
-    ]
-    result = subprocess.run(
-        [str(java), "-cp", classpath, "Vanilla1211HeightmapPredicates", *args],
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    if result.returncode:
-        raise SystemExit(
-            "The official 1.21.1 heightmap predicate export failed:\n"
-            + (result.stdout + result.stderr)[-8000:]
+    with tempfile.TemporaryDirectory(
+        prefix="nexora-1211-unsigned-", dir=output.parent
+    ) as temporary:
+        temporary_path = Path(temporary)
+        unsigned_game = temporary_path / "server-game.jar"
+        unsigned_jar(server_game_jar, unsigned_game)
+        unsigned_libraries = []
+        for index, library in enumerate(server_libraries):
+            unsigned_library = temporary_path / f"library-{index}.jar"
+            unsigned_jar(library, unsigned_library)
+            unsigned_libraries.append(unsigned_library)
+
+        classpath = os.pathsep.join(
+            [
+                str(classes_dir),
+                str(unsigned_game),
+                *(str(path) for path in unsigned_libraries),
+            ]
         )
+        args = [
+            classes["shared_constants"],
+            methods["try_detect_version"],
+            classes["bootstrap"],
+            methods["bootstrap"],
+            classes["block"],
+            methods["block_states"],
+            classes["heightmap_types"],
+            methods["heightmap_key"],
+            methods["heightmap_predicate"],
+            str(output),
+        ]
+        result = subprocess.run(
+            [str(java), "-cp", classpath, "Vanilla1211HeightmapPredicates", *args],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if result.returncode:
+            raise SystemExit(
+                "The official 1.21.1 heightmap predicate export failed:\n"
+                + (result.stdout + result.stderr)[-8000:]
+            )
 
     facts = json.loads(output.read_text(encoding="utf-8"))
     if facts.get("data_version") != 3955:
