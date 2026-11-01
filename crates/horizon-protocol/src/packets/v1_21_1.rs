@@ -2503,6 +2503,82 @@ mod live_inventory_tests {
     use crate::buf::Codec;
 
     #[test]
+    fn protocol_767_chat_omits_the_newer_checksum_field() {
+        let packet = play_packets::Chat {
+            message: "hello 1.21.1".into(),
+            timestamp: 1_728_000_000_000,
+            salt: 17,
+            signature: None,
+            last_seen: play_packets::LastSeenUpdate {
+                offset: 2,
+                acknowledged: [0b0000_0101, 0, 0],
+                checksum: 91,
+            },
+        };
+        let encoded =
+            encode_play_serverbound_1_21_1(play_packets::Serverbound::Chat(packet)).unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::CHAT
+        );
+        assert_eq!(reader.string(256).unwrap(), "hello 1.21.1");
+        assert_eq!(reader.i64().unwrap(), 1_728_000_000_000);
+        assert_eq!(reader.i64().unwrap(), 17);
+        assert!(!reader.bool().unwrap());
+        assert_eq!(reader.varint().unwrap(), 2);
+        assert_eq!(reader.bytes(3).unwrap(), &[0b0000_0101, 0, 0]);
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
+    fn protocol_767_chat_command_and_signed_command_use_target_ids_and_layouts() {
+        let command = encode_play_serverbound_1_21_1(
+            play_packets::Serverbound::ChatCommand(play_packets::ChatCommand {
+                command: "spawn".into(),
+            }),
+        )
+        .unwrap();
+        let mut reader = Reader::new(&command);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::CHAT_COMMAND
+        );
+        assert_eq!(reader.string(32767).unwrap(), "spawn");
+        assert_eq!(reader.remaining(), 0);
+
+        let signed = play_packets::ChatCommandSigned {
+            command: "msg Alex hello".into(),
+            timestamp: 1_728_000_000_001,
+            salt: 19,
+            arguments: vec![("message".into(), vec![0x5a; 256])],
+            last_seen: play_packets::LastSeenUpdate {
+                offset: 3,
+                acknowledged: [0b0000_0011, 0, 0],
+                checksum: -12,
+            },
+        };
+        let encoded = encode_play_serverbound_1_21_1(
+            play_packets::Serverbound::ChatCommandSigned(signed),
+        )
+        .unwrap();
+        let mut reader = Reader::new(&encoded);
+        assert_eq!(
+            reader.varint().unwrap(),
+            crate::packet_ids_1_21_1::play::serverbound::CHAT_COMMAND_SIGNED
+        );
+        assert_eq!(reader.string(32767).unwrap(), "msg Alex hello");
+        assert_eq!(reader.i64().unwrap(), 1_728_000_000_001);
+        assert_eq!(reader.i64().unwrap(), 19);
+        assert_eq!(reader.varint().unwrap(), 1);
+        assert_eq!(reader.string(16).unwrap(), "message");
+        assert_eq!(reader.bytes(256).unwrap(), vec![0x5a; 256]);
+        assert_eq!(reader.varint().unwrap(), 3);
+        assert_eq!(reader.bytes(3).unwrap(), &[0b0000_0011, 0, 0]);
+        assert_eq!(reader.remaining(), 0);
+    }
+
+    #[test]
     fn play_dispatch_uses_protocol_767_inventory_slot_codecs() {
         let packet = inventory::ContainerSetContent {
             container: 3,
