@@ -14,24 +14,10 @@ except ImportError:
     import version_port
 
 
-def asm_libraries(libraries: list[Path]) -> list[Path]:
-    core = []
-    commons = []
-    for path in libraries:
-        parts = path.parts
-        if not any(parts[i : i + 3] == ("org", "ow2", "asm") for i in range(len(parts) - 2)):
-            continue
-        if path.name.startswith("asm-commons-"):
-            commons.append(path)
-        elif path.name.startswith("asm-") and path.name.endswith(".jar"):
-            core.append(path)
-    if not core or not commons:
-        found = [str(path) for path in libraries if "asm" in path.name]
-        raise ValueError(
-            "The bundled server libraries do not contain both ASM and asm-commons; "
-            f"found {found[:8]}"
-        )
-    return [core[0], commons[0]]
+JVM_EXPORTS = [
+    "--add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED",
+    "--add-exports=java.base/jdk.internal.org.objectweb.asm.commons=ALL-UNNAMED",
+]
 
 
 def write_mapping_table(mapping: proguard.ProguardMappings, path: Path) -> None:
@@ -68,7 +54,6 @@ def remap(
 
     mapping = proguard.ProguardMappings.read(mappings_path)
     output_jar.parent.mkdir(parents=True, exist_ok=True)
-    asm = asm_libraries(libraries)
     java = Path(version_port.java_command(21)).resolve()
     java_home = Path(os.environ.get("JAVA_HOME", java.parent))
     javac = java_home / "bin" / ("javac.exe" if os.name == "nt" else "javac")
@@ -84,9 +69,8 @@ def remap(
         classes = work / "classes"
         classes.mkdir()
         write_mapping_table(mapping, mapping_table)
-        classpath = os.pathsep.join(str(path.resolve()) for path in asm)
         compile_result = subprocess.run(
-            [str(javac), "-cp", classpath, "-d", str(classes), str(source)],
+            [str(javac), *JVM_EXPORTS, "-d", str(classes), str(source)],
             capture_output=True,
             text=True,
             timeout=120,
@@ -97,10 +81,11 @@ def remap(
                 + (compile_result.stdout + compile_result.stderr)[-6000:]
             )
 
-        runtime_classpath = os.pathsep.join([str(classes), classpath])
+        runtime_classpath = str(classes)
         result = subprocess.run(
             [
                 str(java),
+                *JVM_EXPORTS,
                 "-cp",
                 runtime_classpath,
                 "ProguardJarRemapper",
