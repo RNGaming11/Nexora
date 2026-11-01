@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Callable
 
 OWNER = "ludovic111"
+DEFAULT_BRANCH = os.environ.get("NEXORA_DEFAULT_BRANCH", "main")
 REVIEWERS = ".github/trusted-reviewers.txt"
 CODEOWNERS = ".github/CODEOWNERS"
 # What CODEOWNERS guards today, refused even if the file moved: what builds, signs and checks releases.
@@ -167,8 +168,8 @@ def check(pr: PullRequest | None, number: int, patterns: list[str]) -> str | Non
         return f"#{number} isn't a pull request here"
     if pr.state != "open":
         return f"#{number} is {pr.state}"
-    if pr.base != "main":
-        return f"#{number} targets `{safe(pr.base)}`, not main"
+    if pr.base != DEFAULT_BRANCH:
+        return f"#{number} targets `{safe(pr.base)}`, not `{DEFAULT_BRANCH}`"
     bad = [f for f in pr.files if guarded(f, patterns)]
     if bad:
         more = f" and {len(bad) - 1} more" if len(bad) > 1 else ""
@@ -460,7 +461,7 @@ def answer(repo: str, issue: str, text: str) -> None:
 
 def dispatch(repo: str, issue: str, request: str, dry_run: list[dict] | None) -> str:
     """Starts `nightly build` for this request; returns its run's URL once GitHub lists it."""
-    args = ["workflow", "run", "nightly-build.yml", "--repo", repo, "--ref", "main", "-f", f"issue={issue}",
+    args = ["workflow", "run", "nightly-build.yml", "--repo", repo, "--ref", DEFAULT_BRANCH, "-f", f"issue={issue}",
             "-f", f"request={request}", "-f", "force=true"]
     if dry_run is not None:
         args += ["-f", "dry_run=true", "-f", "prs=" + " ".join(f"{e['number']}@{e['head']}" for e in dry_run)]
