@@ -21,3 +21,5 @@ pub const DATA_PACK_FORMAT: (i64, i64) = (48, 0);
 pub const JAVA_VERSION: u32 = 21;
 /// The pinned target is a stable release.
 pub const STABLE: bool = true;
+/// WorldVersion.buildTime() as rendered by the client's version command.
+pub const BUILD_TIME: &str = "Thu Aug 08 12:24:45 UTC 2024";
