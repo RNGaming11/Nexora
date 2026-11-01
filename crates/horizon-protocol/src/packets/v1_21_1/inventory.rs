@@ -104,7 +104,7 @@ impl Codec<SetEquipment> for SetEquipment {
         w.varint(value.entity_id);
         for (index, (slot, item)) in value.slots.iter().enumerate() {
             let more = index + 1 < value.slots.len();
-            w.u8(if more { slot | 0x80 } else { *slot });
+            w.u8(if more { *slot | 0x80 } else { *slot });
             Slot1211::write(item, w);
         }
     }
