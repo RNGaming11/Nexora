@@ -1203,6 +1203,35 @@ fn receive_play_1_21_1(
                 receive_brand(&packet, send);
             }
             target::PlayPacket1211::CustomPayload(packet) => receive_brand(&packet, send),
+            target::PlayPacket1211::Inventory(packet) => {
+                let packet = match packet {
+                    target::inventory::Clientbound::SetContent(packet) => {
+                        play::Clientbound::ContainerSetContent(play::ContainerSetContent {
+                            container: packet.container,
+                            state: packet.state,
+                            items: packet.items,
+                            carried: packet.carried,
+                        })
+                    }
+                    target::inventory::Clientbound::SetSlot(packet) => {
+                        play::Clientbound::ContainerSetSlot(play::ContainerSetSlot {
+                            container: packet.container,
+                            state: packet.state,
+                            slot: packet.slot,
+                            item: packet.item,
+                        })
+                    }
+                    target::inventory::Clientbound::Equipment(packet) => {
+                        play::Clientbound::SetEquipment(play::SetEquipment {
+                            id: packet.entity_id,
+                            slots: packet.slots,
+                        })
+                    }
+                };
+                if send.send(Event::Packet(Box::new(packet))).is_err() {
+                    return Ok("Disconnected".into());
+                }
+            }
             target::PlayPacket1211::Compatible(packet) => {
                 if send.send(Event::Packet(Box::new(packet))).is_err() {
                     return Ok("Disconnected".into());
