@@ -153,6 +153,39 @@ pub enum Component {
     Raw(Vec<u8>),
 }
 
+fn unsupported_1211_component(kind: i32) -> crate::Error {
+    let name = crate::packets::v1_21_1::component_ids::name(kind).unwrap_or("unknown");
+    crate::Error::new(format!(
+        "unsupported protocol-767 item component {name} (id {kind})"
+    ))
+}
+
+fn capture_component(
+    reader: &mut Reader,
+    decode: impl FnOnce(&mut Reader) -> Result<()>,
+) -> Result<Component> {
+    let start = reader.position();
+    decode(reader)?;
+    Ok(Component::Raw(reader.since(start).to_vec()))
+}
+
+fn read_1211_id_set(reader: &mut Reader) -> Result<()> {
+    match reader.varint()? {
+        0 => reader.string(32767).map(drop),
+        size => {
+            let count = usize::try_from(size - 1)
+                .map_err(|_| crate::Error::new("negative protocol-767 ID set size"))?;
+            if count > reader.remaining() {
+                return Err(crate::Error::new("protocol-767 ID set exceeds remaining payload"));
+            }
+            for _ in 0..count {
+                reader.varint()?;
+            }
+            Ok(())
+        }
+    }
+}
+
 /// `FireworkExplosion.STREAM_CODEC`: shape id, colors, fade colors, trail
 /// and twinkle (FireworkExplosion.Shape's BY_ID order).
 #[derive(Clone, Debug, PartialEq)]
@@ -490,106 +523,273 @@ impl Component {
     }
     pub(crate) fn read_1_21_1(kind: i32, r: &mut Reader) -> Result<Self> {
         use component::*;
-        let codec = match kind {
-            0 => CUSTOM_DATA,
-            1 => MAX_STACK_SIZE,
-            2 => MAX_DAMAGE,
-            3 => DAMAGE,
-            5 => CUSTOM_NAME,
-            6 => ITEM_NAME,
-            7 => LORE,
-            8 => RARITY,
-            9 => ENCHANTMENTS,
-            16 => REPAIR_COST,
-            18 => ENCHANTMENT_GLINT_OVERRIDE,
-            23 => STORED_ENCHANTMENTS,
-            24 => DYED_COLOR,
-            26 => MAP_ID,
-            28 => MAP_POST_PROCESSING,
-            32 => SUSPICIOUS_STEW_EFFECTS,
-            33 => WRITABLE_BOOK_CONTENT,
-            34 => WRITTEN_BOOK_CONTENT,
-            35 => TRIM,
-            40 => INSTRUMENT,
-            41 => OMINOUS_BOTTLE_AMPLIFIER,
-            44 => LODESTONE_TRACKER,
-            45 => FIREWORK_EXPLOSION,
-            46 => FIREWORKS,
-            49 => BANNER_PATTERNS,
-            50 => BASE_COLOR,
-            4 | 14 | 15 | 17 | 19 | 21 => return Ok(Self::Unit),
-            other => {
-                let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
-                return Err(crate::Error::new(format!(
-                    "unsupported protocol-767 item component {name} (id {other})"
-                )));
+        match kind {
+            0 | 19 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56 => {
+                Ok(Self::Nbt(r.nbt()?))
             }
-        };
-        Self::read(codec, r)
+            1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50 => {
+                Ok(Self::Int(r.varint()?))
+            }
+            4 | 18 => Ok(Self::Bool(r.bool()?)),
+            5 | 6 => Ok(Self::Text(r.nbt()?)),
+            7 => capture_component(r, |r| {
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    if r.bool()? {
+                        r.nbt()?;
+                    }
+                }
+                Ok(())
+            }),
+            9 | 23 => capture_component(r, |r| {
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    r.varint()?;
+                    r.varint()?;
+                }
+                r.bool()
+            }),
+            10 | 11 => Err(unsupported_1211_component(kind)),
+            12 => capture_component(r, |r| {
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    r.varint()?;
+                    r.string(32767)?;
+                    r.f64()?;
+                    r.varint()?;
+                    r.varint()?;
+                }
+                r.bool()
+            }),
+            14 | 15 | 17 | 21 => Ok(Self::Unit),
+            20 => capture_component(r, |r| {
+                r.varint()?;
+                r.f32()?;
+                r.bool()?;
+                r.f32()?;
+                let _remainder = Slot1211::read(r)?;
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    r.varint()?;
+                    r.f32()?;
+                }
+                Ok(())
+            }),
+            22 => capture_component(r, |r| {
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    read_1211_id_set(r)?;
+                    if r.bool()? {
+                        r.f32()?;
+                    }
+                    if r.bool()? {
+                        r.bool()?;
+                    }
+                }
+                r.f32()?;
+                r.varint()
+            }),
+            24 => capture_component(r, |r| {
+                r.i32()?;
+                r.bool()
+            }),
+            25 => Ok(Self::Int(r.i32()?)),
+            29 | 30 | 52 => capture_component(r, |r| {
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    let _slot = Slot1211::read(r)?;
+                }
+                Ok(())
+            }),
+            31 => {
+                let potion = if r.bool()? { Some(r.varint()?) } else { None };
+                let color = if r.bool()? { Some(r.i32()?) } else { None };
+                let start = r.position();
+                skip::potion_effects_and_name(r)?;
+                let rest = r.since(start).to_vec();
+                Ok(Self::Potion {
+                    potion,
+                    color,
+                    rest,
+                })
+            }
+            32 => {
+                let n = r.count(r.remaining())?;
+                let values = (0..n)
+                    .map(|_| Ok((r.varint()?, r.varint()?)))
+                    .collect::<Result<_>>()?;
+                Ok(Self::StewEffects(values))
+            }
+            33 => Self::read(WRITABLE_BOOK_CONTENT, r),
+            34 => capture_component(r, |r| {
+                r.string(32767)?;
+                if r.bool()? {
+                    r.string(32767)?;
+                }
+                r.string(32767)?;
+                r.varint()?;
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    r.string(32767)?;
+                    if r.bool()? {
+                        r.string(32767)?;
+                    }
+                }
+                r.bool()
+            }),
+            35 => capture_component(r, |r| {
+                skip::component(TRIM, r)?;
+                r.bool()
+            }),
+            40 => capture_component(r, |r| {
+                let holder = r.varint()?;
+                if holder == 0 {
+                    return Err(crate::Error::new(
+                        "inline protocol-767 instrument data is not supported yet",
+                    ));
+                }
+                Ok(())
+            }),
+            42 => capture_component(r, |r| {
+                if r.bool()? {
+                    let holder = r.varint()?;
+                    if holder == 0 {
+                        return Err(crate::Error::new(
+                            "inline protocol-767 jukebox song data is not supported yet",
+                        ));
+                    }
+                } else {
+                    r.string(32767)?;
+                }
+                r.bool()
+            }),
+            44 => {
+                let target = if r.bool()? {
+                    Some((r.string(32767)?, unpack_block_pos(r.i64()?)))
+                } else {
+                    None
+                };
+                Ok(Self::LodestoneTracker {
+                    target,
+                    tracked: r.bool()?,
+                })
+            }
+            45 => Ok(Self::FireworkExplosion(FireworkExplosion::read(r)?)),
+            46 => {
+                let flight = r.varint()?;
+                let n = r.count(256)?;
+                let explosions = (0..n)
+                    .map(|_| FireworkExplosion::read(r))
+                    .collect::<Result<_>>()?;
+                Ok(Self::Fireworks { flight, explosions })
+            }
+            47 => capture_component(r, |r| {
+                if r.bool()? {
+                    r.string(64)?;
+                }
+                if r.bool()? {
+                    r.uuid()?;
+                }
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    r.string(32767)?;
+                    r.string(32767)?;
+                    if r.bool()? {
+                        r.string(32767)?;
+                    }
+                }
+                Ok(())
+            }),
+            48 => Ok(Self::Ident(r.string(32767)?)),
+            49 => {
+                let start = r.position();
+                skip::component(BANNER_PATTERNS, r)?;
+                Ok(Self::Raw(r.since(start).to_vec()))
+            }
+            51 => capture_component(r, |r| {
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    r.varint()?;
+                }
+                Ok(())
+            }),
+            53 => capture_component(r, |r| {
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    r.string(32767)?;
+                    r.string(32767)?;
+                }
+                Ok(())
+            }),
+            54 => capture_component(r, |r| {
+                let n = r.count(r.remaining())?;
+                for _ in 0..n {
+                    r.nbt()?;
+                    r.varint()?;
+                    r.varint()?;
+                }
+                Ok(())
+            }),
+            other => Err(unsupported_1211_component(other)),
+        }
     }
 
     pub(crate) fn write_1_21_1(&self, kind: i32, w: &mut Writer) -> Result<()> {
         use component::*;
-        let codec = match kind {
-            0 => CUSTOM_DATA,
-            1 => MAX_STACK_SIZE,
-            2 => MAX_DAMAGE,
-            3 => DAMAGE,
-            5 => CUSTOM_NAME,
-            6 => ITEM_NAME,
-            7 => LORE,
-            8 => RARITY,
-            9 => ENCHANTMENTS,
-            16 => REPAIR_COST,
-            18 => ENCHANTMENT_GLINT_OVERRIDE,
-            23 => STORED_ENCHANTMENTS,
-            24 => DYED_COLOR,
-            26 => MAP_ID,
-            28 => MAP_POST_PROCESSING,
-            32 => SUSPICIOUS_STEW_EFFECTS,
-            33 => WRITABLE_BOOK_CONTENT,
-            34 => WRITTEN_BOOK_CONTENT,
-            35 => TRIM,
-            40 => INSTRUMENT,
-            41 => OMINOUS_BOTTLE_AMPLIFIER,
-            44 => LODESTONE_TRACKER,
-            45 => FIREWORK_EXPLOSION,
-            46 => FIREWORKS,
-            49 => BANNER_PATTERNS,
-            50 => BASE_COLOR,
-            4 | 14 | 15 | 17 | 19 | 21 if matches!(self, Self::Unit) => return Ok(()),
-            other => {
-                let name = crate::packets::v1_21_1::component_ids::name(other).unwrap_or("unknown");
-                return Err(crate::Error::new(format!(
-                    "unsupported protocol-767 item component {name} (id {other})"
-                )));
+        match (kind, self) {
+            (4 | 18, Self::Bool(value)) => w.bool(*value),
+            (0 | 19 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56, Self::Nbt(value))
+            | (5 | 6, Self::Text(value)) => w.nbt(value),
+            (1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50, Self::Int(value)) => {
+                w.varint(*value)
             }
-        };
-        let valid = match kind {
-            0 => matches!(self, Self::Nbt(_) | Self::Raw(_)),
-            5 | 6 => matches!(self, Self::Text(_) | Self::Raw(_)),
-            7 => matches!(self, Self::Lore(_) | Self::Raw(_)),
-            9 | 23 => matches!(self, Self::Enchantments(_) | Self::Raw(_)),
-            18 => matches!(self, Self::Bool(_) | Self::Raw(_)),
-            32 => matches!(self, Self::StewEffects(_) | Self::Raw(_)),
-            33 => matches!(self, Self::WritableBook { .. } | Self::Raw(_)),
-            34 => matches!(self, Self::WrittenBook(_) | Self::Raw(_)),
-            35 => matches!(self, Self::Trim { .. } | Self::Raw(_)),
-            40 => matches!(self, Self::Instrument(_) | Self::Raw(_)),
-            44 => matches!(self, Self::LodestoneTracker { .. } | Self::Raw(_)),
-            45 => matches!(self, Self::FireworkExplosion(_) | Self::Raw(_)),
-            46 => matches!(self, Self::Fireworks { .. } | Self::Raw(_)),
-            49 => matches!(self, Self::BannerPatterns(_) | Self::Raw(_)),
-            4 | 14 | 15 | 17 | 19 | 21 => matches!(self, Self::Unit),
-            _ => matches!(self, Self::Int(_) | Self::Raw(_)),
-        };
-        if !valid {
-            let name = crate::packets::v1_21_1::component_ids::name(kind).unwrap_or("unknown");
-            return Err(crate::Error::new(format!(
-                "protocol-767 component {name} has an incompatible in-memory value"
-            )));
+            (25, Self::Int(value)) => w.i32(*value),
+            (48, Self::Ident(value)) => w.string(value),
+            (14 | 15 | 17 | 21, Self::Unit) => {}
+            (31, Self::Potion { potion, color, rest }) => {
+                w.bool(potion.is_some());
+                if let Some(value) = potion {
+                    w.varint(*value);
+                }
+                w.bool(color.is_some());
+                if let Some(value) = color {
+                    w.i32(*value);
+                }
+                if rest.is_empty() {
+                    w.varint(0);
+                    w.bool(false);
+                } else {
+                    w.bytes(rest);
+                }
+            }
+            (32, Self::StewEffects(values)) => {
+                w.varint(values.len() as i32);
+                for (effect, duration) in values {
+                    w.varint(*effect);
+                    w.varint(*duration);
+                }
+            }
+            (44, Self::LodestoneTracker { target, tracked }) => {
+                w.bool(target.is_some());
+                if let Some((dimension, position)) = target {
+                    w.string(dimension);
+                    w.i64(pack_block_pos(*position));
+                }
+                w.bool(*tracked);
+            }
+            (45, Self::FireworkExplosion(value)) => value.write(w),
+            (46, Self::Fireworks { flight, explosions }) => {
+                w.varint(*flight);
+                w.varint(explosions.len() as i32);
+                for explosion in explosions {
+                    explosion.write(w);
+                }
+            }
+            (_, Self::Raw(bytes)) => w.bytes(bytes),
+            (other, _) => {
+                return Err(unsupported_1211_component(other));
+            }
         }
-        self.write(codec, w);
         Ok(())
     }
 
