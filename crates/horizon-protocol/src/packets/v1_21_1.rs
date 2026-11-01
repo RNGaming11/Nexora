@@ -830,6 +830,46 @@ pub fn decode_play_serverbound(id: i32, payload: &[u8]) -> Result<MissingPacket>
     Ok(packet)
 }
 
+/// Re-encode a shared play packet with its protocol-767 packet ID. Only
+/// serverbound payloads whose layouts are verified for 1.21.1 are accepted.
+pub fn encode_play_serverbound_1_21_1(packet: play_packets::Serverbound) -> Result<Vec<u8>> {
+    let encoded = packet.encode();
+    let mut reader = Reader::new(&encoded);
+    let active_id = reader.varint()?;
+    let name = crate::ids::play::serverbound::NAMES
+        .get(usize::try_from(active_id).map_err(|_| Error::new("negative active play packet id"))?)
+        .copied()
+        .ok_or_else(|| Error::new(format!("unknown active play packet id {active_id}")))?;
+    if !matches!(
+        name,
+        "accept_teleportation"
+            | "configuration_acknowledged"
+            | "cookie_response"
+            | "custom_payload"
+            | "keep_alive"
+            | "move_player_pos"
+            | "move_player_pos_rot"
+            | "move_player_rot"
+            | "move_player_status_only"
+            | "player_command"
+            | "player_input"
+            | "pong"
+            | "resource_pack"
+    ) {
+        return Err(Error::new(format!(
+            "protocol-767 serverbound packet {name} has no verified payload adapter"
+        )));
+    }
+    let target_id = crate::packet_ids_1_21_1::play::serverbound::NAMES
+        .iter()
+        .position(|target_name| *target_name == name)
+        .ok_or_else(|| Error::new(format!("protocol-767 has no serverbound packet {name}")))?;
+    let mut out = Writer::new();
+    out.varint(target_id as i32);
+    out.bytes(reader.rest());
+    Ok(out.data)
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum LoginPacket1211 {
     Shared(login_packets::Clientbound),
