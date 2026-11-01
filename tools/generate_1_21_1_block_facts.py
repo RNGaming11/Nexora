@@ -21,29 +21,10 @@ FLUID_BLOCKS = {
 }
 
 
-def build(report_path: Path, data_version: int = 3955, heightmap_predicates: dict | None = None) -> dict:
+def build(report_path: Path, data_version: int = 3955) -> dict:
     report = json.loads(report_path.read_text(encoding="utf-8"))
     if not isinstance(report, dict) or not report:
         raise SystemExit("Mojang blocks report must be a non-empty object")
-
-    motion: list[bool] | None = None
-    no_leaves: list[bool] | None = None
-    if heightmap_predicates is not None:
-        if heightmap_predicates.get("data_version") != data_version:
-            raise SystemExit("heightmap predicates use a different Minecraft data version")
-        motion = heightmap_predicates.get("motion")
-        no_leaves = heightmap_predicates.get("no_leaves")
-        count = heightmap_predicates.get("states")
-        if (
-            not isinstance(count, int)
-            or not isinstance(motion, list)
-            or not isinstance(no_leaves, list)
-            or len(motion) != count
-            or len(no_leaves) != count
-            or any(type(value) is not bool for value in motion)
-            or any(type(value) is not bool for value in no_leaves)
-        ):
-            raise SystemExit("invalid version-specific heightmap predicates")
 
     state_rows: list[list] = []
     defaults: dict[str, int] = {}
@@ -76,10 +57,6 @@ def build(report_path: Path, data_version: int = 3955, heightmap_predicates: dic
             fluid = block_name in FLUID_BLOCKS or properties.get("waterlogged") == "true"
             description = f"Block{{{block_name}}}"
             row = [block_name, air, fluid, description, state_value]
-            if motion is not None and no_leaves is not None:
-                if state_id >= len(motion):
-                    raise SystemExit("heightmap predicates do not cover every block state")
-                row.extend((motion[state_id], no_leaves[state_id]))
             if len(state_rows) <= state_id:
                 state_rows.extend([None] * (state_id + 1 - len(state_rows)))
             if state_rows[state_id] is not None:
@@ -94,8 +71,6 @@ def build(report_path: Path, data_version: int = 3955, heightmap_predicates: dic
     missing = [index for index, row in enumerate(state_rows) if row is None]
     if missing:
         raise SystemExit(f"block state IDs are not contiguous; missing {missing[:16]}")
-    if motion is not None and len(motion) != len(state_rows):
-        raise SystemExit("heightmap predicate count does not match the block-state registry")
     return {
         "data_version": data_version,
         "states": state_rows,
@@ -108,14 +83,8 @@ def main() -> None:
     parser.add_argument("--report", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--data-version", type=int, default=3955)
-    parser.add_argument("--heightmap-predicates", type=Path)
     args = parser.parse_args()
-    predicates = (
-        json.loads(args.heightmap_predicates.read_text(encoding="utf-8"))
-        if args.heightmap_predicates
-        else None
-    )
-    facts = build(args.report, args.data_version, predicates)
+    facts = build(args.report, args.data_version)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(
         json.dumps(facts, separators=(",", ":"), ensure_ascii=False) + "\n",
