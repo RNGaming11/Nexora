@@ -185,6 +185,7 @@ def build(
     occlusion: Path | None = None,
     attributes: Path | None = None,
     movement_properties: Path | None = None,
+    landing_definitions: Path | None = None,
 ) -> dict:
     client_jar = client_jar.resolve()
     server_game_jar = server_game_jar.resolve()
@@ -314,6 +315,17 @@ def build(
             raise ValueError("1.21.1 movement properties table is incomplete")
         shutil.copyfile(movement_properties, stage / "movement-properties.nbt")
 
+        if landing_definitions is None or not landing_definitions.is_file():
+            raise ValueError("official 1.21.1 landing definitions are required for runtime resources")
+        landing = json.loads(landing_definitions.read_text(encoding="utf-8"))
+        if (
+            not isinstance(landing, dict)
+            or set(landing) != set(expected_blocks)
+            or any(not isinstance(entry, dict) for entry in landing.values())
+        ):
+            raise ValueError("1.21.1 landing definitions do not match the block registry")
+        shutil.copyfile(landing_definitions, stage / "landing-definitions.json")
+
         if heightmap_predicates is None:
             raise ValueError("exact 1.21.1 heightmap predicates are required for runtime resources")
         motion = heightmap_predicates.get("motion")
@@ -371,6 +383,7 @@ def build(
             "attribute_definition_count": len(definitions),
             "attribute_entity_supplier_count": len(suppliers),
             "movement_properties_bytes": movement_properties.stat().st_size,
+            "landing_definition_count": len(landing),
             "block_tag_count": len(client_tags),
             "item_component_item_count": item_count,
             "biome_parameter_file_count": biome_count,
@@ -401,6 +414,7 @@ def main() -> None:
     parser.add_argument("--occlusion", required=True, type=Path)
     parser.add_argument("--attributes", required=True, type=Path)
     parser.add_argument("--movement-properties", required=True, type=Path)
+    parser.add_argument("--landing-definitions", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     heightmap_predicates = json.loads(args.heightmap_predicates.read_text(encoding="utf-8"))
@@ -417,6 +431,7 @@ def main() -> None:
         args.occlusion,
         args.attributes,
         args.movement_properties,
+        args.landing_definitions,
     )
     print(json.dumps({
         "runtime_resources": str(args.out.resolve()),
