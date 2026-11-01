@@ -9,8 +9,9 @@ import sys
 import zipfile
 
 try:
-    from . import build_1_21_1_runtime_resources, class_index, lab, version_port
+    from . import build_1_21_1_heightmap_predicates, build_1_21_1_runtime_resources, class_index, lab, version_port
 except ImportError:
+    import build_1_21_1_heightmap_predicates
     import build_1_21_1_runtime_resources
     import class_index
     import lab
@@ -107,8 +108,8 @@ def main():
         artifacts[key] = lab.download(item["url"], path, item["sha1"])
 
     artifacts["version_json"] = version_json
-    artifacts["server_game"] = version_port.unpack_game(
-        artifacts["server"], jars / "server-game.jar", VERSION
+    artifacts["server_game"], artifacts["server_libraries"] = lab.unpack_server(
+        artifacts["server"], directory, VERSION
     )
     facts = version_port.jar_facts(artifacts["client"])
     checks = {
@@ -135,10 +136,23 @@ def main():
     if missing_reports:
         raise ValueError(f"1.21.1 data generator did not produce required reports: {missing_reports}")
 
+    heightmap_predicates = directory / "heightmap-predicates.json"
+    print("Exporting exact 1.21.1 heightmap predicates from the official server", flush=True)
+    heightmap_data = build_1_21_1_heightmap_predicates.export(
+        artifacts["server_game"],
+        artifacts["server_libraries"],
+        artifacts["server_mappings"],
+        heightmap_predicates,
+    )
+
     runtime_resources = directory / "runtime-resources"
     print("Building local Minecraft 1.21.1 runtime resources", flush=True)
     runtime_summary = build_1_21_1_runtime_resources.build(
-        artifacts["client"], artifacts["server_game"], reports, runtime_resources
+        artifacts["client"],
+        artifacts["server_game"],
+        reports,
+        runtime_resources,
+        heightmap_data,
     )
 
     print("Indexing raw obfuscated class names for provenance", flush=True)
