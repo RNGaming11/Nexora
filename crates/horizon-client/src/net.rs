@@ -54,6 +54,8 @@ pub enum Event {
     Packet(Box<play::Clientbound>),
     /// Protocol-767's dedicated experience-orb spawn packet.
     ExperienceOrb { id: i32, position: [f64; 3], value: i16 },
+    /// Protocol-767's legacy recipe-book synchronization packet.
+    RecipePacket(horizon_protocol::packets::v1_21_1::RecipePacket),
     /// A packet that failed to decode (skipped, like vanilla's skippable packets).
     DecodeError(String),
     /// The server sent us back to configuration (`ClientboundStartConfigurationPacket`):
@@ -1253,6 +1255,11 @@ fn receive_play_1_21_1(
                         position: [packet.x, packet.y, packet.z],
                         value: packet.value,
                     }).is_err() {
+                        return Ok("Disconnected".into());
+                    }
+                }
+                target::MissingPacket::Recipe(packet) => {
+                    if send.send(Event::RecipePacket(packet)).is_err() {
                         return Ok("Disconnected".into());
                     }
                 }
