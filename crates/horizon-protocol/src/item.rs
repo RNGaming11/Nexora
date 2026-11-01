@@ -977,6 +977,197 @@ impl Codec<Option<Stack>> for DelimitedSlot {
     }
 }
 
+fn read_component_patch_1_21_1(
+    r: &mut Reader,
+    delimited: bool,
+) -> Result<(Vec<(i32, Component)>, Vec<i32>, WirePatch)> {
+    let positive = r.count(65536)?;
+    let negative = r.count(65536)?;
+    let mut added = Vec::with_capacity(positive.min(64));
+    let mut patch = Writer::new();
+    patch.varint(positive as i32);
+    patch.varint(negative as i32);
+    for _ in 0..positive {
+        let kind = r.varint()?;
+        let (component, bytes) = if delimited {
+            let len = r.count(r.remaining())?;
+            let bytes = r.bytes(len)?;
+            let mut value_reader = Reader::new(bytes);
+            let value = Component::read_1_21_1(kind, &mut value_reader)?;
+            if value_reader.remaining() != 0 {
+                let name = crate::packets::v1_21_1::component_ids::name(kind)
+                    .unwrap_or("unknown");
+                return Err(crate::Error::new(format!(
+                    "protocol-767 component {name} left {} unread bytes",
+                    value_reader.remaining()
+                )));
+            }
+            (value, bytes.to_vec())
+        } else {
+            let start = r.position();
+            let value = Component::read_1_21_1(kind, r)?;
+            (value, r.since(start).to_vec())
+        };
+        patch.varint(kind);
+        patch.byte_array(&bytes);
+        added.push((kind, component));
+    }
+    let mut removed = Vec::with_capacity(negative.min(64));
+    for _ in 0..negative {
+        let kind = r.varint()?;
+        if crate::packets::v1_21_1::component_ids::name(kind).is_none() {
+            return Err(crate::Error::new(format!(
+                "unknown protocol-767 removed item component id {kind}"
+            )));
+        }
+        removed.push(kind);
+        patch.varint(kind);
+    }
+    Ok((
+        added,
+        removed,
+        WirePatch((positive + negative > 0).then(|| patch.data.into())),
+    ))
+}
+
+/// ItemStack.OPTIONAL_STREAM_CODEC with the 1.21.1 component registry.
+fn read_stack_1_21_1(r: &mut Reader, delimited: bool) -> Result<Option<Stack>> {
+    let count = r.varint()?;
+    if count < 0 {
+        return Err(crate::Error::new("negative item count in protocol-767 slot"));
+    }
+    if count == 0 {
+        return Ok(None);
+    }
+    let item = r.varint()?;
+    if item < 0 {
+        return Err(crate::Error::new("negative item registry id in protocol-767 slot"));
+    }
+    let (added, removed, wire) = read_component_patch_1_21_1(r, delimited)?;
+    Ok(Some(Stack {
+        item,
+        count,
+        added,
+        removed,
+        wire,
+    }))
+}
+
+/// Encode an ordinary (non-delimited) protocol-767 item component patch.
+fn write_component_patch_1_21_1(
+    added: &[(i32, Component)],
+    removed: &[i32],
+    w: &mut Writer,
+) -> Result<()> {
+    w.varint(added.len() as i32);
+    w.varint(removed.len() as i32);
+    for (kind, value) in added {
+        w.varint(*kind);
+        value.write_1_21_1(*kind, w)?;
+    }
+    for kind in removed {
+        if crate::packets::v1_21_1::component_ids::name(*kind).is_none() {
+            return Err(crate::Error::new(format!(
+                "unknown protocol-767 removed item component id {kind}"
+            )));
+        }
+        w.varint(*kind);
+    }
+    Ok(())
+}
+
+/// ItemStack.OPTIONAL_STREAM_CODEC for Minecraft 1.21.1.
+pub struct Slot1211;
+impl Codec<Option<Stack>> for Slot1211 {
+    fn read(r: &mut Reader) -> Result<Option<Stack>> {
+        read_stack_1_21_1(r, false)
+    }
+    fn write(value: &Option<Stack>, w: &mut Writer) {
+        let Some(stack) = value else {
+            w.varint(0);
+            return;
+        };
+        w.varint(stack.count);
+        w.varint(stack.item);
+        if write_component_patch_1_21_1(&stack.added, &stack.removed, w).is_err() {
+            w.data.clear();
+        }
+    }
+}
+
+/// ItemStack.OPTIONAL_UNTRUSTED_STREAM_CODEC for Minecraft 1.21.1.
+pub struct DelimitedSlot1211;
+impl Codec<Option<Stack>> for DelimitedSlot1211 {
+    fn read(r: &mut Reader) -> Result<Option<Stack>> {
+        read_stack_1_21_1(r, true)
+    }
+    fn write(value: &Option<Stack>, w: &mut Writer) {
+        let Some(stack) = value else {
+            w.varint(0);
+            return;
+        };
+        w.varint(stack.count);
+        w.varint(stack.item);
+        if let Some(patch) = &stack.wire.0 {
+            w.bytes(patch);
+            return;
+        }
+        let mut patch = Writer::new();
+        if write_component_patch_1_21_1(&stack.added, &stack.removed, &mut patch).is_err() {
+            w.data.clear();
+            return;
+        }
+        for (kind, component) in &stack.added {
+            let mut value = Writer::new();
+            if component.write_1_21_1(*kind, &mut value).is_err() {
+                w.data.clear();
+                return;
+            }
+        }
+        w.varint(stack.added.len() as i32);
+        w.varint(stack.removed.len() as i32);
+        for (kind, component) in &stack.added {
+            w.varint(*kind);
+            let mut value = Writer::new();
+            if component.write_1_21_1(*kind, &mut value).is_err() {
+                w.data.clear();
+                return;
+            }
+            w.byte_array(&value.data);
+        }
+        for kind in &stack.removed {
+            w.varint(*kind);
+        }
+    }
+}
+
+/// ItemStackTemplate.STREAM_CODEC for Minecraft 1.21.1.
+pub struct Template1211;
+impl Codec<Stack> for Template1211 {
+    fn read(r: &mut Reader) -> Result<Stack> {
+        let item = r.varint()?;
+        let count = r.varint()?;
+        if item < 0 || count < 0 {
+            return Err(crate::Error::new("negative item or count in protocol-767 template"));
+        }
+        let (added, removed, wire) = read_component_patch_1_21_1(r, false)?;
+        Ok(Stack {
+            item,
+            count,
+            added,
+            removed,
+            wire,
+        })
+    }
+    fn write(stack: &Stack, w: &mut Writer) {
+        w.varint(stack.item);
+        w.varint(stack.count);
+        if write_component_patch_1_21_1(&stack.added, &stack.removed, w).is_err() {
+            w.data.clear();
+        }
+    }
+}
+
 /// ItemStackTemplate.STREAM_CODEC: the item, the count, then the patch.
 pub struct Template;
 impl Codec<Stack> for Template {
@@ -1158,6 +1349,41 @@ mod tests {
         patch.varint(13);
         patch.byte_array(&[1, 2, 3, 4]);
         assert!(WirePatch::decode_1_21_1(&patch.data).is_err());
+    }
+
+    #[test]
+    fn protocol_767_item_slots_round_trip_with_target_component_ids() {
+        let mut stack = Stack::new(5, 2);
+        stack.added.push((1, Component::Int(64)));
+        stack.added.push((18, Component::Bool(true)));
+        let mut writer = Writer::new();
+        Slot1211::write(&Some(stack.clone()), &mut writer);
+        let mut reader = Reader::new(&writer.data);
+        assert_eq!(Slot1211::read(&mut reader).unwrap(), Some(stack));
+        assert_eq!(reader.remaining(), 0);
+
+        let mut template = Writer::new();
+        Template1211::write(&Stack::new(7, 1), &mut template);
+        assert_eq!(
+            Template1211::read(&mut Reader::new(&template.data)).unwrap(),
+            Stack::new(7, 1)
+        );
+    }
+
+    #[test]
+    fn protocol_767_untrusted_slot_preserves_delimited_component_bytes() {
+        let mut wire = Writer::new();
+        wire.varint(1);
+        wire.varint(5);
+        wire.varint(1);
+        wire.varint(0);
+        wire.varint(1);
+        wire.byte_array(&[64]);
+        let mut reader = Reader::new(&wire.data);
+        let stack = DelimitedSlot1211::read(&mut reader).unwrap().unwrap();
+        let mut output = Writer::new();
+        DelimitedSlot1211::write(&Some(stack), &mut output);
+        assert_eq!(output.data, wire.data);
     }
 
     #[test]
