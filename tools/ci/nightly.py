@@ -211,12 +211,12 @@ def green_base(repo: str, issue: str) -> Ref:
     passed (what releases ship), so a merge that breaks main holds nightlies too."""
     sha = os.environ.get("NIGHTLY_BASE", "").strip() or train.green_main_head(parity=True)
     if not sha:
-        stop(repo, issue, "the build stopped: main's newest checks or parity-main run did not pass, so no commit of "
+        stop(repo, issue, "the build stopped: the default branch's newest checks or parity-main run did not pass, so no commit of "
                           "main is green to build on. The next build after they pass takes it.")
-    if not is_ancestor(sha, "refs/remotes/origin/main"):
-        stop(repo, issue, f"the build stopped: {sha[:9]} is not on main.")
+    if not is_ancestor(sha, f"refs/remotes/origin/{train.DEFAULT_BRANCH}"):
+        stop(repo, issue, f"the build stopped: {sha[:9]} is not on the default branch.")
     sha = git("rev-parse", sha)
-    return Ref("main", sha, dt.datetime.fromisoformat(git("show", "-s", "--format=%cI", sha)))
+    return Ref(train.DEFAULT_BRANCH, sha, dt.datetime.fromisoformat(git("show", "-s", "--format=%cI", sha)))
 
 
 def pick(force: bool) -> None:
