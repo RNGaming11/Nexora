@@ -64,14 +64,15 @@ jobs:
           python tools/generate_1_21_1_model_states.py --report $blocks --out 'target/1.21.1/model-states.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $runtime = Join-Path $env:HORIZON_VERSIONS '1.21.1/runtime-resources'
-          foreach ($pair in @(
-            @('target/1.21.1/builtin-registry-ids.json', (Join-Path $runtime 'builtin-registry-ids.json')),
-            @('target/1.21.1/block-facts.json', (Join-Path $runtime 'facts.json')),
-            @('target/1.21.1/model-states.json', (Join-Path $runtime 'model-states.json'))
-          )) {
-            $left = (Get-FileHash $pair[0] -Algorithm SHA256).Hash
-            $right = (Get-FileHash $pair[1] -Algorithm SHA256).Hash
-            if ($left -ne $right) { throw "Runtime file differs from independent output: $($pair[0])" }
+          $checks = @(
+            [pscustomobject]@{ Source = 'target/1.21.1/builtin-registry-ids.json'; Runtime = (Join-Path $runtime 'builtin-registry-ids.json') }
+            [pscustomobject]@{ Source = 'target/1.21.1/block-facts.json'; Runtime = (Join-Path $runtime 'facts.json') }
+            [pscustomobject]@{ Source = 'target/1.21.1/model-states.json'; Runtime = (Join-Path $runtime 'model-states.json') }
+          )
+          foreach ($check in $checks) {
+            $left = (Get-FileHash $check.Source -Algorithm SHA256).Hash
+            $right = (Get-FileHash $check.Runtime -Algorithm SHA256).Hash
+            if ($left -ne $right) { throw "Runtime file differs from independent output: $($check.Source)" }
           }
           cargo run -p horizon-client-render --example validate_1_21_1_resources --features minecraft-1-21-1 -- $runtime
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
