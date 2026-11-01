@@ -19,7 +19,7 @@ From the repository root:
 .\tools\verify_1_21_1.ps1
 ```
 
-This fast-forwards the current branch, runs the mapping and packet-codec Python tests, Rust formatting, protocol tests, and the workspace compile check. If the prepared data-generator packet report is present, it also regenerates and audits the target packet inventory. The full log is written to `target/1.21.1-verification.log`.
+This uses the current local checkout and runs the mapping and packet-codec Python tests, Rust formatting, core/protocol/world tests, and the workspace compile check. If the prepared data-generator packet report is present, it regenerates and audits the target packet inventory locally. It never pulls, commits, or pushes, so running verification cannot trigger remote workflows. The full log is written to `target/1.21.1-verification.log`.
 
 The artifact preparation and mapping-aware class-index work are already implemented. Do not rerun preparation just because this document was opened.
 
@@ -66,19 +66,19 @@ The preparation report is `prepared.json`; version facts are `facts.json`; raw a
 
 ## Current implementation boundary
 
-Already present:
-- Official 1.21.1 target facts and artifact/mapping hash pins.
-- Mapping-aware preparation and semantic class indexing.
-- Verified client/server artifacts and vanilla data-generator reports.
-- Version-isolated protocol-767 packet IDs and codecs for the previously missing packet types.
-- Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
+Already implemented:
+- Official 1.21.1 target facts, artifact/mapping pins, mapping-aware preparation, and mapped class inventories.
+- Version-isolated protocol-767 IDs and codecs, including the feature-gated handshake, login, configuration, and partial play-state network path.
+- Target-specific chunk/light, inventory/item-component, recipe, player-position, entity-motion, and movement packet adapters.
+- Separate 1.21.1 constants, registries, item-component IDs, and a runtime resource bundle pipeline that leaves downloaded game data outside Git.
+- A separate `horizon-client-1-21-1` binary target; the normal executable remains on 26.3.
+- The shared Rust game, renderer, world, inventory, and gameplay systems are reused rather than rewritten.
 
-Still required:
-- Generate and validate the 1.21.1 version constants and registries.
-- Produce and review the mapped 26.3-to-1.21.1 class/source diff and ranked worklist.
-- Select protocol 767 throughout the live client connection instead of the current protocol 777.
-- Integrate 1.21.1 login, configuration and play-state dispatch into the live network state machine.
-- Implement the registry-aware recipe serializers and remaining gameplay compatibility.
-- Demonstrate a playable milestone by launching the Rust client and joining a local vanilla 1.21.1 server.
+Still incomplete:
+- The 1.21.1 resource bundle still needs the remaining mob-data, entity-model-layer, and creative-tab exports wired into the existing Rust loaders.
+- The protocol-767 play adapter still has packets that decode but are not yet integrated into gameplay, plus packets without verified target payload adapters. These must be addressed against the pinned target source and fixtures.
+- Remaining raw item-component values need gameplay-level interpretation where required.
+- The launcher still needs a complete 1.21.1 research lock and target-specific resource preparation/launch flow.
+- End-to-end gameplay parity and a demonstrated join to a local vanilla 1.21.1 server are not complete.
 
-The root workspace still targets Minecraft 26.3. Do not change `crates/horizon-core/src/version.rs` by hand, remove the obfuscation guard in `tools/version_port.py`, or describe this branch as a playable 1.21.1 port. A successful compile is not proof of gameplay compatibility.
+The root workspace still defaults to Minecraft 26.3. Do not change its default version constants or claim 1.21.1 is playable based only on a successful compile. The verification script is local-only: it does not pull, commit, or push.
