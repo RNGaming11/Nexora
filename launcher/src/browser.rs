@@ -218,7 +218,9 @@ impl Version {
 pub struct Query {
     pub text: String,
     pub kind: Kind,
-    /// Off: only what runs (made for [`GAME`]). On: everything of the kind, each result marked
+    /// The Minecraft version the selected Nexora build or Java instance runs.
+    pub game_version: String,
+    /// Off: only what runs (made for the selected Minecraft version). On: everything of the kind, each result marked
     /// with how well it runs.
     pub everything: bool,
     pub offset: usize,
@@ -228,9 +230,14 @@ pub struct Query {
 
 impl Query {
     pub fn new(text: &str, kind: Kind) -> Self {
+        Self::new_for(GAME, text, kind)
+    }
+
+    pub fn new_for(game_version: &str, text: &str, kind: Kind) -> Self {
         Self {
             text: text.trim().to_owned(),
             kind,
+            game_version: game_version.to_owned(),
             everything: false,
             offset: 0,
             limit: 20,
@@ -326,7 +333,7 @@ pub fn support_for(
         Kind::Shader => Support::No("Not one of Nexora's own shader packs.".into()),
         Kind::DataPack => {
             let made_for = match newest_release(game_versions) {
-                _ if game_versions.iter().any(|v| v == GAME) => String::new(),
+                _ if game_versions.iter().any(|v| v == game_version) => String::new(),
                 Some(newest) => format!("Made for {newest}: the game may refuse it. "),
                 None => "Lists no Minecraft version. ".into(),
             };
@@ -422,7 +429,7 @@ pub fn pick_for(
     if kind == Kind::DataPack {
         // Most data packs on Modrinth ship a mod build too: only the data pack files.
         let mut packs = usable.filter(|v| v.loaders.iter().any(|l| l == "datapack"));
-        let made_for = |v: &&Version| v.game_versions.iter().any(|g| g == GAME);
+        let made_for = |v: &&Version| v.game_versions.iter().any(|g| g == game_version);
         return packs
             .clone()
             .find(made_for)
