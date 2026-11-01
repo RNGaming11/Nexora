@@ -24,7 +24,6 @@ on:
       - "tools/java/dev/horizonlab/parity/Vanilla1211BlockBehaviourExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211CollisionExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211MovementExporter.java"
-undefined
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityAttributeExporter.java"
       - "tools/test_1_21_1_gameplay_facts.py"
@@ -164,7 +163,7 @@ jobs:
             .port-cache/versions/1.21.1/heightmap-predicates.json
             .port-cache/versions/1.21.1/gameplay-facts.json
             .port-cache/versions/1.21.1/block-behaviours.json
-.port-cache/versions/1.21.1/entity-types.json
+            .port-cache/versions/1.21.1/entity-types.json
             .port-cache/versions/1.21.1/attributes.json
             .port-cache/versions/1.21.1/collision/cached-collision.nbt
             .port-cache/versions/1.21.1/collision/occlusion.nbt
