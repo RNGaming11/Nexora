@@ -270,7 +270,7 @@ fn trim_material(r: &mut Reader) -> Result<()> {
     })
 }
 /// MobEffectInstance: the effect id, then its Details.
-fn mob_effect(r: &mut Reader) -> Result<()> {
+pub(super) fn mob_effect(r: &mut Reader) -> Result<()> {
     varint(r)?;
     effect_details(r)
 }
