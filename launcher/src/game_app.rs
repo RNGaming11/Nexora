@@ -125,7 +125,10 @@ mod tests {
 
     #[test]
     fn the_bundle_can_run_the_version_specific_client_binary() {
-        let version = std::env::temp_dir().join(format!("horizon-game-app-target-{}", std::process::id()));
+        let version = std::env::temp_dir().join(format!(
+            "horizon-game-app-target-{}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&version);
         fs::create_dir_all(&version).unwrap();
         fs::write(version.join("horizon-client-1-21-1"), "game 1.21.1").unwrap();
