@@ -418,6 +418,7 @@ pub mod ids {
 /// error until a caller supplies the matching serializer registry.
 #[derive(Clone, Debug, PartialEq)]
 pub enum MissingPacket {
+    Login(Login1211),
     AddExperienceOrb(AddExperienceOrb),
     CommandSuggestions(CommandSuggestions),
     CustomReportDetails(CustomReportDetails),
@@ -442,6 +443,7 @@ pub enum MissingPacket {
 pub fn decode_play_clientbound(id: i32, payload: &[u8]) -> Result<MissingPacket> {
     let mut r = Reader::new(payload);
     let packet = match id {
+        ids::play_clientbound::LOGIN => MissingPacket::Login(Login1211::read(&mut r)?),
         ids::play_clientbound::ADD_EXPERIENCE_ORB => MissingPacket::AddExperienceOrb(AddExperienceOrb::read(&mut r)?),
         ids::play_clientbound::COMMAND_SUGGESTIONS => MissingPacket::CommandSuggestions(CommandSuggestions::read(&mut r)?),
         ids::play_clientbound::CUSTOM_REPORT_DETAILS => MissingPacket::CustomReportDetails(CustomReportDetails::read(&mut r)?),
@@ -666,6 +668,10 @@ mod tests {
         let mut encoded = Writer::new();
         Login1211::write(&packet, &mut encoded);
         assert_eq!(decode_play_login(&encoded.data).unwrap(), packet);
+        assert_eq!(
+            decode_play_clientbound(ids::play_clientbound::LOGIN, &encoded.data).unwrap(),
+            MissingPacket::Login(packet)
+        );
         let mut trailing = encoded.data;
         trailing.push(0);
         assert!(decode_play_login(&trailing).is_err());
