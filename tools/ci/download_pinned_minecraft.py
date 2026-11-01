@@ -8,7 +8,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import sys
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
@@ -80,7 +79,30 @@ def main() -> None:
         download(artifact["url"], minecraft / "libraries" / relative, artifact["sha1"])
         count += 1
 
-    print(f"Prepared pinned Minecraft {version} metadata, client/server jars and {count} library artifacts.")
+    asset_index = manifest.get("assetIndex", {})
+    index_path = minecraft / "assets" / "indexes" / f"{asset_index.get('id', '')}.json"
+    download(asset_index["url"], index_path, asset_index["sha1"])
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    wanted = (
+        lambda name: name == "pack.mcmeta"
+        or name.startswith("minecraft/lang/")
+        or name.startswith("minecraft/font/")
+        or name.startswith("minecraft/resourcepacks/")
+        or name.startswith("minecraft/textures/gui/title/background/panorama_")
+    )
+    asset_count = 0
+    for name, entry in index.get("objects", {}).items():
+        if not wanted(name):
+            continue
+        checksum = entry["hash"]
+        destination = minecraft / "assets" / "objects" / checksum[:2] / checksum
+        download(f"https://resources.download.minecraft.net/{checksum[:2]}/{checksum}", destination, checksum)
+        asset_count += 1
+
+    print(
+        f"Prepared pinned Minecraft {version}: client/server jars, {count} library artifacts, "
+        f"and {asset_count} required asset objects."
+    )
     print("All Mojang files were SHA-1 checked; none are copied into release packages.")
 
 
