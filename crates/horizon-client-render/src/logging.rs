@@ -5,7 +5,7 @@
 //! `logs/%d{yyyy-MM-dd}-%i.log.gz`, dated by the old file's last write. DefaultRolloverStrategy
 //! keeps 7 archives a day, the newest with the highest index.
 //!
-//! Messages go through the `log` facade. Horizon's own still print their plain text on stderr,
+//! Messages go through the `log` facade. Nexora's own still print their plain text on stderr,
 //! as they did before the log existed; other crates' errors only reach the file (their
 //! warnings are mostly the Vulkan loader's startup chatter).
 use std::collections::{HashMap, VecDeque};
@@ -190,7 +190,7 @@ pub struct Latest {
     _lock: File,
 }
 
-/// Opens `dir/latest.log` for this run, archiving the last run's. None when another Horizon
+/// Opens `dir/latest.log` for this run, archiving the last run's. None when another Nexora
 /// using the same folder is writing it: that game keeps it, this one logs to stderr only. The
 /// lock is a separate file (`.lock`): Windows locks are mandatory, and a locked latest.log could
 /// not be read while the game runs.
@@ -220,7 +220,7 @@ pub fn open_latest(dir: &Path) -> io::Result<Option<Latest>> {
 
 /// What the writer thread is told.
 enum Out {
-    /// Lines for the file, dated, and the message for stderr (Horizon's own).
+    /// Lines for the file, dated, and the message for stderr (Nexora's own).
     Write {
         date: NaiveDate,
         lines: Vec<String>,
@@ -260,7 +260,7 @@ impl Writer {
                         {
                             let _ = writeln!(
                                 stderr.lock(),
-                                "Horizon: could not roll over the log: {e}"
+                                "Nexora: could not roll over the log: {e}"
                             );
                         }
                         self.date = date;
@@ -447,7 +447,7 @@ impl Logger {
             ..
         })) = self.out.send(msg)
         {
-            // No writer (it could not start): the terminal still gets Horizon's messages.
+            // No writer (it could not start): the terminal still gets Nexora's messages.
             eprintln!("{message}");
         }
     }
@@ -461,14 +461,14 @@ pub fn init(home: &Path, main_thread: &'static str) {
         Ok(Some(latest)) => Some(latest),
         Ok(None) => {
             eprintln!(
-                "Horizon: another game is writing {}; this one logs to the terminal only",
+                "Nexora: another game is writing {}; this one logs to the terminal only",
                 dir.join("latest.log").display()
             );
             None
         }
         Err(e) => {
             eprintln!(
-                "Horizon: could not open {}: {e}",
+                "Nexora: could not open {}: {e}",
                 dir.join("latest.log").display()
             );
             None
@@ -485,7 +485,7 @@ pub fn init(home: &Path, main_thread: &'static str) {
             .name("Log writer".into())
             .spawn(move || writer.run(receive))
         {
-            eprintln!("Horizon: could not start the log writer: {e}");
+            eprintln!("Nexora: could not start the log writer: {e}");
         }
         Logger {
             out,
