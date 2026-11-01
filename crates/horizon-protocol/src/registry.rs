@@ -103,6 +103,59 @@ impl Builtin {
         }
         Ok(Self { registries })
     }
+    /// Load a compact, version-pinned built-in registry inventory generated
+    /// from Mojang's vanilla data-generator registries report.
+    pub fn load_inventory(path: &Path, version: &str, data_version: i32) -> Result<Self> {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| Error::new(format!("{}: {e}", path.display())))?;
+        Self::parse_inventory(&text, version, data_version)
+    }
+
+    /// Parse the compact name-by-ID inventory used when a full Mojang report
+    /// is not shipped with a prepared runtime resource set.
+    pub fn parse_inventory(text: &str, version: &str, data_version: i32) -> Result<Self> {
+        let json: serde_json::Value = serde_json::from_str(text)
+            .map_err(|e| Error::new(format!("registry inventory: {e}")))?;
+        if json.get("schema").and_then(serde_json::Value::as_u64) != Some(1) {
+            return Err(Error::new("unsupported built-in registry inventory schema"));
+        }
+        if json.get("minecraft_version").and_then(serde_json::Value::as_str) != Some(version) {
+            return Err(Error::new("built-in registry inventory version mismatch"));
+        }
+        if json.get("data_version").and_then(serde_json::Value::as_i64)
+            != Some(i64::from(data_version))
+        {
+            return Err(Error::new("built-in registry inventory DataVersion mismatch"));
+        }
+        let entries = json
+            .get("registries")
+            .and_then(serde_json::Value::as_object)
+            .ok_or_else(|| Error::new("built-in registry inventory has no registries object"))?;
+        let mut registries = HashMap::with_capacity(entries.len());
+        for (name, values) in entries {
+            let values = values
+                .as_array()
+                .ok_or_else(|| Error::new(format!("{name}: registry names are not an array")))?;
+            let names = values
+                .iter()
+                .map(|value| {
+                    value.as_str().map(str::to_owned).ok_or_else(|| {
+                        Error::new(format!("{name}: registry contains a non-string name"))
+                    })
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let mut seen = std::collections::HashSet::with_capacity(names.len());
+            if names.iter().any(|entry| !seen.insert(entry)) {
+                return Err(Error::new(format!("{name}: duplicate registry name")));
+            }
+            registries.insert(name.clone(), Ids::from_names(names));
+        }
+        if registries.is_empty() {
+            return Err(Error::new("built-in registry inventory is empty"));
+        }
+        Ok(Self { registries })
+    }
+
     pub fn get(&self, registry: &str) -> Option<&Ids> {
         self.registries.get(registry)
     }
@@ -260,6 +313,50 @@ mod tests {
         assert_eq!(items.name(1), Some("minecraft:stone"));
         assert_eq!(items.id("minecraft:air"), Some(0));
         assert_eq!(items.name(2), None);
+    }
+
+    #[test]
+    fn parses_version_pinned_builtin_registry_inventory() {
+        let inventory = r#"{
+            "schema": 1,
+            "minecraft_version": "1.21.1",
+            "data_version": 3955,
+            "registries": {
+                "minecraft:item": ["minecraft:air", "minecraft:stone"],
+                "minecraft:mob_effect": ["minecraft:speed"]
+            }
+        }"#;
+        let builtins = Builtin::parse_inventory(inventory, "1.21.1", 3955).unwrap();
+        let items = builtins.get("minecraft:item").unwrap();
+        assert_eq!(items.name(0), Some("minecraft:air"));
+        assert_eq!(items.id("minecraft:stone"), Some(1));
+        assert_eq!(
+            builtins.get("minecraft:mob_effect").unwrap().name(0),
+            Some("minecraft:speed")
+        );
+    }
+
+    #[test]
+    fn rejects_inventory_for_another_game_or_data_version() {
+        let inventory = r#"{
+            "schema": 1,
+            "minecraft_version": "1.21.1",
+            "data_version": 3955,
+            "registries": {"minecraft:item": ["minecraft:air"]}
+        }"#;
+        assert!(Builtin::parse_inventory(inventory, "26.3", 5023).is_err());
+        assert!(Builtin::parse_inventory(inventory, "1.21.1", 5023).is_err());
+    }
+
+    #[test]
+    fn rejects_duplicate_names_in_inventory() {
+        let inventory = r#"{
+            "schema": 1,
+            "minecraft_version": "1.21.1",
+            "data_version": 3955,
+            "registries": {"minecraft:item": ["minecraft:air", "minecraft:air"]}
+        }"#;
+        assert!(Builtin::parse_inventory(inventory, "1.21.1", 3955).is_err());
     }
 
     #[test]
