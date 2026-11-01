@@ -527,7 +527,6 @@ impl Component {
         })
     }
     pub(crate) fn read_1_21_1(kind: i32, r: &mut Reader) -> Result<Self> {
-        use component::*;
         match kind {
             0 | 19 | 27 | 36 | 37 | 38 | 39 | 43 | 55 | 56 => Ok(Self::Nbt(r.nbt()?)),
             1 | 2 | 3 | 8 | 13 | 16 | 26 | 28 | 41 | 50 => Ok(Self::Int(r.varint()?)),
@@ -548,7 +547,7 @@ impl Component {
                     r.varint()?;
                     r.varint()?;
                 }
-                r.bool()
+                r.bool().map(drop)
             }),
             10 | 11 => Err(unsupported_1211_component(kind)),
             12 => capture_component(r, |r| {
@@ -560,7 +559,7 @@ impl Component {
                     r.varint()?;
                     r.varint()?;
                 }
-                r.bool()
+                r.bool().map(drop)
             }),
             14 | 15 | 17 | 21 => Ok(Self::Unit),
             20 => capture_component(r, |r| {
@@ -588,11 +587,11 @@ impl Component {
                     }
                 }
                 r.f32()?;
-                r.varint()
+                r.varint().map(drop)
             }),
             24 => capture_component(r, |r| {
                 r.i32()?;
-                r.bool()
+                r.bool().map(drop)
             }),
             25 => Ok(Self::Int(r.i32()?)),
             29 | 30 | 52 => capture_component(r, |r| {
@@ -636,11 +635,11 @@ impl Component {
                         r.string(32767)?;
                     }
                 }
-                r.bool()
+                r.bool().map(drop)
             }),
             35 => capture_component(r, |r| {
                 skip::component(TRIM, r)?;
-                r.bool()
+                r.bool().map(drop)
             }),
             40 => capture_component(r, |r| {
                 let holder = r.varint()?;
@@ -662,7 +661,7 @@ impl Component {
                 } else {
                     r.string(32767)?;
                 }
-                r.bool()
+                r.bool().map(drop)
             }),
             44 => {
                 let target = if r.bool()? {
