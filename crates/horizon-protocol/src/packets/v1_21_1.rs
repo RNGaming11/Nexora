@@ -1557,20 +1557,27 @@ pub fn encode_configuration_serverbound_1_21_1(
             writer.bool(info.allows_listing);
             Ok(writer.data)
         }
-        cfg::Serverbound::CookieResponse(_)
-        | cfg::Serverbound::CustomPayload(_)
-        | cfg::Serverbound::FinishConfiguration(_)
-        | cfg::Serverbound::KeepAlive(_)
-        | cfg::Serverbound::Pong(_)
-        | cfg::Serverbound::ResourcePack(_)
-        | cfg::Serverbound::SelectKnownPacks(_) => {
-            let id = packet.id();
-            if !(0..=7).contains(&id) {
-                return Err(Error::new(format!(
-                    "unsupported protocol-767 configuration packet id {id}"
-                )));
-            }
-            Ok(packet.encode())
+        _ => {
+            let id = match &packet {
+                cfg::Serverbound::CookieResponse(_) => ids::configuration_serverbound::COOKIE_RESPONSE,
+                cfg::Serverbound::CustomPayload(_) => ids::configuration_serverbound::CUSTOM_PAYLOAD,
+                cfg::Serverbound::FinishConfiguration(_) => ids::configuration_serverbound::FINISH_CONFIGURATION,
+                cfg::Serverbound::KeepAlive(_) => ids::configuration_serverbound::KEEP_ALIVE,
+                cfg::Serverbound::Pong(_) => ids::configuration_serverbound::PONG,
+                cfg::Serverbound::ResourcePack(_) => ids::configuration_serverbound::RESOURCE_PACK,
+                cfg::Serverbound::SelectKnownPacks(_) => ids::configuration_serverbound::SELECT_KNOWN_PACKS,
+                other => return Err(Error::new(format!(
+                    "protocol-767 configuration packet has no adapter: {}",
+                    other.id()
+                ))),
+            };
+            let encoded = packet.encode();
+            let mut reader = Reader::new(&encoded);
+            let _active_id = reader.varint()?;
+            let mut output = Writer::new();
+            output.varint(id);
+            output.data.extend_from_slice(reader.rest());
+            Ok(output.data)
         }
         other => Err(Error::new(format!(
             "protocol-767 configuration packet has no adapter: {}",
