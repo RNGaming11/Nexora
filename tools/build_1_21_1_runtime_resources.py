@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""Build a local, version-pinned Minecraft 1.21.1 runtime resource directory.
+
+The client jar, extracted server jar, and resource bundle remain in the
+external HORIZON_VERSIONS cache. This tool never commits or uploads game data.
+"""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path, PurePosixPath
+import shutil
+import tempfile
+import zipfile
+
+try:
+    from . import (
+        generate_1_21_1_block_facts,
+        generate_1_21_1_model_states,
+        generate_builtin_registry_inventory,
+    )
+except ImportError:
+    import generate_1_21_1_block_facts
+    import generate_1_21_1_model_states
+    import generate_builtin_registry_inventory
+
+VERSION = "1.21.1"
+DATA_VERSION = 3955
+PROTOCOL_VERSION = 767
+GENERATOR = "tools/build_1_21_1_runtime_resources.py"
+BLOCK_TAG_PREFIX = "data/minecraft/tags/block/"
+
+
+def digest(path: Path, algorithm: str) -> str:
+    value = hashlib.new(algorithm)
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            value.update(chunk)
+    return value.hexdigest()
+
+
+def safe_parts(name: str) -> tuple[str, ...]:
+    if "\\" in name:
+        raise ValueError(f"invalid archive path: {name!r}")
+    path = PurePosixPath(name)
+    if path.is_absolute() or not path.parts or any(
+        part in ("", ".", "..") for part in path.parts
+    ):
+        raise ValueError(f"unsafe archive path: {name!r}")
+    return path.parts
+
+
+def read_archive_resources(jar: Path) -> dict[str, bytes]:
+    result = {}
+    with zipfile.ZipFile(jar) as archive:
+        for info in archive.infolist():
+            name = info.filename
+            if info.is_dir() or not (
+                name.startswith("assets/") or name.startswith("data/") or name == "pack.png"
+            ):
+                continue
+            safe_parts(name)
+            if name in result:
+                raise ValueError(f"{jar}: duplicate archive entry {name}")
+            result[name] = archive.read(info)
+
+    if not any(name.startswith("assets/minecraft/") for name in result):
+        raise ValueError(f"{jar}: missing vanilla Minecraft assets")
+    if not any(name.startswith("data/minecraft/") for name in result):
+        raise ValueError(f"{jar}: missing vanilla Minecraft data")
+    return result
+
+
+def read_block_tags(jar: Path) -> dict[str, str]:
+    result = {}
+    with zipfile.ZipFile(jar) as archive:
+        for info in archive.infolist():
+            name = info.filename
+            if info.is_dir() or not name.startswith(BLOCK_TAG_PREFIX) or not name.endswith(".json"):
+                continue
+            safe_parts(name)
+            key = "minecraft:" + name[len(BLOCK_TAG_PREFIX):-5]
+            if key in result:
+                raise ValueError(f"{jar}: duplicate block tag {key}")
+            raw = archive.read(info).decode("utf-8")
+            json.loads(raw)
+            result[key] = raw
+
+    if not result:
+        raise ValueError(f"{jar}: no block tags found under {BLOCK_TAG_PREFIX}")
+    return dict(sorted(result.items()))
+
+
+def write_json(path: Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(value, separators=(",", ":"), ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def install_archive_resources(resources: dict[str, bytes], root: Path) -> tuple[int, int]:
+    total_bytes = 0
+    for name, data in sorted(resources.items()):
+        destination = root.joinpath(*safe_parts(name))
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(data)
+        total_bytes += len(data)
+    return len(resources), total_bytes
+
+
+def install_items(reports: Path, root: Path) -> int:
+    source = reports / "minecraft" / "components" / "item"
+    if not source.is_dir():
+        raise ValueError(f"missing item component reports: {source}")
+
+    items = {}
+    for path in sorted(source.rglob("*.json")):
+        name = "minecraft:" + path.relative_to(source).with_suffix("").as_posix()
+        document = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(document, dict) or not isinstance(document.get("components"), dict):
+            raise ValueError(f"{path}: no item components object")
+        items[name] = document["components"]
+
+    if not items:
+        raise ValueError("vanilla item component report is empty")
+    write_json(root / "items.json", items)
+    return len(items)
+
+
+def install_biome_parameters(reports: Path, root: Path) -> int:
+    source = reports / "biome_parameters" / "minecraft"
+    if not source.is_dir():
+        raise ValueError(f"missing biome parameter reports: {source}")
+
+    count = 0
+    for path in sorted(source.rglob("*.json")):
+        destination = root / "biome-parameters" / path.relative_to(source)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, destination)
+        count += 1
+
+    if not count:
+        raise ValueError("vanilla biome parameter report is empty")
+    return count
+
+
+def is_managed_output(output: Path) -> bool:
+    manifest_path = output / "horizon-resources.json"
+    if not manifest_path.is_file():
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (
+        manifest.get("generator") == GENERATOR
+        and manifest.get("minecraft_version") == VERSION
+        and manifest.get("data_version") == DATA_VERSION
+    )
+
+
+def build(client_jar: Path, server_game_jar: Path, reports: Path, output: Path) -> dict:
+    client_jar = client_jar.resolve()
+    server_game_jar = server_game_jar.resolve()
+    reports = reports.resolve()
+    output = output.resolve()
+
+    if not client_jar.is_file() or not server_game_jar.is_file():
+        raise ValueError("verified Minecraft 1.21.1 client and extracted server jars are required")
+    if not reports.is_dir():
+        raise ValueError(f"missing data generator report directory: {reports}")
+    for name in ("registries.json", "commands.json", "blocks.json"):
+        if not (reports / name).is_file():
+            raise ValueError(f"missing Mojang data generator report: {reports / name}")
+    if output in (Path(output.anchor), client_jar.parent, server_game_jar.parent):
+        raise ValueError("refusing unsafe runtime resource output directory")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists() and not is_managed_output(output):
+        raise ValueError(f"refusing to replace an unrecognized output directory: {output}")
+
+    client_resources = read_archive_resources(client_jar)
+    client_tags = read_block_tags(client_jar)
+    server_tags = read_block_tags(server_game_jar)
+    if client_tags != server_tags:
+        raise ValueError("client and server block tag resources disagree")
+
+    stage = Path(tempfile.mkdtemp(prefix=output.name + ".staging-", dir=output.parent))
+    try:
+        resource_count, resource_bytes = install_archive_resources(client_resources, stage)
+
+        registries_report = json.loads((reports / "registries.json").read_text(encoding="utf-8"))
+        commands_report = json.loads((reports / "commands.json").read_text(encoding="utf-8"))
+        write_json(stage / "registries.json", registries_report)
+        write_json(stage / "commands.json", commands_report)
+        write_json(stage / "block-tags.json", client_tags)
+
+        inventory = generate_builtin_registry_inventory.build(
+            reports / "registries.json", VERSION, DATA_VERSION
+        )
+        write_json(stage / "builtin-registry-ids.json", inventory)
+
+        block_facts = generate_1_21_1_block_facts.build(
+            reports / "blocks.json", DATA_VERSION
+        )
+        write_json(stage / "facts.json", block_facts)
+
+        model_states = generate_1_21_1_model_states.build(reports / "blocks.json")
+        if set(model_states) != set(block_facts["defaults"]):
+            raise ValueError("model-state schemas and block facts cover different block sets")
+        write_json(stage / "model-states.json", model_states)
+
+        item_count = install_items(reports, stage)
+        biome_count = install_biome_parameters(reports, stage)
+
+        manifest = {
+            "schema": 1,
+            "minecraft_version": VERSION,
+            "data_version": DATA_VERSION,
+            "protocol_version": PROTOCOL_VERSION,
+            "resource_pack_format": 34,
+            "data_pack_format": 48,
+            "generator": GENERATOR,
+            "client_jar_sha1": digest(client_jar, "sha1"),
+            "server_game_jar_sha1": digest(server_game_jar, "sha1"),
+            "source_report_sha256": {
+                name: digest(reports / name, "sha256")
+                for name in ("registries.json", "commands.json", "blocks.json")
+            },
+            "builtin_registry_count": len(inventory["registries"]),
+            "builtin_registry_entry_count": sum(
+                len(entries) for entries in inventory["registries"].values()
+            ),
+            "block_count": len(block_facts["defaults"]),
+            "block_state_count": len(block_facts["states"]),
+            "model_schema_count": len(model_states),
+            "block_tag_count": len(client_tags),
+            "item_component_item_count": item_count,
+            "biome_parameter_file_count": biome_count,
+            "jar_resource_file_count": resource_count,
+            "jar_resource_bytes": resource_bytes,
+        }
+        write_json(stage / "horizon-resources.json", manifest)
+
+        if output.exists():
+            shutil.rmtree(output)
+        os.replace(stage, output)
+        return manifest
+    except Exception:
+        shutil.rmtree(stage, ignore_errors=True)
+        raise
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--client-jar", required=True, type=Path)
+    parser.add_argument("--server-game-jar", required=True, type=Path)
+    parser.add_argument("--reports", required=True, type=Path)
+    parser.add_argument("--out", required=True, type=Path)
+    args = parser.parse_args()
+    result = build(args.client_jar, args.server_game_jar, args.reports, args.out)
+    print(json.dumps({
+        "runtime_resources": str(args.out.resolve()),
+        "minecraft_version": result["minecraft_version"],
+        "data_version": result["data_version"],
+        "protocol_version": result["protocol_version"],
+        "built_in_registries": result["builtin_registry_count"],
+        "built_in_registry_entries": result["builtin_registry_entry_count"],
+        "block_states": result["block_state_count"],
+        "block_tags": result["block_tag_count"],
+        "item_component_items": result["item_component_item_count"],
+        "biome_parameter_files": result["biome_parameter_file_count"],
+        "resource_files": result["jar_resource_file_count"],
+        "resource_bytes": result["jar_resource_bytes"],
+    }, indent=2))
+
+
+if __name__ == "__main__":
+    main()
