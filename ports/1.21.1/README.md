@@ -29,9 +29,9 @@ The preparation work already present on this branch includes:
 - The generated `packet_ids.rs` inventory is imported by `horizon-protocol`; Rust tests compare every version-specific codec ID against the generated Mojang packet names so the hand-written dispatch table cannot silently drift.
 - Login and configuration dispatch adapters, kept separate from the active 26.3 protocol.
 - The 23 recipe serializer IDs are pinned in [`recipe-serializers.json`](recipe-serializers.json) from the official 1.21.1 `minecraft:recipe_serializer` registry, not a later-version packet enum. The preparation workflow regenerates this inventory from Mojang's report and checks it byte-for-byte. Vanilla serializer bodies are decoded and round-tripped for shaped, shapeless, special, cooking, stonecutting, and smithing recipes.
-- The 57 item data-component IDs are pinned in [`data-component-ids.json`](data-component-ids.json) and exposed through a protocol-767 lookup table. Dedicated 1.21.1 item-stack, template, and delimited-slot codecs use those IDs and only the payload formats explicitly supported by the version adapter; unsupported component types fail with their target registry name.
+- The 57 item data-component IDs are pinned in [`data-component-ids.json`](data-component-ids.json) and exposed through a protocol-767 lookup table. Dedicated 1.21.1 item-stack, template, and delimited-slot codecs use those IDs. The version adapter now has bounded payload readers for all 57 component IDs, including the Adventure-mode block predicates for `can_place_on` and `can_break`; complex components that are not interpreted by gameplay code are retained as raw bytes.
 - The world block registry now has `BlockRegistry::from_nbt_with_data_version`, so a 1.21.1 caller can validate DataVersion 3955 without changing the active 26.3 constant (5023).
-- Recipe slot decoding now uses the 1.21.1 item-stack codec. Supported component patches are parsed with target IDs, component removals are validated against the target registry, and unsupported component payloads fail closed. The 26.3 ID table is never used for these slots.
+- Recipe slot decoding now uses the 1.21.1 item-stack codec. Component patches are parsed with target IDs, component removals are validated against the target registry, and uninterpreted known components retain their version-specific bytes. Unknown component IDs still fail closed. The 26.3 ID table is never used for these slots.
 - Built-in registry report parsing rejects duplicate IDs, gaps, negative/missing IDs, and IDs outside the contiguous range instead of silently constructing invalid lookup tables.
 - A compact 1.21.1 built-in registry inventory generator and a version/DataVersion-checked Rust loader are in place. The preparation workflow emits all 78 registry name tables (5,825 IDs) as a separate artifact instead of committing another large generated data file.
 
@@ -95,12 +95,12 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [x] Version-isolated codecs for the previously missing packet payloads, including protocol-767 login/configuration and recipe dispatch (23 vanilla recipe serializer IDs; recipe slots use the version-scoped item codec).
 - [x] Isolated 1.21.1 version constants, checked against the pinned target metadata.
 - [x] Pinned all 57 target data-component IDs and verified them against Mojang's data-generator report.
-- [x] Added version-scoped 1.21.1 item-stack, template, and delimited-slot codecs for the currently supported component payload subset; recipe slots use this adapter.
+- [x] Added version-scoped 1.21.1 item-stack, template, and delimited-slot codecs. Bounded readers cover all 57 target component IDs; the `can_place_on` and `can_break` block-predicate payloads now have round-trip and truncated-input tests. Complex components are preserved raw where gameplay does not yet need their fields.
 - [x] Added a compact built-in registry inventory generator, strict Rust loader, and preparation artifact for the target's 78 registries / 5,825 IDs.
 - [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
 - [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
 - [ ] Generate and integrate all 1.21.1 runtime registries and resource data.
-- [ ] Complete the remaining 1.21.1 item data-component payload codecs, including nested container/tool/food/map components, then connect the slot adapter to the live inventory packet dispatch.
+- [ ] Connect the 1.21.1 slot and component codecs to the live inventory packet dispatch and implement gameplay-level handling for the preserved raw component values.
 - [ ] Protocol-767 play-state integration in the live client.
 - [ ] Gameplay parity.
 - [ ] Playable client/server milestone.
