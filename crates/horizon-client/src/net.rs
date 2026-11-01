@@ -247,6 +247,9 @@ impl Session {
                 return;
             }
         };
+        if body.is_empty() {
+            return;
+        }
         if let Some(w) = writer.as_mut()
             && w.send(&body).is_err()
         {
