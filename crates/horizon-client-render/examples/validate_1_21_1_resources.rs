@@ -49,6 +49,25 @@ fn validate() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err("gameplay facts do not match the 1.21.1 block-state registry".into());
     }
+    let behaviours: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("block-behaviours.json"))?)?;
+    if behaviours["blocks"].as_array().map(Vec::len)
+        != manifest["block_behaviour_block_count"].as_u64().map(|n| n as usize)
+        || behaviours["states"].as_array().map(Vec::len)
+            != manifest["block_behaviour_state_count"].as_u64().map(|n| n as usize)
+        || behaviours["states"].as_array().map(Vec::len) != Some(assets.registry.len())
+    {
+        return Err("block behaviour facts do not match the 1.21.1 block registry".into());
+    }
+
+    let entity_types: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("entity-types.json"))?)?;
+    if entity_types.as_object().map(serde_json::Map::len)
+        != manifest["entity_type_count"].as_u64().map(|n| n as usize)
+    {
+        return Err("entity type facts do not match the 1.21.1 entity registry".into());
+    }
+
     let render = assets.reload(&root)?;
     if render.sprite_layers.is_empty() {
         return Err("block models did not resolve any sprite layers".into());
