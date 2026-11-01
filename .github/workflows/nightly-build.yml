@@ -4,7 +4,7 @@ run-name: nightly build${{ inputs.request && format(' (request {0})', inputs.req
 # train decides (release.yml, with the commit as `base`), once a night, and when a trusted
 # reviewer asks (`/nightly 2640 2642`, nightly-command.yml), it builds main plus the pull requests the reviewers
 # picked, merged in order (tools/ci/nightly_set.py), or main alone with none picked. Main is its newest commit where
-# checks and parity-main passed (or the `base` input), as for a release, and no Nightly is published while a
+# required checks passed (parity-main is optional via NEXORA_REQUIRE_PARITY_MAIN; or the `base` input), and no Nightly is published while a
 # release-blocker is open. It publishes the result as the `nightly` pre-release, which every launcher and
 # `horizon-server update` install. The previous nightly stays a week as nightly-<date>.
 #
@@ -58,7 +58,7 @@ on:
         type: string
         default: ''
       base:
-        description: The commit of main to build on (default main's newest with green checks and parity-main)
+        description: The commit of the default branch to build on (default its newest green checks)
         type: string
         default: ''
       urgent:
@@ -80,7 +80,7 @@ jobs:
       contents: write       # nightly/build-<date>-<n> and the nightly-state branch (main is protected)
       issues: write         # says in the thread when the picked pull requests conflict
       pull-requests: write
-      actions: read         # main's newest green checks and parity-main runs (the base)
+      actions: read         # the default branch's newest green checks (the base)
     outputs:
       build: ${{ steps.pick.outputs.build }}
       sha: ${{ steps.pick.outputs.sha }}
