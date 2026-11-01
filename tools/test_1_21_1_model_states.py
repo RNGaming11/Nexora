@@ -33,7 +33,7 @@ class ModelStates1211Tests(unittest.TestCase):
             result = build(report)
             self.assertEqual(
                 result["minecraft:oak_log"]["schema"],
-                {"axis": {"named": ["x", "y", "z"]}},
+                {"axis": {"named": ["y", "x", "z"]}},
             )
             self.assertEqual(
                 result["minecraft:age_test"]["schema"],
