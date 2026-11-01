@@ -100,7 +100,7 @@ Eighteen of the nineteen previously missing packet payloads have concrete codecs
 - [x] Version-aware block registry DataVersion validation without changing the active 26.3 constant.
 - [x] Generated the mapped 26.3-to-1.21.1 class diff and 930-item ranked worklist.
 - [ ] Generate and integrate all 1.21.1 runtime registries and resource data.
-- [x] Connect protocol-767 container content/slot/equipment decoding and container-click/creative-slot encoding to the live client path using the 1.21.1 item-slot codecs.
+- [x] Connect protocol-767 container content/slot/equipment and merchant-offer decoding, plus container-click/creative-slot encoding, to the live client path using the 1.21.1 item/component codecs.
 - [x] Add live hotbar selection and horse-inventory packet adaptation into existing gameplay handlers.
 - [x] Add a feature-gated protocol-767 connection state machine with version-specific handshake, login, configuration, chunk/light conversion, and play dispatch.
 - [ ] Expand remaining play-state packet coverage; several target packets are still explicitly reported as requiring gameplay integration.
