@@ -172,7 +172,13 @@ def is_managed_output(output: Path) -> bool:
     )
 
 
-def build(\n    client_jar: Path,\n    server_game_jar: Path,\n    reports: Path,\n    output: Path,\n    heightmap_predicates: dict | None = None,\n) -> dict:
+def build(
+    client_jar: Path,
+    server_game_jar: Path,
+    reports: Path,
+    output: Path,
+    heightmap_predicates: dict | None = None,
+) -> dict:
     client_jar = client_jar.resolve()
     server_game_jar = server_game_jar.resolve()
     reports = reports.resolve()
