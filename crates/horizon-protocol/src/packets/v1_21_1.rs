@@ -477,6 +477,9 @@ pub enum PlayPacket1211 {
     Compatible(play_packets::Clientbound),
     LevelChunkWithLight(play_packets::LevelChunkWithLight),
     LightUpdate(play_packets::LightUpdate),
+    PlayerPosition(play_packets::PlayerPosition),
+    ChangeDifficulty(play_packets::ChangeDifficulty),
+    SpawnPosition(play_packets::SetDefaultSpawnPosition),
 }
 
 /// Decode the 1.21.1 play packets whose payloads have target-verified codecs.
@@ -503,6 +506,15 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
         }
         crate::packet_ids_1_21_1::play::clientbound::LIGHT_UPDATE => {
             decode_light_update_1_21_1(payload).map(PlayPacket1211::LightUpdate)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::PLAYER_POSITION => {
+            decode_player_position_1_21_1(payload).map(PlayPacket1211::PlayerPosition)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::CHANGE_DIFFICULTY => {
+            decode_change_difficulty_1_21_1(payload).map(PlayPacket1211::ChangeDifficulty)
+        }
+        crate::packet_ids_1_21_1::play::clientbound::SET_DEFAULT_SPAWN_POSITION => {
+            decode_spawn_position_1_21_1(payload).map(PlayPacket1211::SpawnPosition)
         }
         ids::play_clientbound::LOGIN =>
             shared(|r| Login1211::read(r).map(PlayPacket1211::Login)),
@@ -710,6 +722,107 @@ pub fn decode_light_update_1_21_1(payload: &[u8]) -> Result<play_packets::LightU
         z: value.z,
         light: value.light,
     })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlayerPosition1211 {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub relatives: u8,
+    pub teleport_id: i32,
+}
+
+impl Codec<PlayerPosition1211> for PlayerPosition1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            x: r.f64()?,
+            y: r.f64()?,
+            z: r.f64()?,
+            yaw: r.f32()?,
+            pitch: r.f32()?,
+            relatives: r.u8()?,
+            teleport_id: r.varint()?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.f64(value.x);
+        w.f64(value.y);
+        w.f64(value.z);
+        w.f32(value.yaw);
+        w.f32(value.pitch);
+        w.u8(value.relatives);
+        w.varint(value.teleport_id);
+    }
+}
+
+pub fn decode_player_position_1_21_1(payload: &[u8]) -> Result<play_packets::PlayerPosition> {
+    let value = decode_exact(payload, PlayerPosition1211::read)?;
+    Ok(play_packets::PlayerPosition {
+        teleport: value.teleport_id,
+        position: [value.x, value.y, value.z],
+        delta: [0.0; 3],
+        yaw: value.yaw,
+        pitch: value.pitch,
+        relatives: i32::from(value.relatives),
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ChangeDifficulty1211 {
+    pub difficulty: u8,
+    pub locked: bool,
+}
+
+impl Codec<ChangeDifficulty1211> for ChangeDifficulty1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            difficulty: r.u8()?,
+            locked: r.bool()?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.u8(value.difficulty);
+        w.bool(value.locked);
+    }
+}
+
+pub fn decode_change_difficulty_1_21_1(payload: &[u8]) -> Result<play_packets::ChangeDifficulty> {
+    let value = decode_exact(payload, ChangeDifficulty1211::read)?;
+    Ok(play_packets::ChangeDifficulty {
+        difficulty: i32::from(value.difficulty),
+        locked: value.locked,
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SpawnPosition1211 {
+    pub position: [i32; 3],
+    pub angle: f32,
+}
+
+impl Codec<SpawnPosition1211> for SpawnPosition1211 {
+    fn read(r: &mut Reader) -> Result<Self> {
+        Ok(Self {
+            position: unpack_block_pos(r.i64()?),
+            angle: r.f32()?,
+        })
+    }
+
+    fn write(value: &Self, w: &mut Writer) {
+        w.i64(pack_block_pos(value.position));
+        w.f32(value.angle);
+    }
+}
+
+pub fn decode_spawn_position_1_21_1(
+    payload: &[u8],
+) -> Result<SpawnPosition1211> {
+    decode_exact(payload, SpawnPosition1211::read)
 }
 
 fn decode_compatible_play_packet_1_21_1(
