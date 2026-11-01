@@ -17,11 +17,14 @@ on:
       - "tools/export_1_21_1_gameplay_facts.py"
       - "tools/export_1_21_1_block_behaviours.py"
       - "tools/export_1_21_1_entity_types.py"
+      - "tools/export_1_21_1_entity_attributes.py"
       - "tools/export_1_21_1_collision.py"
+      - "tools/test_1_21_1_entity_attributes.py"
       - "tools/java/dev/horizonlab/parity/Vanilla1211BlockBehaviourExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211CollisionExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211CollisionExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
+      - "tools/java/dev/horizonlab/parity/Vanilla1211EntityAttributeExporter.java"
       - "tools/java/dev/horizonlab/parity/Vanilla1211EntityTypesExporter.java"
       - "tools/test_1_21_1_gameplay_facts.py"
       - "tools/test_1_21_1_entity_types.py"
@@ -62,7 +65,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Test official ProGuard jar remapper
-        run: python -m unittest tools.test_remap_proguard_jar tools.test_1_21_1_heightmap_predicates tools.test_1_21_1_gameplay_facts tools.test_1_21_1_entity_types
+        run: python -m unittest tools.test_remap_proguard_jar tools.test_1_21_1_heightmap_predicates tools.test_1_21_1_gameplay_facts tools.test_1_21_1_entity_types tools.test_1_21_1_entity_attributes
       - name: Prepare official 1.21.1 artifacts and mapped inventories
         run: python tools/prepare_1_21_1.py --jobs 4
       - name: Generate an independent packet inventory
@@ -160,7 +163,8 @@ jobs:
             .port-cache/versions/1.21.1/heightmap-predicates.json
             .port-cache/versions/1.21.1/gameplay-facts.json
             .port-cache/versions/1.21.1/block-behaviours.json
-            .port-cache/versions/1.21.1/entity-types.json
+.port-cache/versions/1.21.1/entity-types.json
+            .port-cache/versions/1.21.1/attributes.json
             .port-cache/versions/1.21.1/collision/cached-collision.nbt
             .port-cache/versions/1.21.1/collision/occlusion.nbt
             .port-cache/versions/1.21.1/runtime-resources/
