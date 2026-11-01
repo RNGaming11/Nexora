@@ -12,6 +12,7 @@ use crate::{
         configuration as cfg,
         login as login_packets,
         login::GameProfile,
+        play as play_packets,
         recipes::RecipeBookSettings,
     },
 };
@@ -470,6 +471,7 @@ pub enum PlayPacket1211 {
     StoreCookie(cfg::StoreCookie),
     Transfer(cfg::Transfer),
     Missing(MissingPacket),
+    Compatible(play_packets::Clientbound),
 }
 
 /// Decode the 1.21.1 play packets whose payloads have target-verified codecs.
@@ -506,10 +508,71 @@ pub fn decode_play_packet_1_21_1(id: i32, payload: &[u8]) -> Result<PlayPacket12
             shared(|r| cfg::Transfer::read(r).map(PlayPacket1211::Transfer)),
         id if is_missing_play_clientbound(id) =>
             decode_play_clientbound(id, payload).map(PlayPacket1211::Missing),
-        other => Err(Error::new(format!(
-            "unsupported protocol-767 clientbound play packet: {other}"
-        ))),
+        id => decode_compatible_play_packet_1_21_1(id, payload)
+            .map(PlayPacket1211::Compatible),
+
     }
+}
+
+fn decode_compatible_play_packet_1_21_1(
+    target_id: i32,
+    payload: &[u8],
+) -> Result<play_packets::Clientbound> {
+    let name = crate::packet_ids_1_21_1::play::clientbound::NAMES
+        .get(usize::try_from(target_id).map_err(|_| Error::new("negative protocol-767 packet id"))?)
+        .copied()
+        .ok_or_else(|| Error::new(format!("unknown protocol-767 clientbound play packet: {target_id}")))?;
+    if !matches!(
+        name,
+        "animate"
+            | "block_change"
+            | "boss_bar"
+            | "difficulty"
+            | "chunk_batch_finished"
+            | "chunk_batch_start"
+            | "clear_titles"
+            | "close_window"
+            | "set_slot"
+            | "set_cooldown"
+            | "kick_disconnect"
+            | "game_state_change"
+            | "hurt_animation"
+            | "keep_alive"
+            | "world_event"
+            | "position"
+            | "remove_entity_effect"
+            | "reset_score"
+            | "camera"
+            | "held_item_slot"
+            | "update_view_position"
+            | "update_view_distance"
+            | "spawn_position"
+            | "experience"
+            | "update_health"
+            | "set_passengers"
+            | "simulation_distance"
+            | "set_title_subtitle"
+            | "set_title_text"
+            | "set_title_time"
+            | "start_configuration"
+            | "system_chat"
+            | "transfer"
+            | "set_projectile_power"
+            | "server_links"
+            | "add_resource_pack"
+            | "remove_resource_pack"
+            | "store_cookie"
+            | "custom_payload"
+    ) {
+        return Err(Error::new(format!(
+            "protocol-767 packet {name} has no verified compatible payload adapter"
+        )));
+    }
+    let active_id = crate::ids::play::clientbound::NAMES
+        .iter()
+        .position(|active_name| *active_name == name)
+        .ok_or_else(|| Error::new(format!("protocol-767 packet {name} is absent from the active codec table")))? as i32;
+    play_packets::Clientbound::decode(active_id, payload)
 }
 
 fn is_missing_play_clientbound(id: i32) -> bool {
