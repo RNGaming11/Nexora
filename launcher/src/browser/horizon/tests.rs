@@ -63,7 +63,7 @@ fn native_registry_entries_are_mods_that_say_they_run_native_code() {
 }
 
 #[test]
-fn only_horizons_own_projects_go_without_the_not_endorsed_line() {
+fn only_official_registry_projects_go_without_the_not_endorsed_line() {
     let mut p = sample().projects[0].clone();
     p.authors = vec!["Horizon".into()];
     p.source = "https://github.com/horizon-rust/horizon-mod-zoom".into();
@@ -289,14 +289,14 @@ fn owner_links_only_take_github_logins() {
 
 /// A version that calls mod API functions the game doesn't have is marked and skipped.
 #[test]
-fn versions_for_a_newer_horizon_are_not_installed() {
+fn versions_for_a_newer_nexora_build_are_not_installed() {
     let mut index = sample();
     index.projects[0].versions[0].api_level = Some(1);
     let p = index.project("coords_hud").unwrap();
     let e = newest(&index, p, Some(0)).unwrap_err();
     assert_eq!(
         e,
-        "Coordinates HUD needs a newer Horizon than the game you play: update it first."
+        "Coordinates HUD needs a newer Nexora version than the game you play: update it first."
     );
     assert!(newest(&index, p, Some(1)).is_ok());
     assert!(newest(&index, p, None).is_ok());
