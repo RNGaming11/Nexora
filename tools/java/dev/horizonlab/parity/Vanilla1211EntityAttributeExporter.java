@@ -23,7 +23,7 @@ public final class Vanilla1211EntityAttributeExporter {
     @SuppressWarnings("unchecked") public static void main(String[] args)throws Exception {
         net.minecraft.SharedConstants.tryDetectVersion();net.minecraft.server.Bootstrap.bootStrap();
         for(var a:BuiltInRegistries.ATTRIBUTE)attributes.add(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(a));
-        Path dir=Path.of(args[1]);if(args[0].equals("export")){Files.writeString(dir.resolve("catalog.json"),export().toString());return;}
+        Path output=Path.of(args[1]);if(args[0].equals("export")){Files.writeString(output,export().toString());return;}
         var storage=field(AttributeMap.class,"attributes");var dirty=field(AttributeInstance.class,"dirty");var cached=field(AttributeInstance.class,"cachedValue");
         try(var out=new PrintWriter(Files.newBufferedWriter(dir.resolve(args[0]+".txt")));var lines=Files.lines(dir.resolve("inputs.txt"))){for(var line:(Iterable<String>)lines::iterator){var f=JsonParser.parseString(line).getAsJsonObject();var entity=BuiltInRegistries.ENTITY_TYPE.getValue(ResourceLocation.parse(f.get("entity").getAsString()));var map=new AttributeMap(supplier(entity));var instances=(Map<Holder<Attribute>,AttributeInstance>)storage.get(map);
             for(var ov:f.getAsJsonArray("ops")){var op=ov.getAsJsonObject();var a=attributes.get(op.get("attribute").getAsInt());String mode=op.get("mode").getAsString();var id=ResourceLocation.parse(op.get("id").getAsString());
