@@ -1514,6 +1514,7 @@ impl Game<'_> {
                     self.orbs.retain(|orb| orb.id != id as u32);
                     self.orbs.push(experience_orb(id, position, value));
                 }
+                Event::RecipePacket(packet) => self.remote_recipe_packet(packet),
                 Event::Packet(packet) => self.handle_packet(*packet)?,
             }
             chunks += started.map_or(Duration::ZERO, |t| t.elapsed());
