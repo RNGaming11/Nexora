@@ -100,6 +100,14 @@ pub struct RenderAssets {
 fn invalid(message: &str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message)
 }
+
+#[derive(serde::Deserialize)]
+struct HeightmapPredicateFacts {
+    data_version: i32,
+    states: usize,
+    motion: Vec<bool>,
+    no_leaves: Vec<bool>,
+}
 impl Assets {
     pub fn load(root: &Path) -> Result<Self> {
         Self::load_with_data_version(root, DATA_VERSION)
@@ -125,6 +133,21 @@ impl Assets {
                 data_version,
             )?
         };
+        let target_heightmap = if cfg!(feature = "minecraft-1-21-1") && data_version == 3955 {
+            let facts: HeightmapPredicateFacts = serde_json::from_reader(BufReader::new(
+                File::open(root.join("heightmap-predicates.json"))?,
+            ))?;
+            if facts.data_version != data_version
+                || facts.states != registry.len()
+                || facts.motion.len() != registry.len()
+                || facts.no_leaves.len() != registry.len()
+            {
+                return Err(invalid("1.21.1 heightmap predicate registry mismatch").into());
+            }
+            Some(facts)
+        } else {
+            None
+        };
         let bundle: Value =
             serde_json::from_reader(BufReader::new(File::open(root.join("block-tags.json"))?))?;
         let mut definitions = TagDefinitions::default();
@@ -144,27 +167,36 @@ impl Assets {
         if !built.missing.is_empty() {
             return Err(invalid("unresolved block tags").into());
         }
-        let motion: BTreeSet<_> = built
-            .tags
-            .get("minecraft:blocks_motion_in_heightmap")
-            .ok_or_else(|| invalid("missing motion tag"))?
-            .iter()
-            .map(String::as_str)
-            .collect();
-        let no_leaves: BTreeSet<_> = built
-            .tags
-            .get("minecraft:blocks_motion_in_heightmap_no_leaves")
-            .ok_or_else(|| invalid("missing no-leaves motion tag"))?
-            .iter()
-            .map(String::as_str)
-            .collect();
-        let blocks_fluid_flow = built
-            .tags
-            .get("minecraft:blocks_fluid_flow")
-            .ok_or_else(|| invalid("missing fluid flow tag"))?
-            .iter()
-            .cloned()
-            .collect();
+        let (motion, no_leaves, blocks_fluid_flow): (
+            BTreeSet<&str>,
+            BTreeSet<&str>,
+            BTreeSet<String>,
+        ) = if target_heightmap.is_some() {
+            (BTreeSet::new(), BTreeSet::new(), BTreeSet::new())
+        } else {
+            let motion = built
+                .tags
+                .get("minecraft:blocks_motion_in_heightmap")
+                .ok_or_else(|| invalid("missing motion tag"))?
+                .iter()
+                .map(String::as_str)
+                .collect();
+            let no_leaves = built
+                .tags
+                .get("minecraft:blocks_motion_in_heightmap_no_leaves")
+                .ok_or_else(|| invalid("missing no-leaves motion tag"))?
+                .iter()
+                .map(String::as_str)
+                .collect();
+            let blocks_fluid_flow = built
+                .tags
+                .get("minecraft:blocks_fluid_flow")
+                .ok_or_else(|| invalid("missing fluid flow tag"))?
+                .iter()
+                .cloned()
+                .collect();
+            (motion, no_leaves, blocks_fluid_flow)
+        };
         let properties = Properties(Arc::new(
             flags
                 .iter()
@@ -174,12 +206,20 @@ impl Assets {
                         .state(BlockStateId(i as u32))
                         .ok_or_else(|| invalid("missing registry state"))?
                         .name;
+                    let (motion, no_leaves) = if let Some(facts) = target_heightmap.as_ref() {
+                        (facts.motion[i], facts.no_leaves[i])
+                    } else {
+                        (
+                            motion.contains(name.as_str()),
+                            no_leaves.contains(name.as_str()),
+                        )
+                    };
                     Ok(StateFacts {
                         air,
                         fluid,
                         air_block: name == "minecraft:air",
-                        motion: motion.contains(name.as_str()),
-                        no_leaves: no_leaves.contains(name.as_str()),
+                        motion,
+                        no_leaves,
                     })
                 })
                 .collect::<Result<_>>()?,
