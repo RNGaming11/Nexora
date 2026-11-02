@@ -397,12 +397,12 @@ pub fn pick(kind: Kind, versions: &[Version], everything: bool) -> Option<&Versi
 
 /// Picks the newest usable file for the selected Minecraft version. The everything flag permits
 /// a compatible fallback when no exact version exists.
-pub fn pick_for(
+pub fn pick_for<'a>(
     kind: Kind,
-    versions: &[Version],
+    versions: &'a [Version],
     everything: bool,
     game_version: &str,
-) -> Option<&Version> {
+) -> Option<&'a Version> {
     let mut usable = versions
         .iter()
         .filter(|v| v.blocked.is_none() && v.file().is_some());
