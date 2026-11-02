@@ -79,6 +79,19 @@ def main() -> None:
         download(artifact["url"], minecraft / "libraries" / relative, artifact["sha1"])
         count += 1
 
+        # Mojang publishes platform-native jars as classifiers, not artifacts.
+        # The preparer needs these too (for example LWJGL's natives-windows jar).
+        for classifier in library.get("downloads", {}).get("classifiers", {}).values():
+            native_relative = Path(classifier["path"])
+            if native_relative.is_absolute() or ".." in native_relative.parts or "\\" in classifier["path"]:
+                raise SystemExit(f"Unsafe native library path in Mojang metadata: {classifier['path']}")
+            download(
+                classifier["url"],
+                minecraft / "libraries" / native_relative,
+                classifier["sha1"],
+            )
+            count += 1
+
     asset_index = manifest.get("assetIndex", {})
     index_path = minecraft / "assets" / "indexes" / f"{asset_index.get('id', '')}.json"
     download(asset_index["url"], index_path, asset_index["sha1"])
