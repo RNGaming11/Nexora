@@ -111,7 +111,7 @@ def install_mojang_java(major):
         raise SystemExit(f"Mojang's {component} manifest contains no files")
     for name, item in files.items():
         parts = name.split("/")
-        if name.startswith("/") or "\\" in name or any(part in {"", ".", ".."} for part in parts):
+        if name.startswith("/") or "\\" in name or ":" in parts[0] or any(part in {"", ".", ".."} for part in parts):
             raise SystemExit(f"Unsafe path in Mojang Java manifest: {name!r}")
         destination = home.joinpath(*parts)
         kind = item.get("type")
