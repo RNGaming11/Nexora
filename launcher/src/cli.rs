@@ -654,6 +654,14 @@ enum Cmd {
     },
     /// Download and install a release (a tag such as v2026.10.13, or "latest")
     Install { tag: String },
+    /// Install a locally built target package, without downloading or contacting GitHub.
+    InstallLocal {
+        /// Folder containing the target client, research-lock.json and preparer files
+        folder: PathBuf,
+        /// Name shown in the launcher's version picker
+        #[arg(long, default_value = "local-1.21.1")]
+        tag: String,
+    },
     /// Remove an installed version
     Remove { tag: String },
     /// Prepare a version's resources from your own Minecraft install, or from Mojang
@@ -1125,6 +1133,21 @@ fn execute(command: Cmd, as_json: bool) -> Result<(), String> {
                 println!(
                     "Installed {tag}. Prepare it next: nexora-launcher prepare --version {tag}"
                 );
+            }
+        }
+        Cmd::InstallLocal { folder, tag } => {
+            let message = backend::install_local(&folder, &tag)?;
+            if as_json {
+                json(serde_json::json!({
+                    "installed": tag,
+                    "message": message,
+                    "prepared": backend::is_prepared(&tag)
+                }));
+            } else {
+                println!("{message}");
+                if !backend::is_prepared(&tag) {
+                    println!("Prepare it next: nexora-launcher prepare --version {tag}");
+                }
             }
         }
         Cmd::NativeBuild {
