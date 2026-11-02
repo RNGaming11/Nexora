@@ -131,6 +131,22 @@ cargo build -p horizon-client --bin horizon-client-1-21-1 --features minecraft-1
 
 The executable is written to `target/debug/horizon-client-1-21-1.exe` on Windows (or the platform equivalent). A normal `cargo run -p horizon-client` still uses the 26.3 profile. This separate executable is a development target; the 1.21.1 gameplay port is not yet complete or advertised as playable.
 
+## Installing the local 1.21.1 build in the launcher
+
+A local target package can be built without GitHub Actions or a release upload. From the repository root in Windows PowerShell:
+
+```powershell
+cargo build --release -p horizon-client --bin horizon-client-1-21-1 --features minecraft-1-21-1
+cargo build --release --workspace
+.\tools\package_1_21_1_local.ps1
+cargo build --release --manifest-path launcher/Cargo.toml --bin nexora-launcher
+.\launcher\target\release\nexora-launcher.exe install-local .\dist\nexora-1.21.1-local
+```
+
+The local build then appears in the launcher's normal Version picker as `local-1.21.1`. Select it and press Play; if its resources are not prepared, the launcher runs its normal preparation flow using the 1.21.1 research lock and Java 21. The import is local and does not contact GitHub or start a hosted build.
+
+This makes the 1.21.1 target selectable and launchable for local testing. It does **not** mean the gameplay port is complete: unsupported play packets and the remaining gameplay/resource integration can still prevent reliable server play.
+
 ## Preparing the full 1.21.1 data set
 
 The repository includes a one-click GitHub Actions workflow named **Prepare Minecraft 1.21.1 port data**. Run it from the Actions tab using **Run workflow**. It installs Python and Java 21, downloads and verifies Mojang's official artifacts, runs the vanilla server data generator, applies official mappings, builds the mapped class inventories, and uploads the registry/packet/item/block/command reports and class diff as the `nexora-minecraft-1.21.1-port-data` artifact. It also installs Java 25 to prepare the active 26.3 baseline and, when that succeeds, uploads the mapped 26.3-to-1.21.1 comparison and ranked worklist as `nexora-26.3-to-1.21.1-port-diff`. The workflow does not commit downloaded Minecraft jars or generated bulk data into the repository.
