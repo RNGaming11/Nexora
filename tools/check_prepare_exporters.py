@@ -106,10 +106,15 @@ def main():
             minecraft_link = folder / '.local/minecraft'
             minecraft_target = (ROOT / '.local/minecraft').resolve()
             if os.name == 'nt':
-                # Directory junctions do not require Windows Developer Mode or elevation.
-                subprocess.run(
+                # Prefer a directory junction (fast, no data copy). Some Windows setups
+                # reject mklink despite local paths, so fall back to a normal directory copy.
+                junction = subprocess.run(
                     ['cmd.exe', '/c', f'mklink /J "{minecraft_link}" "{minecraft_target}"'],
-                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                if junction.returncode != 0:
+                    print('Directory junction unavailable; copying pinned Minecraft inputs '
+                          '(this can take a few minutes).', flush=True)
+                    shutil.copytree(minecraft_target, minecraft_link)
             else:
                 minecraft_link.symlink_to(minecraft_target, target_is_directory=True)
             env = dict(os.environ)
