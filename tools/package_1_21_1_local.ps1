@@ -45,7 +45,9 @@ Copy-Item -LiteralPath $ExporterSources -Destination $ExporterRoot -Recurse
 
 Copy-Item -LiteralPath (Join-Path $Root "ports\1.21.1\research-lock.json") -Destination (Join-Path $Destination "research-lock.json")
 Copy-Item -LiteralPath (Join-Path $Root "ports\1.21.1\target.json") -Destination (Join-Path $Destination "target.json")
-Copy-Item -LiteralPath (Join-Path $Root "ports\1.21.1") -Destination (Join-Path $Destination "ports") -Recurse
+$PortDestination = Join-Path $Destination "ports"
+New-Item -ItemType Directory -Path $PortDestination -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $Root "ports\1.21.1") -Destination $PortDestination -Recurse
 
 $Lock = Get-Content -LiteralPath (Join-Path $Destination "research-lock.json") -Raw | ConvertFrom-Json
 if ($Lock.minecraft.version -ne "1.21.1" -or $Lock.minecraft.java_major -ne 21) {
