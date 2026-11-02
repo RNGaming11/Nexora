@@ -693,6 +693,80 @@ fn unpack(archive: &Path, url: &str, to: &Path) -> Result<(), String> {
 
 /// Downloads one release, checks it against its signed checksums and unpacks it; `progress` gets
 /// the fraction done.
+/// Installs a locally built Nexora target package without contacting GitHub.
+/// The folder must contain the target research lock and the matching client executable.
+pub fn install_local(source: &Path, tag: &str) -> Result<String, String> {
+    if tag.is_empty()
+        || tag.starts_with('.')
+        || !tag
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+    {
+        return Err("Use a version name containing only letters, numbers, dots, dashes and underscores.".into());
+    }
+    let source = source.canonicalize().map_err(|e| format!("{}: {e}", source.display()))?;
+    if !source.is_dir() {
+        return Err(format!("{} is not a build folder.", source.display()));
+    }
+    let root = versions_dir();
+    fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    let target = version_dir(tag);
+    if target.exists() {
+        return Err(format!("{tag} already exists in the launcher's versions folder."));
+    }
+    let partial = root.join(format!(".{tag}.local-partial"));
+    let _ = fs::remove_dir_all(&partial);
+    fs::create_dir_all(&partial).map_err(|e| e.to_string())?;
+    let result = (|| {
+        copy_local_tree(&source, &partial)?;
+        let minecraft = game_version_at(&partial);
+        if minecraft == horizon_core::VANILLA_VERSION {
+            return Err(format!(
+                "The folder still targets Minecraft {minecraft}. Use a folder with a 1.21.1 research-lock.json."
+            ));
+        }
+        let client = partial.join(client_binary_name_at(&partial));
+        if !client.is_file() {
+            return Err(format!(
+                "The {minecraft} package is missing {}.",
+                client.file_name().unwrap_or_default().to_string_lossy()
+            ));
+        }
+        fs::write(partial.join(COMPLETE), b"local build\n").map_err(|e| e.to_string())?;
+        fs::rename(&partial, &target).map_err(|e| e.to_string())?;
+        let mut settings = Settings::load();
+        settings.selected = Some(tag.to_string());
+        settings.save();
+        Ok(minecraft)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_dir_all(&partial);
+    }
+    result.map(|minecraft| {
+        format!("Installed local {minecraft} build as {tag}.")
+    })
+}
+
+fn copy_local_tree(from: &Path, to: &Path) -> Result<(), String> {
+    for entry in fs::read_dir(from).map_err(|e| format!("{}: {e}", from.display()))? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let kind = entry.file_type().map_err(|e| e.to_string())?;
+        let target = to.join(entry.file_name());
+        if kind.is_symlink() {
+            return Err(format!("Local build contains a symbolic link: {}", entry.path().display()));
+        } else if kind.is_dir() {
+            fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+            copy_local_tree(&entry.path(), &target)?;
+        } else if kind.is_file() {
+            fs::copy(entry.path(), &target)
+                .map_err(|e| format!("{}: {e}", entry.path().display()))?;
+        } else {
+            return Err(format!("Unsupported file in local build: {}", entry.path().display()));
+        }
+    }
+    Ok(())
+}
+
 pub fn install(release: &Release, progress: impl Fn(f32)) -> Result<(), String> {
     let tag = release.tag.as_str();
     let sha256 = match &release.nightly {
