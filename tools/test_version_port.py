@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -39,6 +40,46 @@ class PreparedPathTests(unittest.TestCase):
                 prepared = version_port.paths("1.21.1")
 
             self.assertEqual(prepared["reports"], canonical)
+
+
+class JavaRuntimeSelectionTests(unittest.TestCase):
+    def test_matching_installed_java_is_kept(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "jdk-21"
+            executable = home / "bin" / ("java.exe" if os.name == "nt" else "java")
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"")
+            with patch.dict(os.environ, {"JAVA_HOME": str(home)}, clear=True), \
+                 patch.object(version_port.shutil, "which", return_value=None), \
+                 patch.object(version_port, "java_major", return_value=21), \
+                 patch.object(version_port, "install_mojang_java") as install:
+                self.assertEqual(version_port.java_command(21), str(executable))
+                install.assert_not_called()
+
+    def test_newer_java_is_not_used_for_1_21_1(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "jdk-25"
+            executable = home / "bin" / ("java.exe" if os.name == "nt" else "java")
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"")
+            mojang_java = Path(directory) / "mojang-java-21"
+            with patch.dict(os.environ, {"JAVA_HOME": str(home)}, clear=True), \
+                 patch.object(version_port.shutil, "which", return_value=None), \
+                 patch.object(version_port, "java_major", return_value=25), \
+                 patch.object(version_port, "install_mojang_java", return_value=mojang_java) as install:
+                self.assertEqual(version_port.java_command(21), str(mojang_java))
+                install.assert_called_once_with(21)
+
+    def test_26_3_can_still_select_java_25(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "jdk-25"
+            executable = home / "bin" / ("java.exe" if os.name == "nt" else "java")
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"")
+            with patch.dict(os.environ, {"JAVA_HOME": str(home)}, clear=True), \
+                 patch.object(version_port.shutil, "which", return_value=None), \
+                 patch.object(version_port, "java_major", return_value=25):
+                self.assertEqual(version_port.java_command(25), str(executable))
 
 
 if __name__ == "__main__":
