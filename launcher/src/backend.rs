@@ -702,9 +702,14 @@ pub fn install_local(source: &Path, tag: &str) -> Result<String, String> {
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
     {
-        return Err("Use a version name containing only letters, numbers, dots, dashes and underscores.".into());
+        return Err(
+            "Use a version name containing only letters, numbers, dots, dashes and underscores."
+                .into(),
+        );
     }
-    let source = source.canonicalize().map_err(|e| format!("{}: {e}", source.display()))?;
+    let source = source
+        .canonicalize()
+        .map_err(|e| format!("{}: {e}", source.display()))?;
     if !source.is_dir() {
         return Err(format!("{} is not a build folder.", source.display()));
     }
@@ -722,7 +727,8 @@ pub fn install_local(source: &Path, tag: &str) -> Result<String, String> {
         let minecraft = game_version_at(&partial);
         if minecraft != "1.21.1" {
             return Err(format!(
-                "This local import expects Minecraft 1.21.1, but the folder targets {minecraft}. Check its research-lock.json."
+                "This local import expects Minecraft 1.21.1, but the folder targets {minecraft}. \
+                 Check its research-lock.json."
             ));
         }
         let client = partial.join(client_binary_name_at(&partial));
@@ -753,9 +759,7 @@ pub fn install_local(source: &Path, tag: &str) -> Result<String, String> {
     if result.is_err() {
         let _ = fs::remove_dir_all(&partial);
     }
-    result.map(|minecraft| {
-        format!("Installed local {minecraft} build as {tag}.")
-    })
+    result.map(|minecraft| format!("Installed local {minecraft} build as {tag}."))
 }
 
 fn copy_local_tree(from: &Path, to: &Path) -> Result<(), String> {
@@ -764,7 +768,10 @@ fn copy_local_tree(from: &Path, to: &Path) -> Result<(), String> {
         let kind = entry.file_type().map_err(|e| e.to_string())?;
         let target = to.join(entry.file_name());
         if kind.is_symlink() {
-            return Err(format!("Local build contains a symbolic link: {}", entry.path().display()));
+            return Err(format!(
+                "Local build contains a symbolic link: {}",
+                entry.path().display()
+            ));
         } else if kind.is_dir() {
             fs::create_dir_all(&target).map_err(|e| e.to_string())?;
             copy_local_tree(&entry.path(), &target)?;
@@ -772,7 +779,10 @@ fn copy_local_tree(from: &Path, to: &Path) -> Result<(), String> {
             fs::copy(entry.path(), &target)
                 .map_err(|e| format!("{}: {e}", entry.path().display()))?;
         } else {
-            return Err(format!("Unsupported file in local build: {}", entry.path().display()));
+            return Err(format!(
+                "Unsupported file in local build: {}",
+                entry.path().display()
+            ));
         }
     }
     Ok(())
