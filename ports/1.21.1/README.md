@@ -14,6 +14,8 @@ This directory is the version-specific source of truth for the Nexora 1.21.1 por
 | Data pack format | 48 |
 | Asset index | 17 |
 
+The data-generator preparation step selects the exact Java major required by its target. If Java 21 is not already installed (or the active `JAVA_HOME`/`PATH` points to another major), it downloads Mojang's Java 21 runtime into the external version cache and verifies the runtime manifest and each file checksum. This does not change the computer's global Java setting. The 26.3 preparation path continues to select Java 25 independently.
+
 Official client/server artifacts and Mojang mapping hashes are pinned in [target.json](target.json).
 
 ## Completed preparation work
