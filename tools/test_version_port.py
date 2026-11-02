@@ -70,6 +70,22 @@ class JavaRuntimeSelectionTests(unittest.TestCase):
                 self.assertEqual(version_port.java_command(21), str(mojang_java))
                 install.assert_called_once_with(21)
 
+    def test_cached_mojang_java_is_reused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            component = version_port.JAVA_RUNTIME_COMPONENTS[21]
+            home = Path(directory) / "runtimes" / component / "windows-x64" / component
+            executable = home / "bin" / ("java.exe" if os.name == "nt" else "java")
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(b"")
+            with patch.object(version_port, "STORE", Path(directory)), \
+                 patch.object(version_port, "mojang_runtime_platform", return_value="windows-x64"), \
+                 patch.dict(os.environ, {}, clear=True), \
+                 patch.object(version_port.shutil, "which", return_value=None), \
+                 patch.object(version_port, "java_major", return_value=21), \
+                 patch.object(version_port, "install_mojang_java") as install:
+                self.assertEqual(version_port.java_command(21), str(executable))
+                install.assert_not_called()
+
     def test_26_3_can_still_select_java_25(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory) / "jdk-25"
