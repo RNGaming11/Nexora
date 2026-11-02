@@ -720,9 +720,9 @@ pub fn install_local(source: &Path, tag: &str) -> Result<String, String> {
     let result = (|| {
         copy_local_tree(&source, &partial)?;
         let minecraft = game_version_at(&partial);
-        if minecraft == horizon_core::VANILLA_VERSION {
+        if minecraft != "1.21.1" {
             return Err(format!(
-                "The folder still targets Minecraft {minecraft}. Use a folder with a 1.21.1 research-lock.json."
+                "This local import expects Minecraft 1.21.1, but the folder targets {minecraft}. Check its research-lock.json."
             ));
         }
         let client = partial.join(client_binary_name_at(&partial));
