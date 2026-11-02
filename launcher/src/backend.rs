@@ -732,6 +732,17 @@ pub fn install_local(source: &Path, tag: &str) -> Result<String, String> {
                 client.file_name().unwrap_or_default().to_string_lossy()
             ));
         }
+        if preparer_binary(&partial).is_none()
+            || !partial.join(PREPARER_CRATE).join("src").is_dir()
+            || !partial
+                .join("mods/horizon/src/test/java/dev/horizonlab/parity")
+                .is_dir()
+        {
+            return Err(
+                "The local 1.21.1 package is missing its preparer or vanilla exporter sources."
+                    .into(),
+            );
+        }
         fs::write(partial.join(COMPLETE), b"local build\n").map_err(|e| e.to_string())?;
         fs::rename(&partial, &target).map_err(|e| e.to_string())?;
         let mut settings = Settings::load();
