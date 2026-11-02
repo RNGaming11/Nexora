@@ -103,33 +103,48 @@ def main():
             shutil.copytree(ROOT / 'mods/horizon/src/test/java', folder / 'mods/horizon/src/test/java')
             shutil.copytree(ROOT / 'exporters', folder / 'exporters')
             (folder / '.local').mkdir()
-            (folder / '.local/minecraft').symlink_to((ROOT / '.local/minecraft').resolve(), target_is_directory=True)
+            minecraft_link = folder / '.local/minecraft'
+            minecraft_target = (ROOT / '.local/minecraft').resolve()
+            if os.name == 'nt':
+                # Directory junctions do not require Windows Developer Mode or elevation.
+                subprocess.run(
+                    ['cmd.exe', '/c', f'mklink /J "{minecraft_link}" "{minecraft_target}"'],
+                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+            else:
+                minecraft_link.symlink_to(minecraft_target, target_is_directory=True)
             env = dict(os.environ)
             env.pop('HORIZON_PREPARE_ISOLATED', None)
             if name.startswith('isolated'):
                 env['HORIZON_PREPARE_ISOLATED'] = '1'
             else:
-                # An actual runtime-only home: no javac in bin. Java resolves its own libraries.
                 java = Path(shutil.which('java')).resolve()
-                runtime = folder / 'runtime'
-                (runtime / 'bin').mkdir(parents=True)
-                trace = folder / 'java-invocations.txt'
-                wrapper = runtime / 'bin' / java.name
-                wrapper.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> '
-                                   + shlex.quote(str(trace)) + '\nexec '
-                                   + shlex.quote(str(java)) + ' "$@"\n')
-                wrapper.chmod(0o755)
-                env['JAVA_HOME'] = str(runtime)
-                env['PATH'] = str(runtime / 'bin')
+                if os.name == 'nt':
+                    # Windows cannot use the POSIX java wrapper; use the installed Java home.
+                    env['JAVA_HOME'] = str(java.parent.parent)
+                else:
+                    # An actual runtime-only home: no javac in bin. Java resolves its own libraries.
+                    runtime = folder / 'runtime'
+                    (runtime / 'bin').mkdir(parents=True)
+                    trace = folder / 'java-invocations.txt'
+                    wrapper = runtime / 'bin' / java.name
+                    wrapper.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> '
+                                       + shlex.quote(str(trace)) + '\\nexec '
+                                       + shlex.quote(str(java)) + ' "$@"\\n')
+                    wrapper.chmod(0o755)
+                    env['JAVA_HOME'] = str(runtime)
+                    env['PATH'] = str(runtime / 'bin')
             started = time.monotonic()
             with (work / f'{name}.log').open('w') as log:
                 subprocess.run([str(binary), '--root', str(folder)], cwd=folder, env=env,
                                stdout=log, stderr=subprocess.STDOUT, check=True, timeout=1200)
-            if name == 'batched':
+            if name == 'batched' and os.name != 'nt':
                 launches = [line for line in trace.read_text().splitlines() if line != '-version']
                 if len(launches) != 5:
                     raise SystemExit(f'Expected 5 exporter/data-generator JVMs, got {len(launches)}')
                 print(f'Runtime-only preparation: {len(launches)} JVM launches', flush=True)
+            elif name == 'batched':
+                print('Windows preparation: using installed Java; checking that no compilation occurs',
+                      flush=True)
             text = (work / f'{name}.log').read_text()
             if 'Compiling ' in text:
                 raise SystemExit(f'{name} unexpectedly needed a compiler')
