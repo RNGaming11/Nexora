@@ -14,7 +14,7 @@ The launcher has Nexora branding and a blue/cyan theme. Advertising components a
 
 ## Build the current baseline
 
-Requirements: Rust stable, Python 3.10+, and the JDK required by the pinned resource-preparation tools.
+Requirements: Rust stable and Python 3.10+. Resource preparation automatically selects the exact Java major for the Minecraft target (Java 21 for 1.21.1, Java 25 for 26.3), downloading Mojang's runtime into the external cache if needed.
 
 From the repository root:
 
