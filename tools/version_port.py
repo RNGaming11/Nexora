@@ -174,22 +174,25 @@ def java_major(java):
     return int(found[1]) if found else None
 
 
+def mojang_runtime_platform():
+    machine = os.environ.get("PROCESSOR_ARCHITECTURE", "").lower()
+    if sys.platform == "win32":
+        return "windows-arm64" if machine in {"arm64", "aarch64"} else "windows-x64" if machine in {"amd64", "x86_64", "x64"} else "windows-x86"
+    if sys.platform == "darwin":
+        machine = os.uname().machine.lower()
+        return "mac-os-arm64" if machine in {"arm64", "aarch64"} else "mac-os"
+    if sys.platform.startswith("linux"):
+        machine = os.uname().machine.lower()
+        return "linux-i386" if machine in {"i386", "i686", "x86"} else "linux"
+    raise SystemExit(f"Mojang Java runtimes are not available for {sys.platform}/{machine}")
+
+
 def install_mojang_java(major):
     """Download Mojang's exact Java runtime, verifying every file against its SHA-1."""
     component = JAVA_RUNTIME_COMPONENTS.get(major)
     if not component:
         raise SystemExit(f"No Mojang Java runtime component is mapped for Java {major}")
-    machine = os.environ.get("PROCESSOR_ARCHITECTURE", "").lower()
-    if sys.platform == "win32":
-        platform = "windows-arm64" if machine in {"arm64", "aarch64"} else "windows-x64" if machine in {"amd64", "x86_64", "x64"} else "windows-x86"
-    elif sys.platform == "darwin":
-        machine = os.uname().machine.lower()
-        platform = "mac-os-arm64" if machine in {"arm64", "aarch64"} else "mac-os"
-    elif sys.platform.startswith("linux"):
-        machine = os.uname().machine.lower()
-        platform = "linux-i386" if machine in {"i386", "i686", "x86"} else "linux"
-    else:
-        raise SystemExit(f"Mojang Java runtimes are not available for {sys.platform}/{machine}")
+    platform = mojang_runtime_platform()
 
     def read_json(url):
         request = urllib.request.Request(url, headers={"User-Agent": "Nexora/1.0"})
@@ -265,6 +268,11 @@ def java_command(major):
         seen.add(key)
         if java.is_file() and java_major(java) == major:
             return str(java)
+    component = JAVA_RUNTIME_COMPONENTS.get(major)
+    if component:
+        cached = STORE / "runtimes" / component / mojang_runtime_platform() / component / "bin" / executable
+        if cached.is_file() and java_major(cached) == major:
+            return str(cached)
     print(f"No Java {major} runtime selected; downloading Mojang's matching Java {major} automatically.", flush=True)
     return str(install_mojang_java(major))
 
