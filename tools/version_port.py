@@ -59,9 +59,113 @@ STATES = ["handshake", "status", "login", "configuration", "play"]
 # How many changed JSON paths one changed file keeps in diff.json.
 PATH_LIMIT = 50
 
-
 JAVA_RUNTIME_INDEX_URL = "https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json"
 JAVA_RUNTIME_COMPONENTS = {8: "jre-legacy", 16: "java-runtime-alpha", 17: "java-runtime-gamma", 21: "java-runtime-delta", 25: "java-runtime-epsilon"}
+
+
+def safe_version(version):
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", version) or version in {".", ".."}:
+        raise ValueError(f"Unsafe version identifier: {version!r}")
+    return version
+
+
+def fetch_json(url, sha1=None):
+    request = urllib.request.Request(url, headers={"User-Agent": "horizon/0.1"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        data = response.read()
+    if sha1 is not None and hashlib.sha1(data).hexdigest() != sha1:
+        raise ValueError(f"{url}: sha1 mismatch")
+    return data
+
+
+def pinned():
+    return json.loads(lab.LOCK.read_text(encoding="utf-8"))["minecraft"]["version"]
+
+
+# --- detect ------------------------------------------------------------------------------------------------
+
+def news(manifest, pin, seen, snapshots=False):
+    """[(kind, version)] Mojang lists that are neither pinned nor seen before, newest kind first."""
+    found = []
+    for kind in ["release"] + (["snapshot"] if snapshots else []):
+        latest = manifest["latest"][kind]
+        if latest != pin and latest != seen.get(kind):
+            # The latest snapshot is the latest release right after a release: report it once.
+            if kind == "snapshot" and latest == manifest["latest"]["release"]:
+                continue
+            found.append((kind, latest))
+    return found
+
+
+def detect(args):
+    manifest = json.loads(fetch_json(MANIFEST_URL))
+    state_path = STORE / "detect-state.json"
+    seen = json.loads(state_path.read_text()) if state_path.exists() else {}
+    found = news(manifest, pinned(), seen, args.snapshots)
+    if not found:
+        print(f"Nothing new: latest release {manifest['latest']['release']}, Horizon pins {pinned()}")
+        return 0
+    for kind, version in found:
+        print(f"New {kind}: {version} (Horizon pins {pinned()})")
+        seen[kind] = version
+    if not args.dry_run:
+        lab.write_json(state_path, seen)
+    return 10 if found[0][0] == "release" else 11
+
+
+# --- prepare -----------------------------------------------------------------------------------------------
+
+def version_dir(version):
+    return STORE / safe_version(version)
+
+
+def paths(version):
+    """The prepared files of a version: {client, server, server_game, reports, version_json}."""
+    record = version_dir(version) / "prepared.json"
+    if not record.exists():
+        raise SystemExit(f"{version} is not prepared; run version_port.py prepare {version}")
+    prepared = json.loads(record.read_text())
+    result = {key: Path(value) for key, value in prepared["paths"].items()}
+    if "reports" not in result and prepared.get("reports"):
+        result["reports"] = Path(prepared["reports"])
+    return result
+
+
+def jar_facts(client_jar):
+    """The facts the game states about itself in the client jar's version.json."""
+    with zipfile.ZipFile(client_jar) as archive:
+        info = json.loads(archive.read("version.json"))
+    pack = info.get("pack_version", {})
+    # Minecraft 1.21.1 stores pack formats as single integers ("resource" and
+    # "data"). Newer releases use major/minor pairs. Normalize both schemas.
+    def pack_format(name):
+        if name in pack:
+            return f"{pack[name]}.0"
+        return f"{pack.get(name + '_major')}.{pack.get(name + '_minor')}"
+
+    return {
+        "id": info["id"],
+        "world_version": info["world_version"],
+        "protocol_version": info["protocol_version"],
+        "resource_pack": pack_format("resource"),
+        "data_pack": pack_format("data"),
+        "java_version": info["java_version"],
+        "stable": info.get("stable"),
+    }
+
+
+def unpack_game(server, destination, version):
+    """The server download is a bundler: take its game jar only (the libraries stay inside it)."""
+    with zipfile.ZipFile(server) as archive:
+        if "META-INF/versions.list" not in archive.namelist():
+            shutil.copyfile(server, destination)
+            return destination
+        entries = list(lab.bundle_entries(archive, "META-INF/versions.list"))
+        if len(entries) != 1 or entries[0][1] != version:
+            raise ValueError(f"Expected one bundled server for {version}")
+        checksum, _, relative = entries[0]
+        lab.extract_verified(archive, f"META-INF/versions/{relative}", destination, checksum)
+    return destination
 
 
 def java_major(java):
@@ -74,13 +178,15 @@ def install_mojang_java(major):
     """Download Mojang's exact Java runtime, verifying every file against its SHA-1."""
     component = JAVA_RUNTIME_COMPONENTS.get(major)
     if not component:
-        raise SystemExit(f"No pinned Mojang Java runtime component for Java {major}")
-    machine = os.uname().machine.lower() if hasattr(os, "uname") else os.environ.get("PROCESSOR_ARCHITECTURE", "").lower()
+        raise SystemExit(f"No Mojang Java runtime component is mapped for Java {major}")
+    machine = os.environ.get("PROCESSOR_ARCHITECTURE", "").lower()
     if sys.platform == "win32":
         platform = "windows-arm64" if machine in {"arm64", "aarch64"} else "windows-x64" if machine in {"amd64", "x86_64", "x64"} else "windows-x86"
     elif sys.platform == "darwin":
+        machine = os.uname().machine.lower()
         platform = "mac-os-arm64" if machine in {"arm64", "aarch64"} else "mac-os"
     elif sys.platform.startswith("linux"):
+        machine = os.uname().machine.lower()
         platform = "linux-i386" if machine in {"i386", "i686", "x86"} else "linux"
     else:
         raise SystemExit(f"Mojang Java runtimes are not available for {sys.platform}/{machine}")
@@ -95,8 +201,7 @@ def install_mojang_java(major):
         entries = index[platform][component]
         if not entries:
             raise ValueError(f"Mojang has no {component} runtime for {platform}")
-        descriptor = entries[0]
-        manifest_info = descriptor["manifest"]
+        manifest_info = entries[0]["manifest"]
         manifest_bytes = read_json(manifest_info["url"])
         actual = hashlib.sha1(manifest_bytes).hexdigest()
         if actual != manifest_info["sha1"]:
@@ -141,6 +246,27 @@ def install_mojang_java(major):
     if found != major:
         raise SystemExit(f"Mojang runtime should be Java {major}, but {executable} reports {found or 'unknown'}")
     return executable
+
+
+def java_command(major):
+    """Use the exact required Java major; download Mojang's runtime when none is installed."""
+    executable = "java.exe" if os.name == "nt" else "java"
+    candidates = []
+    if os.environ.get("JAVA_HOME"):
+        candidates.append(Path(os.environ["JAVA_HOME"]) / "bin" / executable)
+    on_path = shutil.which("java")
+    if on_path:
+        candidates.append(Path(on_path))
+    seen = set()
+    for java in candidates:
+        key = str(java.resolve()) if java.exists() else str(java)
+        if key in seen:
+            continue
+        seen.add(key)
+        if java.is_file() and java_major(java) == major:
+            return str(java)
+    print(f"No Java {major} runtime selected; downloading Mojang's matching Java {major} automatically.", flush=True)
+    return str(install_mojang_java(major))
 
 
 def run_datagen(server, reports, major):
