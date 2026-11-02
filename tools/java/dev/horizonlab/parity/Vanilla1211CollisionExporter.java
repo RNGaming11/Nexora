@@ -25,7 +25,7 @@ public final class Vanilla1211CollisionExporter {
     private static final Map<VoxelShape,CompoundTag> encodedGrids = new IdentityHashMap<>();
     private static Tag encode(BlockState state) {
         if (!REUSE) return BlockState.CODEC.encodeStart(NbtOps.INSTANCE,state).getOrThrow();
-        return encodedStates.computeIfAbsent(state, s -> BlockState.FULL_CODEC.encodeStart(NbtOps.INSTANCE,s).getOrThrow()).copy();
+        return encodedStates.computeIfAbsent(state, s -> BlockState.CODEC.encodeStart(NbtOps.INSTANCE,s).getOrThrow()).copy();
     }
     private static final Field CACHE, COLLISION, DISCRETE;
     private static final Method INDEX;
@@ -99,9 +99,9 @@ public final class Vanilla1211CollisionExporter {
                 mapping[id] = shapeId;
             }
         }
-        CompoundTag registry = new CompoundTag(); registry.putInt("DataVersion", SharedConstants.getCurrentVersion().dataVersion().version()); registry.put("states", states); registry.put("defaults", defaults);
+        CompoundTag registry = new CompoundTag(); registry.putInt("DataVersion", 3955); registry.put("states", states); registry.put("defaults", defaults);
         write(registry, base.resolve("block-registry.nbt"));
-        CompoundTag collision = new CompoundTag(); collision.putInt("DataVersion", SharedConstants.getCurrentVersion().dataVersion().version()); collision.put("states", states); collision.put("shapes", shapes); collision.putIntArray("cached_shapes", mapping);
+        CompoundTag collision = new CompoundTag(); collision.putInt("DataVersion", 3955); collision.put("states", states); collision.put("shapes", shapes); collision.putIntArray("cached_shapes", mapping);
         write(collision, base.resolve("cached-collision.nbt"));
         Random random = new Random(0x484f52495a4f4eL);
         try (PrintWriter out = new PrintWriter(Files.newBufferedWriter(base.resolve("inputs.txt")))) {
