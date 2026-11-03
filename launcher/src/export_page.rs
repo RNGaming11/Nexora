@@ -73,7 +73,7 @@ impl Launcher {
                 };
                 let file = done.path.file_name().unwrap_or_default().to_string_lossy();
                 let summary = if java.is_some() {
-                    format!("Created Modrinth profile {file}: {} files.", done.copied)
+                    format!("Created {file} for Modrinth: {} files.", done.copied)
                 } else {
                     format!("Exported {file}: {} files{linked}.", done.copied)
                 };
@@ -172,7 +172,7 @@ impl Launcher {
                     })),
             );
         }
-        let go = button("export-run", "Export", Kind::Secondary, &t);
+        let go = button(\n            "export-run",\n            if java_instance { "Prepare for Modrinth" } else { "Export" },\n            Kind::Secondary,\n            &t,\n        );
         let go = match panel.busy {
             true => disabled(go),
             false => go.on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
@@ -212,7 +212,7 @@ impl Launcher {
                 .px(px(14.))
                 .py(px(12.))
                 .ml(px(40.))
-                .child(caps("Export to share").text_color(t.muted))
+                .child(caps(if java_instance { "Use Modrinth sign-in" } else { "Export to share" }).text_color(t.muted))
                 .child(pick)
                 .child(text(theme::CAPTION).text_color(t.muted).child(about))
                 .child(caps("Worlds").text_color(t.muted))
