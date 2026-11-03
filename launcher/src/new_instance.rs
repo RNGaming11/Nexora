@@ -130,17 +130,22 @@ impl Launcher {
         .detach();
     }
 
-    /// The tabs over a new instance's dialog: Horizon, Vanilla, Modded.
+    /// The tabs for a new instance, or the Java-specific choices while editing one.
     pub(super) fn kind_tabs(&self, cx: &mut Context<Self>) -> Div {
         let t = self.theme;
-        let now = self.instances.dialog.as_ref().map(|d| d.java.kind);
-        div().flex().gap(px(4.)).children(
-            [
+        let dialog = self.instances.dialog.as_ref();
+        let now = dialog.map(|d| d.java.kind);
+        let choices: &[(NewKind, &str)] = if dialog.is_some_and(|d| d.java_instance) {
+            &[(NewKind::Vanilla, "Vanilla"), (NewKind::Modded, "Modded")]
+        } else {
+            &[
                 (NewKind::Horizon, "Horizon"),
                 (NewKind::Vanilla, "Vanilla"),
                 (NewKind::Modded, "Modded"),
             ]
-            .map(|(kind, label)| {
+        };
+        div().flex().gap(px(4.)).children(
+            choices.iter().copied().map(|(kind, label)| {
                 shell::tab(
                     format!("new-kind-{label}"),
                     tr(label),
