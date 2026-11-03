@@ -135,14 +135,19 @@ impl Launcher {
         let t = self.theme;
         let dialog = self.instances.dialog.as_ref();
         let now = dialog.map(|d| d.java.kind);
+        const JAVA_CHOICES: [(NewKind, &str); 2] = [
+            (NewKind::Vanilla, "Vanilla"),
+            (NewKind::Modded, "Modded"),
+        ];
+        const ALL_CHOICES: [(NewKind, &str); 3] = [
+            (NewKind::Horizon, "Horizon"),
+            (NewKind::Vanilla, "Vanilla"),
+            (NewKind::Modded, "Modded"),
+        ];
         let choices: &[(NewKind, &str)] = if dialog.is_some_and(|d| d.java_instance) {
-            &[(NewKind::Vanilla, "Vanilla"), (NewKind::Modded, "Modded")]
+            &JAVA_CHOICES
         } else {
-            &[
-                (NewKind::Horizon, "Horizon"),
-                (NewKind::Vanilla, "Vanilla"),
-                (NewKind::Modded, "Modded"),
-            ]
+            &ALL_CHOICES
         };
         div().flex().gap(px(4.)).children(
             choices.iter().copied().map(|(kind, label)| {
