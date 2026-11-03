@@ -46,6 +46,8 @@ const COLOURS: [&str; 8] = [
 /// text fields `Field::InstanceName` and `Field::InstanceGroup`.
 pub(super) struct InstanceDialog {
     editing: Option<String>,
+    /// Whether the instance being edited is a real Minecraft: Java Edition instance.
+    java_instance: bool,
     /// A new instance copies the selected one's worlds, options and packs.
     copy: bool,
     icon: Option<Icon>,
@@ -53,7 +55,7 @@ pub(super) struct InstanceDialog {
     pub(super) picture: Option<Option<instance_icons::Chosen>>,
     pub(super) error: Option<String>,
     busy: bool,
-    /// Horizon, or the Java game it plays.
+    /// The selected Minecraft version and loader, for new or edited Java instances.
     pub(super) java: new_instance::JavaChoice,
 }
 
@@ -255,6 +257,19 @@ impl Launcher {
             .as_ref()
             .map(|i| (i.name.clone(), i.group.clone().unwrap_or_default()))
             .unwrap_or_default();
+        let java_instance = editing.as_ref().is_some_and(|i| i.java.is_some());
+        let mut java = new_instance::JavaChoice::default();
+        if let Some(game) = editing.as_ref().and_then(|i| i.java.as_ref()) {
+            java.kind = if game.loader.is_some() {
+                new_instance::NewKind::Modded
+            } else {
+                new_instance::NewKind::Vanilla
+            };
+            java.version = Some(game.minecraft.clone());
+            if let Some(loader) = &game.loader {
+                java.loader = loader.kind;
+            }
+        }
         self.servers.text(Field::InstanceName).set(name);
         self.servers.text(Field::InstanceGroup).set(group);
         self.servers.focus_soon = Some(Field::InstanceName);
@@ -262,10 +277,11 @@ impl Launcher {
             icon: editing.as_ref().and_then(|i| i.icon.clone()),
             picture: None,
             editing: editing.map(|i| i.id),
+            java_instance,
             copy: false,
             error: None,
             busy: false,
-            java: Default::default(),
+            java,
         });
         self.servers.text(Field::InstanceVersion).set(String::new());
     }
@@ -295,8 +311,9 @@ impl Launcher {
             .map(|p| p.as_ref().map(|c| c.png.clone()));
         let editing = d.editing.clone();
         let copy = selected.filter(|_| d.copy);
-        // A new Java instance: what it plays, and its name when none is typed.
-        let java = (editing.is_none() && d.java.kind != new_instance::NewKind::Horizon)
+        // A Java instance: what it plays, whether new or being edited.
+        let java = (d.java_instance
+            || (editing.is_none() && d.java.kind != new_instance::NewKind::Horizon))
             .then(|| d.java.clone());
         let minecraft = java.as_ref().map(|j| {
             j.minecraft(match &self.instances.versions {
@@ -326,7 +343,11 @@ impl Launcher {
         d.error = None;
         let task = cx.background_executor().spawn(async move {
             let id = match (editing, java) {
-                (Some(id), _) => id,
+                (Some(id), Some((j, mc))) => {
+                    new_instance::configure_java(&id, &j, &mc)?;
+                    id
+                }
+                (Some(id), None) => id,
                 (None, Some((j, mc))) => new_instance::create_java(&j, &name, &mc)?.id,
                 (None, None) => instances::create(&name, copy.as_deref())?.id,
             };
@@ -370,6 +391,16 @@ impl Launcher {
     }
 
     pub(super) fn instance_dialog(&mut self, cx: &mut Context<Self>) -> Option<Stateful<Div>> {
+        let load_kind = self
+            .instances
+            .dialog
+            .as_ref()
+            .filter(|d| d.java_instance)
+            .map(|d| d.java.kind)
+            .filter(|_| matches!(self.instances.versions, new_instance::VersionList::NotAsked));
+        if let Some(kind) = load_kind {
+            self.pick_kind(kind, cx);
+        }
         let t = self.theme;
         let d = self.instances.dialog.as_ref()?;
         let editing_id = d.editing.clone();
@@ -377,15 +408,16 @@ impl Launcher {
             .picture
             .as_ref()
             .map(|p| p.as_ref().map(|c| c.preview.clone()));
-        let (editing, copy, icon, error, busy, kind) = (
+        let (editing, copy, icon, error, busy, kind, java_instance) = (
             d.editing.is_some(),
             d.copy,
             d.icon.clone(),
             d.error.clone(),
             d.busy,
             d.java.kind,
+            d.java_instance,
         );
-        let java = !editing && kind != new_instance::NewKind::Horizon;
+        let java = java_instance || (!editing && kind != new_instance::NewKind::Horizon);
         let n = t.night;
         let from = self
             .selected_instance()
@@ -418,7 +450,7 @@ impl Launcher {
                     .to_string(),
                 ),
             );
-        if !editing {
+        if !editing || java_instance {
             body = body.child(self.kind_tabs(cx));
         }
         if java {

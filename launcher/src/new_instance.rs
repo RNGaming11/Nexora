@@ -130,17 +130,27 @@ impl Launcher {
         .detach();
     }
 
-    /// The tabs over a new instance's dialog: Horizon, Vanilla, Modded.
+    /// The tabs for a new instance, or the Java-specific choices while editing one.
     pub(super) fn kind_tabs(&self, cx: &mut Context<Self>) -> Div {
         let t = self.theme;
-        let now = self.instances.dialog.as_ref().map(|d| d.java.kind);
+        let dialog = self.instances.dialog.as_ref();
+        let now = dialog.map(|d| d.java.kind);
+        const JAVA_CHOICES: [(NewKind, &str); 2] = [
+            (NewKind::Vanilla, "Vanilla"),
+            (NewKind::Modded, "Modded"),
+        ];
+        const ALL_CHOICES: [(NewKind, &str); 3] = [
+            (NewKind::Horizon, "Horizon"),
+            (NewKind::Vanilla, "Vanilla"),
+            (NewKind::Modded, "Modded"),
+        ];
+        let choices: &[(NewKind, &str)] = if dialog.is_some_and(|d| d.java_instance) {
+            &JAVA_CHOICES
+        } else {
+            &ALL_CHOICES
+        };
         div().flex().gap(px(4.)).children(
-            [
-                (NewKind::Horizon, "Horizon"),
-                (NewKind::Vanilla, "Vanilla"),
-                (NewKind::Modded, "Modded"),
-            ]
-            .map(|(kind, label)| {
+            choices.iter().copied().map(|(kind, label)| {
                 shell::tab(
                     format!("new-kind-{label}"),
                     tr(label),
@@ -338,6 +348,27 @@ pub(super) fn create_java(
         }),
         None => Ok(made),
     }
+}
+
+/// Updates a Java instance's Minecraft version and loader, keeping its world, memory,
+/// Java selection, JVM arguments and window settings in place.
+pub(super) fn configure_java(
+    instance: &str,
+    choice: &JavaChoice,
+    minecraft: &str,
+) -> Result<instances::Instance, String> {
+    if instances::find(instance)?.java.is_none() {
+        return Err(format!("{instance} is not a Minecraft: Java Edition instance."));
+    }
+    let loader = (choice.kind == NewKind::Modded)
+        .then(|| loaders::choose(choice.loader.id(), minecraft, None))
+        .transpose()?;
+    instances::edit(instance, |m| {
+        if let Some(game) = m.java.as_mut() {
+            game.minecraft = minecraft.to_string();
+            game.loader = loader;
+        }
+    })
 }
 
 #[cfg(test)]
