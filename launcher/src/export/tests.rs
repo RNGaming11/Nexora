@@ -166,6 +166,49 @@ fn a_zip_has_the_instance_and_the_picked_world_and_nothing_private() {
 }
 
 #[test]
+fn a_java_instance_becomes_a_modrinth_profile_with_its_loader_and_mods() {
+    let home = home("java-handoff");
+    put(&home.join("mods/sodium.jar"), b"sodium jar");
+    put(&home.join("config/sodium-options.json"), b"{ }");
+    let game = crate::instances::JavaGame {
+        minecraft: "1.21.1".into(),
+        loader: Some(crate::loaders::Loader {
+            kind: crate::loaders::Kind::Fabric,
+            version: "0.16.9".into(),
+        }),
+        ..Default::default()
+    };
+    let out = home.join("out/Fabric 1.21.1.mrpack");
+    let done = export_java_mrpack(
+        &home,
+        "Fabric 1.21.1",
+        &game,
+        &["Base".into()],
+        &out,
+    )
+    .unwrap();
+
+    assert_eq!(done.linked, 0);
+    let index: serde_json::Value =
+        serde_json::from_slice(&read(&out, "modrinth.index.json")).unwrap();
+    assert_eq!(index["formatVersion"], 1);
+    assert_eq!(index["game"], "minecraft");
+    assert_eq!(index["dependencies"]["minecraft"], "1.21.1");
+    assert_eq!(index["dependencies"]["fabric-loader"], "0.16.9");
+    assert_eq!(index["files"].as_array().unwrap().len(), 0);
+
+    let files = names(&out);
+    assert!(files.contains(&"overrides/mods/sodium.jar".into()));
+    assert!(files.contains(&"overrides/config/sodium-options.json".into()));
+    assert!(files.contains(&"overrides/options.txt".into()));
+    assert!(files.contains(&"overrides/saves/Base/level.dat".into()));
+    assert!(!files.iter().any(|f| f.contains("/playerdata/")));
+    assert!(!files.iter().any(|f| f.starts_with("overrides/horizon-mods/")));
+    assert!(!files.iter().any(|f| f.contains("session.json")));
+    fs::remove_dir_all(&home).unwrap();
+}
+
+#[test]
 fn an_mrpack_lists_what_modrinth_serves_and_carries_the_rest() {
     let home = home("mrpack");
     let linked = linkable(&home, &served);
