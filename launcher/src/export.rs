@@ -225,6 +225,105 @@ fn shareable_level(file: &Path) -> Result<Vec<u8>, String> {
     gz.finish().map_err(|e| e.to_string())
 }
 
+/// Creates a Modrinth profile from a Nexora Java instance, ready for the Modrinth App to import.
+/// All bundled files are local overrides; the manifest pins the Minecraft and supported loader
+/// versions. No account data or authentication tokens are included.
+pub fn export_java_mrpack(
+    home: &Path,
+    name: &str,
+    game: &crate::instances::JavaGame,
+    worlds: &[String],
+    out: &Path,
+) -> Result<Exported, String> {
+    let mut files: Vec<(String, PathBuf)> = Vec::new();
+    for file in ["options.txt", "optionsof.txt", "optionsshaders.txt", "servers.dat"] {
+        if home.join(file).is_file() {
+            files.push((file.to_string(), home.join(file)));
+        }
+    }
+    for folder in [
+        "mods",
+        "config",
+        "resourcepacks",
+        "shaderpacks",
+        "defaultconfigs",
+        "kubejs",
+        "scripts",
+    ] {
+        walk(home, &home.join(folder), &[], &mut files);
+    }
+    for world in worlds {
+        let dir = home.join("saves").join(world);
+        if world.is_empty()
+            || world.contains(['/', '\\\\'])
+            || !dir.join("level.dat").is_file()
+        {
+            return Err(format!("{name} has no world {world}."));
+        }
+        walk(home, &dir, &PER_PLAYER, &mut files);
+    }
+
+    let mut dependencies = serde_json::Map::new();
+    dependencies.insert("minecraft".into(), serde_json::json!(game.minecraft));
+    if let Some(loader) = &game.loader {
+        dependencies.insert(
+            format!("{}-loader", loader.kind.id()),
+            serde_json::json!(loader.version),
+        );
+    }
+    let manifest = serde_json::json!({
+        "formatVersion": 1,
+        "game": "minecraft",
+        "versionId": "1",
+        "name": name,
+        "summary": format!("{name}, exported from Nexora."),
+        "files": [],
+        "dependencies": dependencies,
+    });
+
+    if let Some(dir) = out.parent() {
+        fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    let part = out.with_extension("part");
+    let written = write_overrides_mrpack(&part, &manifest, &files);
+    let done = written.and_then(|()| fs::rename(&part, out).map_err(|e| e.to_string()));
+    if let Err(e) = done {
+        let _ = fs::remove_file(&part);
+        return Err(format!("Could not export {name} for Modrinth: {e}"));
+    }
+    Ok(Exported {
+        path: out.to_path_buf(),
+        copied: files.len(),
+        linked: 0,
+        worlds: worlds.to_vec(),
+    })
+}
+
+/// Writes a complete .mrpack whose files are all bundled under overrides/.
+fn write_overrides_mrpack(
+    path: &Path,
+    manifest: &serde_json::Value,
+    files: &[(String, PathBuf)],
+) -> Result<(), String> {
+    let mut zip = zip::ZipWriter::new(fs::File::create(path).map_err(|e| e.to_string())?);
+    let options = zip::write::SimpleFileOptions::default();
+    zip.start_file(INDEX, options).map_err(|e| e.to_string())?;
+    zip.write_all(&serde_json::to_vec_pretty(manifest).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    for (rel, file) in files {
+        let bytes = if rel.ends_with("/level.dat") {
+            shareable_level(file)?
+        } else {
+            fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?
+        };
+        zip.start_file(format!("overrides/{rel}"), options)
+            .map_err(|e| e.to_string())?;
+        zip.write_all(&bytes).map_err(|e| e.to_string())?;
+    }
+    zip.finish().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// The resource packs the browser installed from Modrinth that are still the file it checked:
 /// with `lookup` (the source's file for an entry), what a `.mrpack` can list by download.
 pub fn linkable(home: &Path, lookup: &dyn Fn(&Entry) -> Option<FileRef>) -> Vec<Linked> {
