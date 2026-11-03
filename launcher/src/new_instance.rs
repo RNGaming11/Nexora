@@ -340,6 +340,27 @@ pub(super) fn create_java(
     }
 }
 
+/// Updates a Java instance's Minecraft version and loader, keeping its world, memory,
+/// Java selection, JVM arguments and window settings in place.
+pub(super) fn configure_java(
+    instance: &str,
+    choice: &JavaChoice,
+    minecraft: &str,
+) -> Result<instances::Instance, String> {
+    if instances::find(instance)?.java.is_none() {
+        return Err(format!("{instance} is not a Minecraft: Java Edition instance."));
+    }
+    let loader = (choice.kind == NewKind::Modded)
+        .then(|| loaders::choose(choice.loader.id(), minecraft, None))
+        .transpose()?;
+    instances::edit(instance, |m| {
+        if let Some(game) = m.java.as_mut() {
+            game.minecraft = minecraft.to_string();
+            game.loader = loader;
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
