@@ -172,7 +172,12 @@ impl Launcher {
                     })),
             );
         }
-        let go = button(\n            "export-run",\n            if java_instance { "Prepare for Modrinth" } else { "Export" },\n            Kind::Secondary,\n            &t,\n        );
+        let go = button(
+            "export-run",
+            if java_instance { "Prepare for Modrinth" } else { "Export" },
+            Kind::Secondary,
+            &t,
+        );
         let go = match panel.busy {
             true => disabled(go),
             false => go.on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
