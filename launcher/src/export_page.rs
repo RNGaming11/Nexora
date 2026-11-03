@@ -46,7 +46,8 @@ impl Launcher {
         };
         panel.busy = true;
         panel.done = None;
-        let format = panel.format;
+        let format = if i.java.is_some() { Format::Mrpack } else { panel.format };
+        let java = i.java.clone();
         let worlds: Vec<String> = panel
             .worlds
             .iter()
@@ -54,21 +55,29 @@ impl Launcher {
             .map(|w| w.0.clone())
             .collect();
         let task = cx.background_executor().spawn(async move {
-            let linked = match format {
-                Format::Mrpack => export::linkable(&i.home, &export::from_modrinth),
-                Format::Zip => Vec::new(),
-            };
             let out = export::free_path(&backend::data_dir().join("exports"), &i.name, format);
-            export::export(&i.home, &i.name, format, &worlds, &linked, &out).map(|done| {
+            let done = match java.as_ref() {
+                Some(game) => export::export_java_mrpack(&i.home, &i.name, game, &worlds, &out),
+                None => {
+                    let linked = match format {
+                        Format::Mrpack => export::linkable(&i.home, &export::from_modrinth),
+                        Format::Zip => Vec::new(),
+                    };
+                    export::export(&i.home, &i.name, format, &worlds, &linked, &out)
+                }
+            };
+            done.map(|done| {
                 let linked = match done.linked {
                     0 => String::new(),
                     n => format!(", {n} listed by their Modrinth download"),
                 };
                 let file = done.path.file_name().unwrap_or_default().to_string_lossy();
-                (
-                    format!("Exported {file}: {} files{linked}.", done.copied),
-                    done.path,
-                )
+                let summary = if java.is_some() {
+                    format!("Created Modrinth profile {file}: {} files.", done.copied)
+                } else {
+                    format!("Exported {file}: {} files{linked}.", done.copied)
+                };
+                (summary, done.path)
             })
         });
         cx.spawn(async move |this, cx| {
@@ -92,8 +101,13 @@ impl Launcher {
             self.export = None;
             return None;
         }
+        let java_instance = self.selected_instance().is_some_and(|i| i.java.is_some());
         let panel = self.export.as_ref()?;
-        let formats = [(Format::Mrpack, ".mrpack"), (Format::Zip, ".zip")];
+        let formats = if java_instance {
+            vec![(Format::Mrpack, ".mrpack")]
+        } else {
+            vec![(Format::Mrpack, ".mrpack"), (Format::Zip, ".zip")]
+        };
         let mut pick = div().flex().items_center().gap(px(6.));
         for (format, label) in formats {
             let on = panel.format == format;
@@ -113,12 +127,16 @@ impl Launcher {
                 })),
             );
         }
-        let about = match panel.format {
-            Format::Mrpack => {
+        let about = match (java_instance, panel.format) {
+            (true, Format::Mrpack) => {
+                "Creates a Modrinth profile with this Minecraft version and loader. Its mods, \
+                 settings, packs and selected worlds are bundled for local import."
+            }
+            (false, Format::Mrpack) => {
                 "Modrinth's modpack format: resource packs from Modrinth are listed by their \
                  download, the rest is carried in it."
             }
-            Format::Zip => "The game folder's own layout, zipped.",
+            (_, Format::Zip) => "The game folder's own layout, zipped.",
         };
         let mut worlds = div().flex().flex_col().gap(px(6.));
         if panel.worlds.is_empty() {
@@ -164,7 +182,12 @@ impl Launcher {
         };
         let result = match &panel.done {
             Some(Ok((said, path))) => {
-                let path = path.clone();
+                let show_path = path.clone();
+                let open_path = path.clone();
+                let open_in_modrinth = java_instance.then(|| {
+                    button("export-open-modrinth", "Open in Modrinth", Kind::Secondary, &t)
+                        .on_click(move |_, _, cx| cx.open_with_system(&open_path))
+                });
                 Some(
                     div()
                         .flex()
@@ -173,8 +196,9 @@ impl Launcher {
                         .child(text(theme::CAPTION).text_color(t.muted).child(said.clone()))
                         .child(
                             button("export-show", "Show in folder", Kind::Ghost, &t)
-                                .on_click(move |_, _, cx| cx.reveal_path(&path)),
-                        ),
+                                .on_click(move |_, _, cx| cx.reveal_path(&show_path)),
+                        )
+                        .children(open_in_modrinth),
                 )
             }
             Some(Err(e)) => Some(div().child(notice(e.clone(), &t))),
@@ -193,10 +217,13 @@ impl Launcher {
                 .child(text(theme::CAPTION).text_color(t.muted).child(about))
                 .child(caps("Worlds").text_color(t.muted))
                 .child(worlds)
-                .child(text(theme::CAPTION).text_color(t.muted).child(
+                .child(text(theme::CAPTION).text_color(t.muted).child(if java_instance {
+                    "The package contains game files only, not your Microsoft account or login tokens. \
+                     Modrinth imports it as a profile; sign in and press Play there."
+                } else {
                     "Settings, packs and Horizon mods go in; logs, screenshots, backups and \
-                         your account never do. Worlds go without their per-player files.",
-                ))
+                     your account never do. Worlds go without their per-player files."
+                }))
                 .child(
                     div()
                         .flex()
