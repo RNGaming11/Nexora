@@ -255,7 +255,7 @@ pub fn export_java_mrpack(
     for world in worlds {
         let dir = home.join("saves").join(world);
         if world.is_empty()
-            || world.contains(['/', '\\\\'])
+            || world.contains(['/', '\\'])
             || !dir.join("level.dat").is_file()
         {
             return Err(format!("{name} has no world {world}."));
